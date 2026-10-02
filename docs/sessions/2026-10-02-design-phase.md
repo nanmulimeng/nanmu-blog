@@ -10,6 +10,7 @@
   - M0 Task 1(仓库骨架文档)完成,提交 `c0e8a84` [verified: git log]
   - 文档系统全量落盘(索引/架构/ADR 0001-0008/engine 三件/ops runbook) [verified: 本日 docs 提交]
   - 冷启动补全:docs/context/ 三篇(三前项目故事/服务器环境事实/上游数据源实况)+ AGENTS.md 扩充为入职第一文档 + ADR 与会话交接模板 [verified: 本日第二个 docs 提交]
+  - 开发约束层:docs/development/ 三篇(工作流/编码规范含 engine 目录结构预约束/四级质量门禁)+ 术语表;AGENTS.md 阅读链接入 [verified: 本日第三个 docs 提交]
   - 三路调研(AIHOT 深挖/外部选型/PowerContext)结论并入 spec §5-§7、§8.1 [verified: spec §11 落地记录]
 
 - **disposition**: complete(设计阶段);M0 执行待启动

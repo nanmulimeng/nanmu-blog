@@ -16,7 +16,8 @@
 3. [docs/superpowers/specs/2026-10-02-nanmu-blog-design.md](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md)——设计真相源
 4. 当前里程碑的 plan(上述 M0 计划)
 5. [docs/sessions/](docs/sessions/) 最新记录——现在做到哪
-6. 需要时:[docs/context/server-environment.md](docs/context/server-environment.md)(部署/排障)、[docs/context/topic-digest-data-source.md](docs/context/topic-digest-data-source.md)(M1 数据上游)、[docs/README.md](docs/README.md)(全部文档索引)
+6. **动工前必读**:[docs/development/workflow.md](docs/development/workflow.md)(会话怎么干活)、[docs/development/coding-standards.md](docs/development/coding-standards.md)(代码怎么写,含 engine 目录结构与依赖白名单)、[docs/development/quality-gates.md](docs/development/quality-gates.md)(做到什么程度算完成)
+7. 需要时:[docs/context/server-environment.md](docs/context/server-environment.md)(部署/排障)、[docs/context/topic-digest-data-source.md](docs/context/topic-digest-data-source.md)(M1 数据上游)、[docs/context/glossary.md](docs/context/glossary.md)(术语表)、[docs/README.md](docs/README.md)(全部文档索引)
 
 ## 八条铁律(全文;真相源 spec §2,修改先改 spec)
 
@@ -46,9 +47,12 @@ deploy/    服务器部署工件(随 M0 Task 8 落盘)
 
 ## 开发流程
 
-- 直接在 main 上小步提交(commit message:conventional 前缀 + 中文描述)
-- 每个任务按 plan 的步骤走(TDD;服务器任务按 runbook 逐字执行)
-- **会话收尾**:在 `docs/sessions/` 写交接记录(模板 `docs/sessions/_template.md`;格式 spec §8.1)——这是硬性步骤,不是可选项
+详见 [docs/development/workflow.md](docs/development/workflow.md)(会话开始 live_state 核对 / 任务执行 / 提交规范 / 会话结束交接)。要点:
+
+- 会话开始:读最新 session → `git log` 核对 → 跑验证,不符先纠偏
+- commit 前自动验证必须绿(site:`npm run verify`;engine:`pytest`)——四级门禁见 [docs/development/quality-gates.md](docs/development/quality-gates.md)
+- 会话结束写 `docs/sessions/` 交接记录——**硬性步骤,被中断也要写 continuable**
+- 编码规范:[docs/development/coding-standards.md](docs/development/coding-standards.md)(零客户端 JS / 依赖白名单 / engine 目录结构 / 密钥只走环境变量)
 - 设计/决策变更:先改 spec 或新增 ADR(模板 `docs/decisions/_template.md`),再改代码
 
 ## 禁止事项

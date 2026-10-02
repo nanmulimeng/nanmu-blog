@@ -7,6 +7,10 @@
 | [context/project-background.md](context/project-background.md) | 三个前项目的完整故事:为什么存在、继承什么、拒绝什么 | 定稿 |
 | [context/server-environment.md](context/server-environment.md) | 服务器/开发机环境事实(部署排障必读,含 [declared] 分级) | 随巡检更新 |
 | [context/topic-digest-data-source.md](context/topic-digest-data-source.md) | 上游数据源实况:schema 契约/15 源清单/已知坑 | 定稿(M1 前复核) |
+| [context/glossary.md](context/glossary.md) | 术语表(新 agent 对齐词汇) | 定稿 |
+| [development/workflow.md](development/workflow.md) | Claude Code 开发工作流:会话开始核对/执行/结束交接 | 定稿(约束所有会话) |
+| [development/coding-standards.md](development/coding-standards.md) | 编码规范:site/engine/RAG + 依赖白名单 + 测试要求 | 定稿(M1/M2 遵守) |
+| [development/quality-gates.md](development/quality-gates.md) | 四级完成定义(commit/任务/里程碑/部署)+ 未来计划强制测试清单 | 定稿 |
 | [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 定稿 |
 | [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0 实施计划(10 任务) | 待执行(Task 1 已完成) |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
