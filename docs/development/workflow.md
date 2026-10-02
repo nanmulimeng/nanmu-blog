@@ -58,6 +58,7 @@
 2. 写 `docs/sessions/YYYY-MM-DD-<主题>.md`(用 `_template.md`):state 带证据、omissions 显式列出
 3. 提交 session 记录
 4. disposition 如实写:continuable / blocked / complete
+5. (M0 Task 9 配好 server remote 后)`git push server main`——服务器 bare repo 是代码的异地副本;未推送的提交只存在于开发机(nanmuli-blog 带着 601 行未提交工作死掉的教训)
 
 被中断(上下文耗尽/用户打断)时同样适用——**宁可提前写 continuable 记录,不留断层**。
 

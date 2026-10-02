@@ -5,6 +5,7 @@
 | 文档 | 内容 | 状态 |
 |------|------|------|
 | [context/project-background.md](context/project-background.md) | 三个前项目的完整故事:为什么存在、继承什么、拒绝什么 | 定稿 |
+| [context/lessons.md](context/lessons.md) | 经验教训对照表:两个前项目的真实踩坑 → 对策 → 落点 | 定稿(踩新坑时追加) |
 | [context/server-environment.md](context/server-environment.md) | 服务器/开发机环境事实(部署排障必读,含 [declared] 分级) | 随巡检更新 |
 | [context/topic-digest-data-source.md](context/topic-digest-data-source.md) | 上游数据源实况:schema 契约/15 源清单/已知坑 | 定稿(M1 前复核) |
 | [context/glossary.md](context/glossary.md) | 术语表(新 agent 对齐词汇) | 定稿 |

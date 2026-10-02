@@ -12,7 +12,7 @@
 ## 新进入项目?按这个顺序读
 
 1. **本文**——铁律与导览(5 分钟)
-2. [docs/context/project-background.md](docs/context/project-background.md)——三个前项目的完整故事:为什么这个项目长这样
+2. [docs/context/project-background.md](docs/context/project-background.md)——三个前项目的完整故事:为什么这个项目长这样;[docs/context/lessons.md](docs/context/lessons.md)——踩坑→对策对照表(规矩的由来)
 3. [docs/superpowers/specs/2026-10-02-nanmu-blog-design.md](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md)——设计真相源
 4. 当前里程碑的 plan(上述 M0 计划)
 5. [docs/sessions/](docs/sessions/) 最新记录——现在做到哪

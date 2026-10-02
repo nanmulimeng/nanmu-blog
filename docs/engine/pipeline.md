@@ -22,6 +22,40 @@
 - `rag.db`(M2):向量,独立库,可随时删除全量重建
 - `site/src/content/digest/YYYY-MM-DD.md`:唯一公开产物(git 即发布)
 
+## digest 产物模板(assemble 固定结构)
+
+板块阈值是运营参数(放 selection.yaml),模板结构固定不动:
+
+```markdown
+---
+date: 'YYYY-MM-DD'
+generated: true
+ai_model: deepseek-chat
+entry_count: N
+cost_cny: 0.xx
+---
+
+# YYYY-MM-DD AI 日报
+
+> AI 生成与精选 · 模型 deepseek-chat · 成本 ¥0.xx
+
+## 头条(展示分 ≥ 80)
+
+### 中文标题(答案先行)
+- 一句话摘要。
+- 推荐理由。[来源](url)(源名 · 展示分 82)
+
+## 精选(75-79)
+
+(同上结构,按展示分排序)
+
+## 值得一瞥(压线入选)
+
+- [标题](url)——一句话点评
+```
+
+要点:标题答案先行;每条必带原文链接与展示分;frontmatter 五字段是 site 构建契约(schema 不合构建即失败);页脚 AI 标注由模板层保证(铁律 7)。
+
 ## 失败隔离不变量
 
 1. 单条目失败不挂整期

@@ -797,11 +797,16 @@ echo "$(date -Is) deployed $SHA"
 ```caddyfile
 blog.nanmu.xyz {
     root * /var/www/nanmu-blog/current/dist
-    file_server
-    try_files {path} /404.html
     encode gzip
+    file_server
+    handle_errors {
+        rewrite * /404.html
+        file_server
+    }
 }
 ```
+
+(404 用 `handle_errors` 返回真 404 状态码;`try_files` 回退是软 404,不采用。)
 
 - [ ] **Step 4: docs/ops/deploy.md(runbook,Task 9 逐字执行)**
 
@@ -831,11 +836,12 @@ node ≥18.17.1(Astro 5 要求)。若 node 在 nvm 下,记下路径(deploy.sh �
 ## 4. DNS(用户在域名控制台操作)
 添加 A 记录:blog.nanmu.xyz → 123.56.223.97。验证:nslookup blog.nanmu.xyz
 
-## 5. Caddy
-    ssh nanmu@123.56.223.97
-    sudo tee -a /etc/caddy/Caddyfile < deploy/Caddyfile.snippet 内容(或 scp 后 cat 追加)
-    sudo systemctl reload caddy
-Caddy 自动签 TLS。验证:curl -sI https://blog.nanmu.xyz
+## 5. Caddy(先 validate 再 reload——坏配置会连累同机 skills.nanmu.xyz)
+    scp deploy/Caddyfile.snippet nanmu@123.56.223.97:/tmp/blog.caddy
+    ssh nanmu@123.56.223.97 'sudo sh -c "cat /tmp/blog.caddy >> /etc/caddy/Caddyfile && caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile"'
+    # validate 失败:从 /etc/caddy/Caddyfile 删掉刚追加的块,绝不 reload
+    ssh nanmu@123.56.223.97 'sudo systemctl reload caddy && sleep 3 && systemctl is-active caddy'
+Caddy 自动签 TLS(DNS 生效后)。验证:curl -sI https://blog.nanmu.xyz;同时确认 https://skills.nanmu.xyz 仍 200
 
 ## 6. 首次部署与验收
     git remote add server nanmu@123.56.223.97:/opt/git/nanmu-blog.git
@@ -899,6 +905,11 @@ Expected: `ssh nanmu@123.56.223.97 'ls -la /opt/git/nanmu-blog.git/hooks/post-re
 
 按 runbook §3 配置公钥。验证:`ssh nanmu@123.56.223.97 true; echo $?`
 Expected: `0`(免密成功;密码只在首次配置时交互输入,不落盘)。
+
+若非 0,按序排查(**历史教训:topic-digest 当年 remote 直连失败未诊断,退化成手工 bundle 同步——这次把原因查清**):
+1. `ssh -v nanmu@123.56.223.97 true 2>&1 | tail -20`——看 offered public key 是否被服务器拒收
+2. 服务器端 `sudo tail -20 /var/log/secure`(或 `sudo journalctl -u sshd -n 20`)看拒绝原因(常见:`~/.ssh/authorized_keys` 权限非 600、`~/.ssh` 非 700、home 目录组可写)
+3. 修复后重试;**30 分钟内仍不通 → 降级为 git bundle 同步**(topic-digest 模式:`git bundle create /tmp/nb.bundle main` → scp → 服务器 bare repo `git fetch /tmp/nb.bundle main:main` 再手动触发 hook),并把"免密未通+根因"写入 session 的 omissions
 
 - [ ] **Step 3: DNS 与 Caddy(runbook §4-§5)**
 
@@ -994,6 +1005,20 @@ until curl -s https://blog.nanmu.xyz/rss.xml | grep -q "你好,nanmu-blog"; do s
 1. push 后 3 分钟内线上可见(两个时间戳之差 ≤180s)
 2. RSS 可订阅:`curl -s https://blog.nanmu.xyz/rss.xml | grep 你好` 命中
 3. 明暗主题正常:浏览器 DevTools Rendering → Emulate CSS prefers-color-scheme 切换 dark/light,配色切换、无 JS(人工确认)
+
+- [ ] **Step 3b: 回滚演练(runbook §7 实操一次)**
+
+此刻 releases/ 里已有两个版本(首篇文章 + 上一版),把回滚路径真实走一遍:
+
+```bash
+ssh nanmu@123.56.223.97 'ls -1dt /var/www/nanmu-blog/releases/*'
+# 取较旧的一个目录作为 <旧sha>,切换过去:
+ssh nanmu@123.56.223.97 'ln -sfn /var/www/nanmu-blog/releases/<旧sha> /var/www/nanmu-blog/current.tmp && mv -T /var/www/nanmu-blog/current.tmp /var/www/nanmu-blog/current'
+curl -s https://blog.nanmu.xyz/ | grep -c '你好'      # 0——旧版没有首篇文章
+# 再切回最新版本(重跑上一条,sha 换回最新):
+curl -s https://blog.nanmu.xyz/ | grep -c '你好'      # ≥1——恢复
+```
+Expected: 两次切换均秒级生效、线上始终 200。回滚不是纸上流程,是实测可用的。
 
 - [ ] **Step 4: 打 tag 并收尾**
 

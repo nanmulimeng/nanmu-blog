@@ -130,7 +130,8 @@ collect   读 topic-digest SQLite 只读(item JOIN source,近 24-48h;字段已�
           cluster/pick/daily 三表为预留空表——M1 从未动工,engine 不依赖它们)
    ↓
 判重      identity_key 归一(AIHOT url.ts 规则:去 www/强制 https/删 20+ 追踪参数/
-          参数排序/微信四参特判)→ entry 表 INSERT OR IGNORE
+          参数排序/微信四参特判;追踪参数黑名单初版=utm_* 系列+fbclid/gclid/spm/ref/from,
+          M1 写 plan 时对照 AIHOT url.ts 定稿)→ entry 表 INSERT OR IGNORE
    ↓
 预筛      本地规则零成本:标题关键词黑名单、死源排除、已上过日报的 identity_key 排除
    ↓
@@ -308,8 +309,12 @@ engine/config/
   ```caddyfile
   blog.nanmu.xyz {
       root * /var/www/nanmu-blog/current/dist
+      encode gzip
       file_server
-      try_files {path} /404.html
+      handle_errors {
+          rewrite * /404.html
+          file_server
+      }
   }
   rag.nanmu.xyz {            # M2;或并入 blog 站块用 handle_path /api/* 反代,二选一
       basic_auth {
@@ -318,6 +323,8 @@ engine/config/
       reverse_proxy localhost:8787
   }
   ```
+  404 用 `handle_errors`(返回真 404 状态码;`try_files` 回退是软 404,不采用)。
+  **reload 前必须 `caddy validate`**——坏配置会连累同机的 skills.nanmu.xyz。
   `basic_auth` 默认在 `reverse_proxy` 之前执行,自动覆盖被代理上游;依赖 Caddy 为公网域名自动签 TLS
 - **git push 自动构建**(bare repo + post-receive;topic-digest 已验证模式 + 调研补强两个坑):
   - 只部署 `refs/heads/main`;忽略删分支(null SHA)
@@ -342,7 +349,7 @@ nanmu-blog/
 ├── CLAUDE.md                        # 项目记忆(与 AGENTS.md 同口径)
 ├── docs/
 │   ├── README.md                    # 文档索引
-│   ├── context/                     # 项目背景与环境事实(新 agent 必读:三前项目故事/服务器事实/上游数据源/术语表)
+│   ├── context/                     # 项目背景与环境事实(新 agent 必读:三前项目故事/教训对照表/服务器事实/上游数据源/术语表)
 │   ├── development/                 # agent 开发约束:工作流/编码规范/四级质量门禁
 │   ├── superpowers/specs/           # 设计文档(本文档)
 │   ├── superpowers/plans/           # 实施计划(writing-plans 产物)
@@ -389,6 +396,9 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 | 服务器内存(1.8G) | topic-digest 同机实测 astro build 峰值 241MB;RAG 常驻 MemoryMax=200M;swap 2G 已配 |
 | AI 日报质量不可接受 | 双次评分+人工覆盖表;M1 验收含人工抽查;门槛可配置随时调 |
 | topic-digest 变更破坏读取 | 只读 + 明确 schema 依赖清单;坏读取只影响当天日报 |
+| SSH 免密部署路径不通(topic-digest 历史:remote 直连失败未诊断,退化 bundle) | Task 9 内置诊断清单;30 分钟不通降级 git bundle 同步并记录 omissions |
+| Caddy 配置错误连累同机 skills.nanmu.xyz | reload 前强制 `caddy validate`;失败即从 Caddyfile 移除追加块,绝不 reload |
+| 开发机故障丢未推送提交(nanmuli-blog 601 行悬置教训) | M0 后会话结束 `git push server main`;服务器 bare repo 即异地副本 |
 
 ## 11. 调研落地记录(原待定项已全部补全)
 
@@ -400,6 +410,14 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 - 参考项目补充:Horizon(9.6k★,采集→LLM 编辑→日报,与本项目管线同构)的"先过滤后增强/分类配额防霸屏/`api_key_env` 间接引用"已吸收进 §5;open-aggregator 的"LLM 不可达→降级输出、站点保持在线"已吸收进 §5.7 失败隔离。同类日报管线实测成本 ~$0.01/天,¥50/月红线非常宽裕
 - PowerContext(oceanbase,1.2k★):评估后**不采用**(问题域是 agent 会话交接而非知识库问答),搬走其最值钱的模式——§6 双通道混合检索 + matched_by 观测 + EmbeddingProfile + FTS 降级,§8.1 会话交接纪律(omissions/声明分级/接手检查,直击 nanmuli-blog 跨会话断层死因)
 
+### M1 启动前核查清单(写 M1 plan 时先做,消除 [declared])
+
+- [ ] 对照 AIHOT `packages/backend/src/lib/url.ts` 定稿追踪参数黑名单与微信特判规则(§5.2 只有初版口径)
+- [ ] 复核 DeepSeek 当期定价,更新 docs/engine/budget.md 价目行
+- [ ] 确认服务器 topic-digest SQLite 路径,回填 server-environment.md
+- [ ] 确认服务器 node 版本与安装方式(M0 Task 9 §0 已查,回填)
+- [ ] 用户申请/确认 LLM API key 与 SiliconFlow key(M2 前)可用,密钥只进服务器 env
+
 ---
 
 ## 附:变更记录
@@ -409,3 +427,4 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 - 2026-10-02 增补 PowerContext 调研:§6 检索设计(双通道混合/FTS 降级/EmbeddingProfile/可重建投影)、§8.1 会话交接纪律;结论"借鉴不采用"
 - 2026-10-02 文档系统面向"新 agent 冷启动"补全:新增 docs/context/ 三篇(项目背景/服务器环境/上游数据源),AGENTS.md 扩充为入职第一文档,新增 ADR 与会话交接模板
 - 2026-10-02 新增 docs/development/ 三篇(开发工作流/编码规范含 engine 目录结构预约束/四级质量门禁与未来计划强制测试清单)+ context/术语表:约束从背景到 M1/M2 开发细节的全链条
+- 2026-10-02 全文档复审(漏缺扫描):§7 Caddy 404 改 handle_errors + reload 前 validate;§10 增三条部署风险(SSH 免密历史坑/Caddy 连累同机服务/开发机丢提交);§11 增 M1 启动前核查清单;§5.2 URL 归一黑名单标注 M1 定稿;新增 context/lessons.md 经验教训对照表;M0 plan Task 8/9/10 对应强化(诊断清单/bundle 降级/回滚演练);workflow 会话结束 push server;pipeline 增 digest 产物模板

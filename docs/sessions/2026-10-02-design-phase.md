@@ -12,6 +12,7 @@
   - 冷启动补全:docs/context/ 三篇(三前项目故事/服务器环境事实/上游数据源实况)+ AGENTS.md 扩充为入职第一文档 + ADR 与会话交接模板 [verified: 本日第二个 docs 提交]
   - 开发约束层:docs/development/ 三篇(工作流/编码规范含 engine 目录结构预约束/四级质量门禁)+ 术语表;AGENTS.md 阅读链接入 [verified: 本日第三个 docs 提交]
   - 三路调研(AIHOT 深挖/外部选型/PowerContext)结论并入 spec §5-§7、§8.1 [verified: spec §11 落地记录]
+  - 全文档复审(开发漏缺扫描):新增 context/lessons.md 经验教训对照表;修复部署级漏缺——Caddy 404 改 handle_errors(原 try_files 是软 404)、reload 前强制 caddy validate(保护同机 skills.nanmu.xyz)、Task 9 SSH 免密诊断清单+bundle 降级路径(topic-digest 历史坑)、Task 10 增回滚演练、workflow 会话结束 push server、pipeline 增 digest 产物模板、spec 新增 M1 启动前核查清单 [verified: 本提交]
 
 - **disposition**: complete(设计阶段);M0 执行待启动
 
