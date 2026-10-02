@@ -341,15 +341,17 @@ nanmu-blog/
 ├── README.md                        # 定位 + 快速上手 + 三个前项目结论链接
 ├── CLAUDE.md                        # 项目记忆(与 AGENTS.md 同口径)
 ├── docs/
+│   ├── README.md                    # 文档索引
 │   ├── superpowers/specs/           # 设计文档(本文档)
 │   ├── superpowers/plans/           # 实施计划(writing-plans 产物)
-│   ├── architecture.md              # 三件套架构与数据流(M0 时写)
-│   ├── engine/pipeline.md           # 管线各阶段说明(M1 时写)
+│   ├── architecture.md              # 三件套架构与数据流(2026-10-02 已落盘)
+│   ├── engine/pipeline.md           # 管线各阶段说明(已落盘,M1 实施基准)
 │   ├── engine/selection.md          # 精选标准/门槛/调整记录(编辑策略文档)
 │   ├── engine/budget.md             # 成本治理与月度成本记录
-│   ├── ops/deploy.md                # 部署 runbook(topic-digest 模式,逐字可执行)
+│   ├── ops/deploy.md                # 部署 runbook(随 M0 Task 8 落盘)
 │   ├── ops/runbook.md               # 巡检/回滚/故障处理
-│   └── decisions/                   # ADR 架构决策记录(0001 起)
+│   ├── sessions/                    # 开发会话交接记录(§8.1)
+│   └── decisions/                   # ADR 架构决策记录(0001-0008 已落盘)
 ```
 
 文档纪律:设计变更先改文档再改代码;每个里程碑的验收清单写入 plan;过期文档宁可删除不留误导(nanmuli-blog 教训)。
