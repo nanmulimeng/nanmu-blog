@@ -342,6 +342,7 @@ nanmu-blog/
 ├── CLAUDE.md                        # 项目记忆(与 AGENTS.md 同口径)
 ├── docs/
 │   ├── README.md                    # 文档索引
+│   ├── context/                     # 项目背景与环境事实(新 agent 必读:三前项目故事/服务器事实/上游数据源)
 │   ├── superpowers/specs/           # 设计文档(本文档)
 │   ├── superpowers/plans/           # 实施计划(writing-plans 产物)
 │   ├── architecture.md              # 三件套架构与数据流(2026-10-02 已落盘)
@@ -405,3 +406,4 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 - 2026-10-02 初稿(骨架 + 已确认决策;细节章节随调研补充)
 - 2026-10-02 细节补全:§4.1(Astro 双 collection)、§5 全章详设(AIHOT 模式移植 + topic-digest schema 核实)、§6(sqlite-vec + bge-m3)、§7(部署细节),待定项清零
 - 2026-10-02 增补 PowerContext 调研:§6 检索设计(双通道混合/FTS 降级/EmbeddingProfile/可重建投影)、§8.1 会话交接纪律;结论"借鉴不采用"
+- 2026-10-02 文档系统面向"新 agent 冷启动"补全:新增 docs/context/ 三篇(项目背景/服务器环境/上游数据源),AGENTS.md 扩充为入职第一文档,新增 ADR 与会话交接模板
