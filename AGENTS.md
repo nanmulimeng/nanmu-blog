@@ -4,10 +4,11 @@
 
 ## 项目状态快照(2026-10-04)
 
-- M0进行中:Task1-8与Task8a(原始路径/slug/缓存边界,2026-10-04验收)已实施,site/(Astro5.18.2)与部署工件已落盘;待Task9-10服务器开通/首篇上线
-- 顺序:Task9-10服务器/首篇上线;M1(引擎)/M2(RAG)计划各自启动时再写,进入条件以spec §9为准
+- M0:Task1-9已实施——site/(Astro5.18.2)、部署工件与服务器链路已验收(线上 `https://nanmu.xyz`,常态发布计时13s、韧性实测5项、Caddy接管apex域名),证据见[部署交接](docs/sessions/2026-10-04-m0-deploy.md)。Task10(首篇文章+tag m0)未做
+- **当前阶段(2026-10-04用户指示):文档完善阶段**——实施类操作(代码/服务器/部署/Task10)暂停,继续完善文档系统;恢复实施待用户明示。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
+- 顺序:M1(引擎)/M2(RAG)计划各自启动时再写,进入条件以spec §9为准
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-04 M0 Task8a 执行交接](docs/sessions/2026-10-04-m0-task8a.md);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-04 M0 部署交接](docs/sessions/2026-10-04-m0-deploy.md);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 
@@ -37,7 +38,7 @@ scripts/   已有文档检查工具
 site/      Astro 5 静态站已建(M0 Task 2-8+8a;posts 手写 + digest 生成)
 engine/    尚未创建;AI 引擎(M1,Python + SQLite + systemd timer)
 docs/      specs/plans/decisions/engine/ops/sessions/context
-deploy/    服务器部署工件(Task 8 已落盘,Task 9 安装)
+deploy/    服务器部署工件(已安装并在 Task 9 验收;线上 https://nanmu.xyz)
 ```
 
 ## 常用命令

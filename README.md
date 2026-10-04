@@ -4,15 +4,15 @@
 
 ## 当前状态(2026-10-04)
 
-M0进行中:site/(Astro5.18.2)与deploy/工件已落盘,Task1-8与Task8a(原始内容路径/slug与缓存边界)已完成并验收。下一步M0 [Task9](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)(服务器开通,需用户配合)与Task10(首篇文章上线);engine/尚未创建。
+M0:Task1-9已完成——site/(Astro5.18.2)、部署工件与服务器链路均已验收,**线上 `https://nanmu.xyz`**(常态发布计时13s,韧性实测5项通过)。Task10(首篇文章+tag m0)未做。**当前处于文档完善阶段(2026-10-04用户指示):实施类操作暂停,恢复待用户明示**;skills.nanmu.xyz DNS 记录当日意外消失,待用户在DNS控制台恢复。engine/尚未创建。
 
 背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);最新执行证据见[最新交接](docs/sessions/2026-10-04-m0-deploy.md)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
 
 ## 开发与部署
 
-本地:`cd site && npm install && npm run dev` 开发;`npm run verify`(build + 冒烟)自 Task 7 起是提交门槛。部署工件已落盘(Task 8);服务器安装与自动发布在 Task 9 验证,首篇文章走完整链路在 Task 10。
+本地:`cd site && npm install && npm run dev` 开发;`npm run verify`(build + 冒烟)自 Task 7 起是提交门槛。服务器自动发布链路已在 Task 9 验收(push→线上13s);首篇文章走完整链路在 Task 10(挂起中)。
 
-目标写作流为 Markdown → git push main → 后台构建与冒烟 → 原子静态发布。服务器侧链路未验收前,不能把线上发布当作已可用能力。
+写作流:Markdown → git push main → 后台构建与冒烟 → 原子静态发布(已验收)。当前文档阶段不执行发布类操作。
 
 ## 从哪里读
 
@@ -24,4 +24,4 @@ M0进行中:site/(Astro5.18.2)与deploy/工件已落盘,Task1-8与Task8a(原始�
 
 仓库根运行`python scripts/check_docs.py`检查链接、代码围栏、schema示例一致性和SQL语法;不安装应用依赖、不访问网络。修改计划中的代码片段时再按文档索引运行`--snippets`。
 
-写作方式见[写作指南](docs/writing.md),部署准备见[部署手册](docs/ops/deploy.md)。两份指南均标明阶段前提,尚未完成线上验收。
+写作方式见[写作指南](docs/writing.md),部署操作见[部署手册](docs/ops/deploy.md)(手册已实际执行一轮,Task10 复测待做)。
