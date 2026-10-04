@@ -1,0 +1,9 @@
+blog.nanmu.xyz {
+    root * /var/www/nanmu-blog/current/dist
+    encode gzip
+    file_server
+    handle_errors {
+        rewrite * /404.html
+        file_server
+    }
+}

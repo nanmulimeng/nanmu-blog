@@ -1,0 +1,22 @@
+#!/bin/bash
+# 只认main;后台任务等待锁,超过期限留日志;所有stdio脱离push连接
+set -eu
+NULL_SHA=0000000000000000000000000000000000000000
+found=0
+while read -r oldrev newrev refname; do
+  if [ "$refname" = refs/heads/main ] && [ "$newrev" != "$NULL_SHA" ]; then found=1; fi
+done
+[ "$found" = 1 ] || exit 0
+export NB_REPO="${NB_REPO:-/opt/git/nanmu-blog.git}"
+export NB_ROOT="${NB_ROOT:-/var/www/nanmu-blog}"
+LOG="${NB_LOG:-/var/www/nanmu-blog/deploy.log}"
+nohup bash -c '
+  if flock -E 75 -w 900 "$NB_ROOT/build.lock" timeout -k 30s 900s "$NB_REPO/hooks/deploy.sh"; then
+    exit 0
+  else
+    code=$?
+    printf "%s build failed or lock timed out, exit=%s; manual retry required\n" "$(date -Is)" "$code"
+    exit "$code"
+  fi
+' >> "$LOG" 2>&1 </dev/null &
+printf 'build scheduled; inspect %s and /release.txt for result\n' "$LOG"

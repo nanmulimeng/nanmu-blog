@@ -37,7 +37,7 @@ flowchart LR
 
 ## 实现状态与失败边界
 
-当前仅文档,M0 Task2尚未开始。M0发布流程详见计划Task8-10;后台锁等待不是持久化队列,重启/超时后需按runbook重跑。
+M0 进行中(2026-10-04):site/ 已建——Astro 5.18.2,Task 2-7 完成(脚手架/双 collection 与 schema 契约/布局/全路由/RSS/`npm run verify` 全绿);部署工件已落盘(Task 8,`bash -n` 语法级,与 runbook 核对一致),服务器安装与验收未做(Task 9-10)。后台锁等待不是持久化队列,重启/超时后需按runbook重跑。
 
 - 静态旧版本可用不等于最新内容已发布;以release.txt和目标内容确认。
 - rag.db是可重建语料/索引投影;RAG API只读该库,付费调用写统一engine账本。
