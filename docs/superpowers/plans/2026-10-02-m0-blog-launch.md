@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-nanmu-blog-design.md`(本计划从 spec 立论,执行者需同时读 spec;关键依据 §2 铁律、§4/§4.1、§7、§8、§9-M0)
 
-**执行状态(2026-10-04):** Task1-8原范围已实施;Task8a(原始内容路径/slug/缓存边界)同日完成验收:10例负例矩阵全拦(slug经schema `.strict()`入库前拒绝、原始文件名经源目录扫描拒绝、重复id经文件数/条目数一致性拒绝),正例、添加→删除连续构建、改名/draft撤回、dev实时增删探针全部通过,证据见[Task8a交接](../../sessions/2026-10-04-m0-task8a.md)。下一步Task9-10服务器与上线验收。已勾选的历史步骤不代表覆盖后来发现的边界;开发顺序与M1/M2启动条件统一见spec §9.1。**域名变更(2026-10-04用户拍板):博客由`blog.nanmu.xyz`改用apex `nanmu.xyz`,apex A记录已存在;Task2历史步骤示例中的旧URL保留原样不改写。**
+**执行状态(2026-10-04):** Task1-8原范围已实施;Task8a(原始内容路径/slug/缓存边界)同日完成验收:10例负例矩阵全拦(slug经schema `.strict()`入库前拒绝、原始文件名经源目录扫描拒绝、重复id经文件数/条目数一致性拒绝),正例、添加→删除连续构建、改名/draft撤回、dev实时增删探针全部通过,证据见[Task8a交接](../../sessions/2026-10-04-m0-task8a.md)。**Task9同日完成**:服务器开通、独立目标5项韧性实测、Caddy接管apex、常态发布计时13s,线上`https://nanmu.xyz`,证据见[部署交接](../../sessions/2026-10-04-m0-deploy.md);剩Task10首篇文章与m0发布。已勾选的历史步骤不代表覆盖后来发现的边界;开发顺序与M1/M2启动条件统一见spec §9.1。**域名变更(2026-10-04用户拍板):博客由`blog.nanmu.xyz`改用apex `nanmu.xyz`,apex A记录已存在;Task2历史步骤示例中的旧URL保留原样不改写。**
 
 ## Global Constraints
 
@@ -901,12 +901,12 @@ nb_step_status=$?
 - Consumes: Task8全部工件与runbook、Task8a实际通过的路径/缓存验收、Task1-7的可部署main分支
 - Produces: 线上 `https://nanmu.xyz`(Task 10 的验收基础);`server` git remote
 
-- [ ] **Step 1: 按 runbook §0-§2 开通服务器**
+- [x] **Step 1: 按 runbook §0-§2 开通服务器**(2026-10-04 执行:探针全绿;目录/bare/hooks/缓存建立;hooks 来自 `ece52e9`;remote `server` 走既有 `checkmate` 别名密钥免密)
 
 核对现场后执行 `docs/ops/deploy.md` §0-§2:前置检查(node版本)→ 目录/bare repo/专用npm缓存 → 安装hook并chmod +x;现场与手册不符先修正文档。
 Expected: `ssh nanmu@123.56.223.97 'ls -la /opt/git/nanmu-blog.git/hooks/post-receive /opt/git/nanmu-blog.git/hooks/deploy.sh'` 两个文件存在且带 x 权限。
 
-- [ ] **Step 2: SSH 免密(runbook §3)**
+- [x] **Step 2: SSH 免密(runbook §3)**(2026-10-04 执行:复用 8-31 已配的 `checkmate` 别名与密钥,BatchMode 直通;未用密码、未新增 key)
 
 按 runbook §3 配置公钥。验证:`ssh -o BatchMode=yes -o ConnectTimeout=10 nanmu@123.56.223.97 true; echo $?`
 Expected: `0`(免密成功;密码只在首次配置时交互输入,不落盘)。
@@ -916,12 +916,12 @@ Expected: `0`(免密成功;密码只在首次配置时交互输入,不落盘)。
 2. 服务器端 `sudo tail -20 /var/log/secure`(或 `sudo journalctl -u sshd -n 20`)看拒绝原因(常见:`~/.ssh/authorized_keys` 权限非 600、`~/.ssh` 非 700、home 目录组可写)
 3. 修复后重试;**30 分钟内仍不通 → 降级为 git bundle 同步**(topic-digest 模式:`git bundle create "${TMPDIR:-/tmp}/nb.bundle" main` → scp → 服务器bare repo `git fetch /tmp/nb.bundle main:main` 再按runbook带锁运行deploy.sh(直接调用无stdin的hook不会触发部署)),并把"免密未通+根因"写入 session 的 omissions
 
-- [ ] **Step 3: DNS 与 Caddy(runbook §4-§5)**
+- [x] **Step 3: DNS 与 Caddy(runbook §4-§5)**(2026-10-04 执行:apex A 记录实测已存在;backup→candidate→validate OK→diff 仅本项目块→swap→reload 成功;skills/oj 基线不变。备份:`/etc/caddy/Caddyfile.nanmu-blog.20261004203821.bak`。**意外发现:skills.nanmu.xyz 当日 DNS 记录消失(NXDOMAIN 双公共DNS确认),非本轮所致,详见 deploy session**)
 
 域名已定为apex `nanmu.xyz`,2026-10-04实测apex A记录已指向123.56.223.97,无需用户再加记录(仍核对AAAA)。然后按runbook §5准备并validate候选Caddy配置——服务器已存在`nanmu.xyz`块(指向127.0.0.1:3000的死转发),按手册"已存在时编辑候选中的原块"替换为静态站配置,不追加第二份;先在Step4生成可读current再加载博客站点块。
 Expected:DNS核对正确,候选配置validate通过且diff只含本项目变化,原Caddy其他服务(skills/oj)保持现状。
 
-- [ ] **Step 4: 首次部署(runbook §6)**
+- [x] **Step 4: 首次部署(runbook §6)**(2026-10-04 执行:push `ece52e9` 自动部署 2s,current 可读;Caddy 加载后 home/rss/digest 200、404 真实;计时样本:常态发布 push→线上 13s(≤180s))
 
 按部署手册§3核对已有server remote,再按§6推送并观察构建;不要重复添加同名remote。
 等待构建成功并核对Caddy用户可读(包含release根755权限),再按runbook §5加载候选配置。随后验证:
@@ -932,7 +932,7 @@ curl -s https://nanmu.xyz/digest/ | grep -o "尚未发布任何日报"
 ```
 Expected: 三条全部命中且release.txt与期望SHA一致。仅代表首次部署通过,M0仍需Task10完整验收。
 
-- [ ] **Step 5: 独立验收目标的韧性实测(Review Focus 5)**
+- [x] **Step 5: 独立验收目标的韧性实测(Review Focus 5)**(2026-10-04 执行:`/opt/git/nanmu-blog-acceptance.git` 独立目标,hooks sed 硬编码 NB_* 验收路径;5 项全过,证据与生产基线抽查见 [deploy session](../../sessions/2026-10-04-m0-deploy.md);验收目录保留待授权清理)
 
 不得提交坏生产main。先核对并建立独立目标:`/opt/git/nanmu-blog-acceptance.git`、`/var/www/nanmu-blog-acceptance`、独立日志。复制同一版本hook/deploy脚本;在验收hook的set -eu后设置NB_REPO/NB_ROOT/NB_LOG指向上述目标,绝不沿用生产默认值。本地使用临时clone和专属remote,不修改主工作区历史。记录目标清单后再执行。
 
@@ -946,7 +946,7 @@ Expected: 三条全部命中且release.txt与期望SHA一致。仅代表首次�
 
 验收目录不配置公网Caddy入口,用文件标记/readlink确认原子发布。生产端同时抽查博客与skills入口基线;生产首篇发布/HTTP/回滚由Task10验证。验收结束保留证据,列出临时目录后按用户授权清理,不使用宽泛rm。
 
-- [ ] **Step 6: 提交验证记录**
+- [x] **Step 6: 提交验证记录**(2026-10-04 执行:`docs/sessions/2026-10-04-m0-deploy.md`,韧性实测/计时/skills DNS 发现/omissions 齐备)
 
 把独立目标韧性实测结果及生产冒烟(时间点、SHA、退出码、HTTP输出摘要)记入实际执行日期的session(格式按spec §8.1:objective/state[verified]/disposition/next_action/omissions)。先确定文件名,再使用模板填写证据,不要预写“通过”:
 

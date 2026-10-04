@@ -1,6 +1,6 @@
 # M0部署手册
 
-> 状态:2026-10-04 工件已落盘版。Task8 工件(post-receive/deploy.sh/Caddyfile.snippet)已提交并通过 `bash -n` 语法检查,路径/锁/npm缓存/日志/release.txt/回滚口径已与本文逐项核对一致;服务器尚未按本手册安装验收,Task9-10执行并留下证据后才能标为已验收。脚本实现基线在[M0计划](../superpowers/plans/2026-10-02-m0-blog-launch.md),本文只维护操作流程,不复制实现。
+> 状态:2026-10-04 已实际执行一轮(服务器开通、首次部署、韧性实测、Caddy 接管 apex 域名、计时 13s,证据见[sessions/2026-10-04-m0-deploy.md](../sessions/2026-10-04-m0-deploy.md));Task10 首篇文章与 m0 发布待做。域名 2026-10-04 起为 apex `nanmu.xyz`(用户拍板,原 blog 子域名方案作废)。脚本实现基线在[M0计划](../superpowers/plans/2026-10-02-m0-blog-launch.md),本文只维护操作流程,不复制实现。
 
 范围:仅nanmu-blog的bare repo、构建产物与新增Caddy站点块。保持topic-digest和nanmu-skill-mcp现状。所有远程操作须在部署任务授权内执行;本机使用Git Bash,服务器使用Bash,不要将PowerShell/CMD语法混入。
 

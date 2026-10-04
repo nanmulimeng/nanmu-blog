@@ -6,7 +6,7 @@
 
 M0进行中:site/(Astro5.18.2)与deploy/工件已落盘,Task1-8与Task8a(原始内容路径/slug与缓存边界)已完成并验收。下一步M0 [Task9](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)(服务器开通,需用户配合)与Task10(首篇文章上线);engine/尚未创建。
 
-背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);最新执行证据见[最新交接](docs/sessions/2026-10-04-m0-task8a.md)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
+背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);最新执行证据见[最新交接](docs/sessions/2026-10-04-m0-deploy.md)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
 
 ## 开发与部署
 

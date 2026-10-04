@@ -37,7 +37,7 @@ flowchart LR
 
 ## 实现状态与失败边界
 
-M0进行中(2026-10-04):site/已建(Astro5.18.2),Task1-8原范围与Task8a(原始内容路径/slug/缓存边界)均已实施并留有本地验证证据。部署工件已落盘并做bash语法核对,服务器安装与验收未做(Task9-10)。后台锁等待不是持久化队列,重启/超时后需按runbook重跑。后续阶段进入条件统一见spec §9。
+M0进行中(2026-10-04):site/已建(Astro5.18.2),Task1-8原范围与Task8a(原始内容路径/slug/缓存边界)均已实施;Task9已完成——服务器开通、独立验收5项韧性实测、Caddy接管apex域名(`https://nanmu.xyz`,原blog子域名方案经用户拍板作废)、常态发布计时13s,证据见[sessions/2026-10-04-m0-deploy.md](sessions/2026-10-04-m0-deploy.md)。剩Task10首篇文章与m0发布。后台锁等待不是持久化队列,重启/超时后需按runbook重跑。后续阶段进入条件统一见spec §9。
 
 - 静态旧版本可用不等于最新内容已发布;以release.txt和目标内容确认。
 - rag.db是可重建语料/索引投影;RAG API只读该库,付费调用写统一engine账本。

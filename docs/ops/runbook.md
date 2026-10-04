@@ -1,6 +1,6 @@
 # 运维 runbook(目标流程,上线后使用)
 
-> 当前应用未上线,以下是验收后采用的运维基线。[部署手册](deploy.md)与Task8工件已落盘,Task8a内容边界补验已完成(2026-10-04),Task9-10服务器实测待做。环境事实见context/server-environment.md,每次执行先核对现场与目标。
+> 当前应用已按Task9开通(2026-10-04,线上 `https://nanmu.xyz`),以下是运维基线。[部署手册](deploy.md)已实际执行一轮(开通+韧性实测+计时13s,证据见[sessions/2026-10-04-m0-deploy.md](../sessions/2026-10-04-m0-deploy.md));Task10首篇文章与m0发布待做。环境事实见context/server-environment.md,每次执行先核对现场与目标。
 
 ## 巡检
 

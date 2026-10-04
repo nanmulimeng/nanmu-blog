@@ -51,7 +51,7 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-04-m0-task8a.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-04-m0-deploy.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md本地预览 → M0已验收后的发布流程。开发博客:spec §4 → Task9-10上线。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。准备手册存在不代表部署已完成。
 - 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine三文档与design.md → quality-gates测试清单 → 编写M1计划。
