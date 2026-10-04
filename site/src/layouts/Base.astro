@@ -1,0 +1,27 @@
+---
+import Header from '../components/Header.astro';
+import { SITE_TITLE, SITE_DESC } from '../consts';
+import '../styles/global.css';
+
+interface Props { title?: string; description?: string; }
+const { title, description = SITE_DESC } = Astro.props;
+const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{pageTitle}</title>
+  </head>
+  <body>
+    <Header />
+    <main><slot /></main>
+    <footer class="muted" style="max-width:42rem;margin:0 auto;padding:1.5rem">
+      © {new Date().getFullYear()} nanmu ·
+      <a href="/rss.xml">文章 RSS</a> ·
+      <a href="/digest.xml">日报 RSS</a>
+    </footer>
+  </body>
+</html>

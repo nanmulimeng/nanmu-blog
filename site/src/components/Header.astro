@@ -1,0 +1,22 @@
+---
+const { pathname } = Astro.url;
+const links = [
+  { href: '/', label: '首页' },
+  { href: '/posts/', label: '文章' },
+  { href: '/digest/', label: '日报' },
+  { href: '/about/', label: '关于' },
+];
+---
+<header>
+  <nav>
+    {links.map((l) => (
+      <a href={l.href} class={pathname.startsWith(l.href) && l.href !== '/' ? 'active' : ''}>{l.label}</a>
+    ))}
+  </nav>
+</header>
+<style>
+  header { border-bottom: 1px solid var(--border); }
+  nav { max-width: 42rem; margin: 0 auto; padding: 0.9rem 1.5rem; display: flex; gap: 1.1rem; }
+  a { color: var(--muted); }
+  a.active, a:hover { color: var(--fg); text-decoration: none; }
+</style>
