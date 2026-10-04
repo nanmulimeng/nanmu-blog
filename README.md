@@ -6,7 +6,7 @@
 
 设计基线与文档系统已建立,M0 Task 1 完成。当前仓库包含文档、基础配置与文档检查脚本,尚无 `site/`、`engine/`、`deploy/`。下一步按 [M0 计划](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)执行 Task 2。
 
-背景与契约审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);4 轮文档修订的审查核验结论与小修见[最新交接](docs/sessions/2026-10-04-audit-fixes.md)。
+背景与契约审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);引擎技术实施契约层(engine/design.md)与本轮设计交接见[最新交接](docs/sessions/2026-10-04-engine-design.md)。
 
 ## 开发与部署(待 M0 实现)
 

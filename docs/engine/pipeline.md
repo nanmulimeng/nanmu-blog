@@ -1,6 +1,7 @@
 # 日报管线(engine,M1)
 
 > 状态:定稿 2026-10-02(源自 spec §5,M1 实施基准;跨组件契约先改spec,再同步本文)。
+> 模块契约、配置格式、判重规则、错误分类与日志字段见 [design.md](design.md)。
 > 调度:每日 08:30 Asia/Shanghai(timer暂沿用裸时间;先核对系统时区与解析,不作上游239能力断言)+ RandomizedDelaySec=300 + Persistent=true(missed 补跑一次);flock 单实例。
 
 ## 阶段表

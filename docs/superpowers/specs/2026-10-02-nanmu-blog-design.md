@@ -109,9 +109,9 @@ collect   读 topic-digest SQLite 只读(item JOIN source,fetched_utc近48h;字�
           source.id/name/weight/enabled;cluster/cluster_member 已用于单条目聚类,
           item 正常状态含 fresh/clustered;排除 dropped,不依赖上游聚类表或 pick/daily)
    ↓
-判重      identity_key归一(参考AIHOT,不机械移植):保留路径大小写与业务查询参数;
-          候选追踪参数清单=utm_*、fbclid/gclid/spm/ref/from,须逐项核实语义;
-          www/协议合并、微信特判在M1写plan时用反例验证 → entry表INSERT OR IGNORE
+判重      identity_key归一(2026-10-04对照AIHOT url.ts定稿,细则见engine/design.md):
+          http/https统一https、host小写、去www/默认端口/fragment、剩余参数排序、去末尾斜杠,
+          路径大小写与非黑名单业务参数保留;追踪参数黑名单定稿+微信四参特判(固定顺序) → entry表INSERT OR IGNORE
    ↓
 预筛      本地规则零成本:标题关键词黑名单、死源/空文本排除、已用identity_key排除;按调用与金额额度限制候选
    ↓
@@ -279,6 +279,8 @@ engine/config/
   └── prompts/            # score.md / understand.md(摘要写作)/ rules-anti-hallucination.md
 ```
 
+字段格式、校验与加载契约见 [engine/design.md](../../engine/design.md);配置校验失败=拒绝任何付费调用。
+
 ### 5.7 调度与运维
 
 - `nanmu-blog-engine.timer`:每日 08:30(Asia/Shanghai,暂沿用本机裸时间策略,先验系统时区及next elapse;不归因为上游239不支持)+ RandomizedDelaySec=300 + Persistent=true(missed 补跑一次)
@@ -432,8 +434,8 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 
 ### M1 启动前核查清单(写 M1 plan 时先做,消除 [declared])
 
-- [ ] 对照 AIHOT `packages/backend/src/lib/url.ts` 定稿追踪参数黑名单与微信特判规则(§5.2 只有初版口径)
-- [ ] 复核 DeepSeek 当期定价,更新 docs/engine/budget.md 价目行
+- [x] 对照 AIHOT `packages/backend/src/lib/url.ts` 定稿追踪参数黑名单与微信特判规则(2026-10-04 线上核实其生产实现;黑名单=utm_* 前缀+22 精确项,落 engine/design.md 判重规则节,§5.2 已同步)
+- [x] 复核 DeepSeek 当期定价(2026-10-04:与 10-02 快照一致;新增思考模式默认开/关闭参数/JSON Output/错误码事实,落 budget.md 价目节与 design.md llm.py 调用契约)
 - [ ] 确认服务器 topic-digest commit、DB路径、运行用户、只读WAL访问、fresh/clustered分布与正文覆盖率,回填 server-environment.md
 - [ ] 确认服务器 node 版本与安装方式(M0 Task 9 §0 已查,回填)
 - [ ] 用户申请/确认 LLM API key 与 SiliconFlow key(M2 前)可用,密钥只进服务器 env
@@ -453,3 +455,4 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 
 - 2026-10-03 内容schema、无产物失败期与恢复契约补充;现行要求已并入§4-§6。
 - 2026-10-04 修正环境归因、门禁范围与操作流程;M1/M2待定实施细节明确标记,历史session不改写。
+- 2026-10-04 引擎技术实施契约层(docs/engine/design.md:模块契约/配置格式/判重规则/错误分类与退出码/候选上限公式/日志观测)+ 线上线下调研定稿:AIHOT url.ts 判重规则核实(黑名单/微信特判/http统一/去末尾斜杠,§5.2 同步)、DeepSeek 定价复核与思考模式调用契约(budget.md)、topic-digest 本地库实测(无 fetched_utc 索引/正文空值约30%/90条12源,data-source);§11 核查前两项闭合。

@@ -46,6 +46,8 @@ engine/
 └── requirements.txt
 ```
 
+各模块的输入/输出/副作用与硬边界契约见 [engine/design.md](../engine/design.md)。
+
 ### 依赖纪律
 
 - stdlib优先。运行依赖白名单:`httpx`、`PyYAML`(M2追加:`sqlite-vec`、`fastapi`、`uvicorn`);测试依赖:`pytest`、`pytest-mock`,部署安装与测试环境分开列出

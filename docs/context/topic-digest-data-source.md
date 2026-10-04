@@ -97,7 +97,7 @@ engine 依赖字段清单(钉死并在测试中固化):
 
 ## 实施读取契约(2026-10-02本地源码核对)
 
-证据:本地上游HEAD `f25d187`,`schema.sql`、`src/topic_digest/pipeline.py`、`cluster.py`、`extract.py`、`config.py`。线上是否一致仍待M1核查。
+证据:本地上游HEAD `f25d187`,`schema.sql`、`src/topic_digest/pipeline.py`、`cluster.py`、`extract.py`、`config.py`。线上是否一致仍待M1核查(2026-10-04 复核本地 HEAD 仍为 f25d187,未见漂移)。
 
 - JOIN 必须 `item.source_id = source.id`;选 `source.enabled=1`、`item.status IN ('fresh','clustered')`,排除dropped。不能只选fresh,正常采集条目通常已clustered。
 - 增量窗口按 `fetched_utc` 近48h纳入新抓取数据,按published_utc展示;空/异常发布时间不能使新抓取条目永久丢失。恢复长时间停机的回补策略在M1 plan确定,不无限追历史。
@@ -106,9 +106,16 @@ engine 依赖字段清单(钉死并在测试中固化):
 - 以engine实际运行用户验证 `mode=ro`,执行只读schema/状态/空值比例查询;确认DB与WAL/SHM访问权限。不给上游设置journal_mode、不创建索引、不用immutable访问活跃数据库。依据:[SQLite WAL只读条件](https://www.sqlite.org/wal.html#read_only_databases)。
 - `source.name` 可为空,展示提供稳定回退;URL规范化不得把路径大小写强制统一,不盲删有业务语义的查询参数。M1测试须涵盖不同URL被误合并的反例。
 
+## 本地库实测(2026-10-04,`mode=ro` 探测)
+
+- 本地 `data/topic-digest.db` 0.6MB、item 90 条(全部 clustered)、12 源;最新 `fetched_utc` 2026-08-30,聚合 3 源(AIHOT/速览/简报,08-31 加入上游)未入本地库——与服务器 15 源口径存在差异,规模与分布以服务器实测为准。
+- 正文质量:`content_text` 空/纯空白 27/90(约 30%),另有 4 条 <200 字符——"空文本预筛排除"口径被实测证实必要。
+- **索引事实**:item 仅 `url_hash` 唯一索引与 `idx_item_published`,无 `fetched_utc` 索引;48h 窗口查询为全表扫描。本项目铁律不加索引;engine 每次运行记录 item 总数与查询耗时作规模护栏(阈值见 design.md collect 契约)。
+- URL 样本:90 条 URL 中追踪参数(黑名单 16 类模式)0 命中——本地样本早于聚合源入库,黑名单(design.md)主要防聚合源转带与未来新源;M1 服务器侧抽样复核。
+
 ## M1读取与快照补充
 
 - 首次插入后仍需处理同identity_key的再读取:未发布条目正文由空变非空或内容变更时允许刷新快照,请求hash必须随内容变化,旧付费回执仍保留但不得冒充新内容的结果;已发布条目不自动重新评分/发布。
-- 同一identity_key来自多个源时,不能依赖SQL返回顺序选择tier。M1计划须定义确定的来源优先级与平局规则,保留选择依据;判重合并不等于提高可信度。
+- 同一identity_key来自多个源时,不能依赖SQL返回顺序选择tier。来源优先级与平局规则定于 [engine/design.md](../engine/design.md) 判重规则节(选择依据留日志),M1 plan 实施;判重合并不等于提高可信度。
 - 正常窗口按fetched_utc近48h;超窗回补只允许显式指定有上限的时间范围,M1计划给出上限、候选预算与恢复命令,不在服务重启时无限追溯历史。
 - 当前死源清单是排除初值,上线前检查实际状态;不修改上游源配置。

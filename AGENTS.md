@@ -7,7 +7,7 @@
 - 设计基线与文档系统已落盘;文档审查已修订实施契约(ADR-0009),应用尚未创建
 - 里程碑:M0(博客上线)待执行,Task 1 已完成;M1(引擎)/M2(RAG)计划各自启动时再写
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-04 文档审查核验与小修交接](docs/sessions/2026-10-04-audit-fixes.md);当前变更仍在工作区,尚未提交
+- 最新进度:[2026-10-04 引擎技术设计交接](docs/sessions/2026-10-04-engine-design.md);当前变更仍在工作区,尚未提交
 
 ## Agent接手入口
 

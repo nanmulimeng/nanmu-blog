@@ -32,7 +32,7 @@ unknown等待至少30分钟后可自动重试一次,持久化unknown_retry_used;
 
 ## 候选容量与停用行为
 
-100次/小时无法在同一小时覆盖116条候选×2评分,还要保留摘要和重试。M1在预筛阶段设置候选上限并预留后续额度;不足时减少候选,不得先付费评分再无预算写摘要。分钟限额用到期时间有界节流,整期有超时;不要将短暂节流误当小时/日或金额耗尽。
+100次/小时无法在同一小时覆盖116条候选×2评分,还要保留摘要和重试。M1在预筛阶段设置候选上限并预留后续额度;不足时减少候选,不得先付费评分再无预算写摘要(截断公式与预留参数见 [design.md](design.md))。分钟限额用到期时间有界节流,整期有超时;不要将短暂节流误当小时/日或金额耗尽。
 
 可用额度耗尽时停止新增增强;已有合格条目可组成少量日报,零合格条目记failed。已上线站点保持旧版本。¥40预警与连续失败通知走本项目通知脚本,不依赖让成功运行故意抛错。
 
@@ -46,6 +46,8 @@ unknown等待至少30分钟后可自动重试一次,持久化unknown_retry_used;
 | Pro | ¥4.5 / ¥9 | ¥0.15 / ¥0.30 | ¥13.5 / ¥27 |
 
 这是来源读取快照,不是本项目已选model或账户合同。M1写plan时再次核对官方价格、模型可用性、思考模式与输出限制,把model ID/价目版本写配置;不沿用旧文档`deepseek-chat`输入1/输出2的记忆值。不同endpoint/第三方代理必须单独核价。
+
+2026-10-04 复核([定价](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)与[思考模式](https://api-docs.deepseek.com/zh-cn/guides/reasoning_model)/[错误码](https://api-docs.deepseek.com/zh-cn/quick_start/error_codes)官方文档):上表数值一致;补充事实——V4 系**思考模式默认开启**且 effort 默认 high,OpenAI 兼容接口以 `extra_body={"thinking":{"type":"disabled"}}` 关闭;定价页无思考单独加价,reasoning token 按单价计费,最坏成本一律按输出价预留;高峰=工作日 9:00-12:00/14:00-18:00(北京时间);并发限制 Flash 2500 / Pro 500(远超本项目量级,不构成约束);两模型均支持 JSON Output。调用契约(显式关思考、显式 max_tokens、json_object、HTTP 状态码→错误分类)见 [design.md](design.md) llm.py 调用契约。
 
 SiliconFlow bge-m3的当前免费资格、限速与计价本轮未核实;不按永久免费做预算。其他项目“每天一美分”不作为本项目成本依据。
 

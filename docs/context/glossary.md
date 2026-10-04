@@ -16,7 +16,7 @@
 | 词 | 含义 |
 |----|------|
 | entry | 候选条目快照;`identity_key` 唯一判重 |
-| identity_key | URL 归一化后的判重键;参考 AIHOT 不机械移植:保留路径大小写与业务查询参数,候选追踪参数(utm_*、fbclid/gclid/spm/ref/from)逐项核实语义,微信特判等反例 M1 验证后定稿(spec §5.2) |
+| identity_key | URL 归一化后的判重键;2026-10-04 对照 AIHOT url.ts 定稿(spec §5.2 与 engine/design.md):http/https 统一 https、参数排序、去末尾斜杠,路径大小写与非黑名单业务参数保留;追踪参数黑名单(utm_* 前缀+22 精确项)与微信四参特判 |
 | receipt | 付费调用回执;状态机 pending/received/completed/failed/unknown |
 | 幂等键(logical_key) | provider/endpoint/purpose/model/request_hash/attemptTag,防本地重复调度;不能保证供应商端exactly-once |
 | receipt_attempt | 每次网络尝试的时间、额度预占、实际用量与未知结果;窗口按此计数 |
@@ -34,6 +34,7 @@
 | 和判均显 | 入选判据 `score_1+score_2 ≥ 2×threshold`,展示 `floor(平均)` |
 | 双次评分 | 同prompt独立调用2次取均值判定,质量收益待样本验证 |
 | 两清单 | "必须正常评价"与"必须压住"的内容清单 |
+| 候选上限 | 预筛按预算公式确定性截断的评分容量;先扣摘要/重试预留,禁止先付费评分后无摘要预算(design.md) |
 
 ## 部署与运维
 

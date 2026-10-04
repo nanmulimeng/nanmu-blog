@@ -17,6 +17,7 @@
 | [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 流程基线,待M0实测 |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
+| [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 定稿(M1 实施基准) |
 | [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 定稿(M1 实施基准) |
 | [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 定稿(随运营调整) |
 | [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 定稿(台账按月追加) |
@@ -41,6 +42,7 @@
 | 任务执行与验收 | 当前里程碑 plan + quality-gates | 测试通过才勾选,文档示例不是运行结果 |
 | 服务器现状/上游依赖 | context/server-environment 与 data-source | 历史验收与当次实测分开,未验证明确标注 |
 | 运营策略/成本 | engine/selection、budget、pipeline | 与 spec契约同步;计价只在budget维护,实现读取配置 |
+| 引擎实现契约(模块边界/配置格式/判重/错误分类/日志) | engine/design.md | spec §5 保持产品契约,engine 三文档保持运营口径;M1 plan 引用而不复制 |
 | 写作与内容维护 | writing.md | 字段以spec为准,不复制部署命令 |
 | 部署操作/日常巡检 | ops/deploy.md / ops/runbook.md | plan保留实施与验收步骤,工件落盘后实现以deploy/为准 |
 | 调研证据与缺口 | reviews/ | 保存出处与待核查事项,不复制完整设计 |
@@ -49,10 +51,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-04-audit-fixes.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-04-engine-design.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md → M0已验收后的发布流程。开发博客:spec §4 → M0 Task2-7。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。准备手册存在不代表部署已完成。
-- 开始引擎:spec §5 → data-source → engine三文档 → quality-gates测试清单 → 编写M1计划。
+- 开始引擎:spec §5 → data-source → engine三文档与design.md → quality-gates测试清单 → 编写M1计划。
 - 开始RAG:spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令
