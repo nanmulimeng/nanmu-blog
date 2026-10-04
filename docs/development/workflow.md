@@ -91,7 +91,7 @@ git branch --show-current
 
 1. 对最终改动运行适用验证;已通过且后续无相关改动的检查不重复,纯文档只记录文档检查结果
 2. 写 `docs/sessions/YYYY-MM-DD-<主题>.md`(用 `_template.md`):state 带证据、omissions 显式列出
-3. 更新 README/AGENTS/文档索引的最新交接入口与确实变化的状态快照;不改写历史 session。开发任务按授权提交 session;文档修改可留待统一提交,如实声明未提交
+3. 更新 README/AGENTS/文档索引的最新交接入口与确实变化的状态快照;不改写历史 session。开发任务按授权提交 session;文档修改可留待统一提交,如实声明未提交。**实施/部署类会话额外执行状态同步清单(逐项读回核对,不凭记忆;来源:2026-10-04 第二轮文档复审的漏面规律)**:①根 README 当前状态段 ②AGENTS 状态快照与项目结构 ③docs/README 索引状态列与"按目标"路由 ④spec 状态行 ⑤plan 执行状态行 ⑥涉事文档自身头部状态行(writing/engine/ops 等) ⑦server-environment 按 L4 回填实测事实并给 [declared] 摘帽 ⑧新 session 的 next_action 与上述全部入口一致
 4. disposition 以**本轮 objective**为单位:complete=本轮承诺完成且适用验证有证据;continuable=尚有可继续的步骤;blocked=关键外部前提缺失且无法继续当前目标。文档完成不等于M0完成,待授权发布不能写已上线
 5. 仅在已授权发布、目标remote核对正确、拟推送提交全部通过适用验证且无混入工作时,(M0 Task9后)执行`git push server main`;否则将未推送状态与原因写入omissions——服务器 bare repo 是相对开发机的代码副本,不等于 engine/rag 数据、凭据或服务器灾难恢复备份;未推送的提交只存在于开发机(nanmuli-blog 带着 601 行未提交工作死掉的教训)
 

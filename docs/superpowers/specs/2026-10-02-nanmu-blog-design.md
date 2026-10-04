@@ -1,6 +1,6 @@
 # nanmu-blog 设计文档
 
-> 状态:设计基线已定稿;M0 Task 1-8 与 Task 8a(内容路径/slug/缓存边界)已实施验收,Task 9-10服务器与上线验收待做。M1/M2尚未实现。
+> 状态:设计基线已定稿;M0 Task 1-9 已实施验收(线上 `https://nanmu.xyz`),Task 10(首篇文章+tag m0)挂起——当前处于文档完善阶段(2026-10-04用户指示)。M1/M2尚未实现。
 > 日期:2026-10-02
 > 路径:Architectural(brainstorming → spec → writing-plans → 实施)
 
@@ -22,7 +22,7 @@
 - **项目重心是 AI 与博客的连接层**,两个方向:
   1. **AI 内容自动发布**:topic-digest 聚合数据 → AI 精选/评分/摘要 → 自动发布为博客"日报"栏目(借鉴 AIHOT 模式 + 旧博客日报想法)
   2. **博客内容 → AI 知识库**:个人文章 + AI 精选内容向量化 → RAG 问答/搜索(先自用)
-- 部署:同服务器(123.56.223.97,环境见 server-environment.md,部署前复核)+ 子域名走 Caddy
+- 部署:同服务器(123.56.223.97,环境见 server-environment.md)+ apex 域名 `nanmu.xyz` 走 Caddy(2026-10-04 已接管上线)
 - 设计参考:AIHOT 的设计模式 + 旧博客(nanmuli-blog)的产品想法,轻量实现
 
 ### 1.3 默认决策(用户未反对即生效,均可推翻)
@@ -308,7 +308,7 @@ engine/config/
   ```
   engine(timer)→ 增量索引(已发布且 draft=false 的 posts + 已发布 digest 精选条目)→ rag.db(vec0 虚拟表 float[1024])
   FastAPI /ask(仅自用,basicauth)→ 向量检索 top-k=8 → DeepSeek 生成答案(必须附来源链接)
-  Caddy(rag 子域名或 blog 站块 /api/* 反代)→ localhost:8787
+  Caddy(rag 子域名或 apex 站块 /api/* 反代)→ localhost:8787
   ```
 - **检索设计(双通道混合,PowerContext 模式)**:
   - FTS5(bm25)+ 向量两条通道独立检索,融合去重后取 top-k=8;每个命中标注 `matched_by: fts|vector|both`——检索质量可观测
@@ -409,7 +409,7 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 
 | 里程碑 | 内容 | 验收标准 | 量级 |
 |--------|------|----------|------|
-| **M0 博客上线** | Astro 站 + git 写作流 + 构建发布 + 子域名 | 手写一篇文章 push 后 3 分钟内线上可见;RSS 可订阅;明暗主题正常 | 1-2 天 |
+| **M0 博客上线** | Astro 站 + git 写作流 + 构建发布 + apex 域名(2026-10-04 由子域名改) | 手写一篇文章 push 后 3 分钟内线上可见;RSS 可订阅;明暗主题正常 | 1-2 天 |
 | **M1 AI 引擎** | collect→评分→摘要→日报发布全链 + 成本治理 | 连续 3 天自动产出日报且入选质量可接受;单期成本 ≤¥1;熔断器注入测试通过;AI 内容有明确标注 | 3-5 天 |
 | **M2 RAG** | 向量索引 + /ask API | 个人文章+日报可问答,检索相关性抽查合格;响应 < 5s | 2-3 天 |
 | **M3 可选** | 周报/热度/更多 AIHOT 模式 | 按需定义 | — |
@@ -442,7 +442,7 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 |------|------|
 | 范围蔓延(头号历史死因) | 里程碑铁律;M3 功能一律"记录想法不动工" |
 | LLM 成本失控 | 回执+三级次数限制+月/期金额预占;日报 frontmatter 记成本可见 |
-| 子域名/DNS 异常 | 备案/解析/TLS均需部署时验证;DNS未通可本地/SSH隧道验收构建,不得占用上游8080或把临时入口算正式M0验收 |
+| 域名/DNS 异常 | 备案/解析/TLS均需部署时验证;DNS未通可本地/SSH隧道验收构建,不得占用上游8080或把临时入口算正式M0验收。2026-10-04实录:skills.nanmu.xyz 记录当日从可解析变 NXDOMAIN(非本项目变更所致),DNS层单点风险真实发生过,恢复需域名控制台操作 |
 | 服务器内存(1.8G) | topic-digest 同机实测 astro build 峰值 241MB;RAG 常驻 MemoryMax=200M;swap 2G 已配 |
 | AI 日报质量不可接受 | 双次评分+人工覆盖表;M1 验收含人工抽查;门槛可配置随时调 |
 | topic-digest 变更破坏读取 | 只读 + 明确 schema 依赖清单;坏读取只影响当天日报 |
@@ -456,7 +456,7 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 - [x] §5 引擎详设:DDL 8 表 / 回执状态机 / 三级预算 / 评分 prompt 结构(AIHOT 操作级深挖移植)
 - [x] §5.2 collect契约:2026-10-02复读上游schema与pipeline,确认JOIN键/fetched_utc/clustered状态;线上版本待M1验证
 - [x] §6 选型方向 sqlite-vec + embedding + FTS;版本/免费额度/目标机性能待 M2 验证
-- [x] §7 Caddy `basic_auth` + 子域名免单独备案(阿里云官方口径)+ post-receive 后台 flock 构建 + `mv -T` 原子切换
+- [x] §7 Caddy `basic_auth` + 子域名免单独备案(阿里云官方口径)+ post-receive 后台 flock 构建 + `mv -T` 原子切换(勘误 2026-10-04:域名改用apex后"子域名免备案"依据不再适用;apex备案状态未核实,见 server-environment.md 网络节)
 - 参考项目补充:Horizon的先过滤后增强与环境变量引用用于设计;分类配额仅是可调运营方向,未经样本验证不能称已实现;open-aggregator 的"LLM 不可达→降级输出、站点保持在线"已吸收进 §5.7 失败隔离。他项目成本不可作为本项目预算依据;按本期候选、token上限与当前计价测算
 - PowerContext(oceanbase):评估后**不采用**(问题域是 agent 会话交接而非知识库问答),搬走其最值钱的模式——§6 双通道混合检索 + matched_by 观测 + EmbeddingProfile + FTS 降级,§8.1 会话交接纪律(omissions/声明分级/接手检查,直击 nanmuli-blog 跨会话断层死因)
 

@@ -24,6 +24,7 @@
 | [ops/deploy.md](ops/deploy.md) | SSH/目录/权限/Caddy/上线确认/回滚操作 | 已实际执行一轮(Task9);Task10复测待做 |
 | [ops/runbook.md](ops/runbook.md) | 巡检/回滚/故障处理 | 定稿 |
 | [reviews/2026-10-02-documentation-audit.md](reviews/2026-10-02-documentation-audit.md) | 文档审查依据、已修订问题与实施前核查 | 本轮审查完成,运行项待对应阶段验证 |
+| [reviews/2026-10-04-documentation-audit-2.md](reviews/2026-10-04-documentation-audit-2.md) | 第二轮全量复审:Task8a/9 后状态漂移修复、事实回填、状态同步清单 | 本轮审查完成;ADR 逐字复核留下一轮 |
 | [sessions/](sessions/) | 开发会话交接记录(模板 `_template.md`;最新一份 = 当前进度) | 每会话一份 |
 
 ## 文档纪律
@@ -51,7 +52,7 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-04-m0-deploy.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于文档完善阶段(2026-10-04用户指示),实施类操作暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-04-doc-review-round2.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于文档完善阶段(2026-10-04用户指示),实施类操作暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
 - 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine三文档与design.md → quality-gates测试清单 → 编写M1计划。

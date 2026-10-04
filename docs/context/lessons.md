@@ -18,7 +18,7 @@
 
 | 踩坑 | 本项目对策 | 落点 |
 |------|-----------|------|
-| `git remote add server` 直连 push **从未走通,原因未诊断**,最终退化成 bundle 手工同步 | M0 Task 9 内置 SSH 免密诊断清单;30 分钟仍不通则明确降级 bundle 并记录 omissions | M0 plan Task 9 Step 2 |
+| `git remote add server` 直连 push **从未走通,原因未诊断**,最终退化成 bundle 手工同步 | M0 Task 9 内置 SSH 免密诊断清单;30 分钟仍不通则明确降级 bundle 并记录 omissions。**2026-10-04 本项目实测一次通过,疑似根因即"密钥文件非默认身份名"(直连 `nanmu@IP` 不识别,SSH 别名 + IdentitiesOnly 指定后成功)——当年很可能是同一原因** | M0 plan Task 9 Step 2;server-environment 开发机表 |
 | 历史记录中带时区表达式失败,具体原因尚未复现;不能归因为239一概不支持 | 暂沿用裸时间,先核对系统时区与表达式next elapse;历史现象与原因分开 | server-environment;pipeline 调度 |
 | 服务器 sqlite 3.26 无 VACUUM INTO,备份 API 差点用错 | 备份用 `conn.backup()` Online Backup(3.26 就有),不依赖新 API | spec §7 |
 | 页面滞后数据流 ~13h(build 未并入 hourly,无自动发布) | 发布即构建:push 触发构建,零人工环节 | ADR-0007 |
@@ -35,4 +35,5 @@
 | 跨会话断层是最大隐形杀手(两个项目都吃过) | 交接纪律 + live_state 核对 | spec §8.1;ADR-0008 |
 | 计划与现实冲突时"顺手绕过"会积累漂移 | 停下改计划再继续;计划外改动显式标注 | workflow 任务执行 |
 | 单点外部依赖(API/DNS/LLM)静默失败 | 回执+降级+验收证据化;每个部署单点写明 Fallback | ADR-0005/0006;plan Task 9 |
+| DNS 记录可在无任何本机操作的情况下消失(2026-10-04 实录:skills.nanmu.xyz 当日 NXDOMAIN,apex/oj 正常;服务本体完好) | 部署前后基线分别留痕;异常先多解析器交叉定位(公共DNS×2+本机),再判断归因;域名层操作只能在 DNS 控制台,不猜 | spec §10 风险表;server-environment 在跑服务表 |
 | 一次性修复脚本散落临时目录,不可复现 | 一切部署动作进仓库(deploy/)与 runbook | plan Task 8 |

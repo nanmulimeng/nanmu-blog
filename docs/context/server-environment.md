@@ -1,6 +1,6 @@
 # 服务器与开发环境事实
 
-> 部署与排障前必读。2026-10-02文档审查未登录服务器。下表中2026-08-31数据来自上游验收报告,2026-10-02巡检值为上一会话转述[declared],部署前必须复核。
+> 部署与排障前必读。2026-10-04 Task9 已登录服务器逐项探针(下表标注实测值与日期);此前 2026-08-31 数据来自上游验收报告,2026-10-02 巡检值为转述[declared] 历史记录。环境表是唯一记录处,以后每次巡检更新对应行。
 
 ## 服务器(123.56.223.97)
 
@@ -9,8 +9,9 @@
 | 提供商 | 阿里云 |
 | 系统 | Alinux 3 |
 | systemd | **239**为历史版本记录;曾记录带时区表达式失败,本机原因未复现。暂沿用裸本地时间,先核对Asia/Shanghai与next elapse |
-| 内存 | 1.8G + 2G swap;上一会话记录2026-10-02 used 426Mi / available 1444Mi,load 0[declared] |
-| 磁盘 | 上一会话记录32%已用(2026-10-02)[declared] |
+| 内存 | 1.8G + 2G swap;2026-10-04 Task9 实测 available 1471Mi [verified: free 探针] |
+| 磁盘 | 2026-10-04 Task9 实测 26G 可用 [verified: df 探针] |
+| 时区 | Asia/Shanghai [verified: 2026-10-04 timedatectl] |
 | 用户 | nanmu,sudo NOPASSWD |
 | 凭据政策 | **密码只在交互式命令行输入,禁止出现在任何文件/脚本/配置/日志/文档** |
 
@@ -18,10 +19,18 @@
 
 | 服务 | 端口/入口 | 说明 |
 |------|-----------|------|
-| Caddy | 80/443 | 全局入口,自动 HTTPS;nanmu-blog 上线后接管既有 `nanmu.xyz` 站点块(原为指向 127.0.0.1:3000 的死转发,2026-10-04 用户拍板博客直接用 apex 域名) |
+| Caddy | 80/443 | 全局入口,自动 HTTPS;`nanmu.xyz` 站点块已于 2026-10-04 由本项目接管为静态博客(原为指向 127.0.0.1:3000 的死转发;接管前备份 `/etc/caddy/Caddyfile.nanmu-blog.20261004203821.bak`) |
 | topic-digest 站点 | nginx 8080 + basicauth | 上游数据源的展示端 |
 | topic-digest timers | systemd | hourly ingest + 每日 release 构建(9 月 720/720 全绿) |
-| nanmu-skill-mcp | 3456(skills.nanmu.xyz) | **用户在用的 MCP 服务,保留勿动** |
+| nanmu-skill-mcp | 3456(skills.nanmu.xyz) | **用户在用的 MCP 服务,保留勿动**。⚠️ 2026-10-04 发现 skills.nanmu.xyz DNS 记录当日从可解析变 NXDOMAIN(阿里公共/Google DNS 双确认;apex 与 oj 正常)——服务本体、Caddy 块、端口均正常,等用户在 DNS 控制台恢复 `skills A 123.56.223.97`;oj 靠 /etc/hosts 条目不受影响 |
+
+### nanmu-blog 服务器布局(2026-10-04 Task9 建立)
+
+- bare repo:`/opt/git/nanmu-blog.git`(main;hooks `post-receive`/`deploy.sh` 来自提交 `ece52e9`,后续升级按部署手册 §2)
+- npm 专用缓存:`/opt/git/nanmu-blog-npm-cache`(已预热)
+- 发布根:`/var/www/nanmu-blog`(releases/ 每版一目录,保留最近 5;`current` symlink 原子切换;`build.lock`、`deploy.log`)
+- 验收目标(韧性实测用,待授权清理):`/opt/git/nanmu-blog-acceptance.git` + `/var/www/nanmu-blog-acceptance`
+- 韧性实测与计时证据见 [sessions/2026-10-04-m0-deploy.md](../sessions/2026-10-04-m0-deploy.md)
 
 ### topic-digest 服务器布局(本项目 engine 只读它的 SQLite)
 
@@ -36,7 +45,7 @@
 
 ### 网络
 
-- 公网入口采用Caddy自动HTTPS。备案条件为此前设计期转述,当前文档未保存完整官方出处与账户核查证据;域名归属、ICP备案/接入及公安备案适用要求在M0上线前分别核实,不以“子域名”三个字推定全部条件已满足。
+- 公网入口采用Caddy自动HTTPS,apex `nanmu.xyz` 已于 2026-10-04 上线(实测未被拦截)。**备案状态仍未核实**:域名归属、ICP备案/接入及公安备案适用要求需用户核对并记录官方出处——已上线不等于合规闭环,此为显式挂账项。
 - 部分外网信源(OpenAI Blog 等)可达性由 topic-digest 每小时实测,失败被容忍
 
 ## 开发机
@@ -44,13 +53,14 @@
 | 项 | 事实 |
 |----|------|
 | 系统 | Windows 11 + Git Bash(注意:hook/shell 脚本必须 LF,.gitattributes 已强制) |
-| SSH | OpenSSH 可用;免密部署靠公钥(M0 Task 9 配置) |
+| SSH | OpenSSH 可用;免密已配置 [verified: 2026-10-04 BatchMode 直连成功]。密钥走 `checkmate` SSH 别名(既有 `checkmate_ed25519`,非默认身份名——直连 `nanmu@IP` 不识别该密钥,remote URL 用 `checkmate:/opt/git/nanmu-blog.git`);HTTP_PROXY 会拦截本机 curl,本地验证须 `curl -x ''` |
 | 本地仓库 | nanmu-blog 主仓库;`D:\software\item\topic-digest`(上游,只读参考);`D:\software\item\nanmuli-blog`(废弃旧项目,历史参考) |
 
-## 服务器 node(部署依赖)
+## 服务器构建链(2026-10-04 Task9 实测)
 
-- node 存在且能跑 astro build:topic-digest 同机构建实测峰值 241MB [verified: 2026-08-31 验收]
-- 上游m0-report记录2026-08-31 Node v20.18.1;旧部署手册安装到/usr/local。当前版本/路径仍[declared],M0 Task 9核查所选Astro包engines与真实PATH;不可因博客需要而直接替换同机公共Node。本项目deploy/工件已在Task8落盘并做本地语法验证,尚未安装到服务器
+- node **v22.14.0**(`/usr/local/node/bin`,在非登录 PATH)、npm **10.9.2**、git **2.43.7**、caddy **2.6.4**(unit 读 `/etc/caddy/Caddyfile`)[verified: 逐项探针]
+- 本项目 deploy/ 工件已安装并实际运行一轮(push→线上 13s);构建实测约 2.8s(5 页)
+- 不可因博客需要而直接替换同机公共 Node;本项目构建走 git archive 全新目录 + 专用 npm 缓存,不共享全局状态
 
 ## 事实更新纪律
 
@@ -58,7 +68,7 @@
 
 ## M0/M1部署前只读核查
 
-- M0:运行用户、Node/npm/bash/git/flock/timeout版本和路径、Caddy版本、当前站点配置与现有站点基线HTTP状态、Asia/Shanghai时区、磁盘/内存。主域证书不自动覆盖子域,让Caddy为blog主机名申请证书并实测。
+- M0:已于 2026-10-04 Task9 执行完毕(版本/时区/内存/磁盘/基线见上表;nanmu.xyz TLS 由 Caddy 既有证书续用,apex 无子域证书问题)。
 - M1:上游unit/环境中的DB路径、运行用户及DB/WAL/SHM读取权限、源状态与正文覆盖率;Python内置sqlite版本与sqlite CLI版本分开记录。
 - `/run/lock` 的父目录权限可能不允许普通用户新建锁(上游验收已记录此坑);用本项目可写目录或预建锁文件,重启后再验收。
 - timer继续用裸本地时间作为本机兼容策略,在目标机验证解析/next elapse;不把旧验收的经验扩展成未经查证的全版本支持断言。

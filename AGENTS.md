@@ -8,7 +8,7 @@
 - **当前阶段(2026-10-04用户指示):文档完善阶段**——实施类操作(代码/服务器/部署/Task10)暂停,继续完善文档系统;恢复实施待用户明示。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
 - 顺序:M1(引擎)/M2(RAG)计划各自启动时再写,进入条件以spec §9为准
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-04 M0 部署交接](docs/sessions/2026-10-04-m0-deploy.md);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-04 文档复审第二轮交接](docs/sessions/2026-10-04-doc-review-round2.md);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 
