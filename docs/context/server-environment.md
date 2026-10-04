@@ -50,7 +50,7 @@
 ## 服务器 node(部署依赖)
 
 - node 存在且能跑 astro build:topic-digest 同机构建实测峰值 241MB [verified: 2026-08-31 验收]
-- 上游m0-report记录2026-08-31 Node v20.18.1;旧部署手册安装到/usr/local。当前版本/路径仍[declared],M0 Task 9核查所选Astro包engines与真实PATH;不可因博客需要而直接替换同机公共Node。部署脚本仅是计划示例,尚未安装
+- 上游m0-report记录2026-08-31 Node v20.18.1;旧部署手册安装到/usr/local。当前版本/路径仍[declared],M0 Task 9核查所选Astro包engines与真实PATH;不可因博客需要而直接替换同机公共Node。本项目deploy/工件已在Task8落盘并做本地语法验证,尚未安装到服务器
 
 ## 事实更新纪律
 

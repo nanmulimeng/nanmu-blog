@@ -1,6 +1,6 @@
 # 运维 runbook(目标流程,上线后使用)
 
-> 当前应用未上线,以下是验收后采用的运维基线。[部署手册](deploy.md)准备版已建立,Task8核对工件,Task9-10实测。环境事实见context/server-environment.md,每次执行先核对现场与目标。
+> 当前应用未上线,以下是验收后采用的运维基线。[部署手册](deploy.md)与Task8工件已落盘,先完成Task8a内容边界补验,再做Task9-10服务器实测。环境事实见context/server-environment.md,每次执行先核对现场与目标。
 
 ## 巡检
 

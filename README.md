@@ -4,9 +4,9 @@
 
 ## 当前状态(2026-10-04)
 
-M0 进行中:site/ 已建(Astro 5.18.2,Task 2-8 完成,`npm run verify` 全绿),deploy/ 工件已落盘;engine/ 留 M1。下一步 M0 [Task 9](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)(服务器开通,需用户配合)与 Task 10(首篇文章上线)。
+M0进行中:site/(Astro5.18.2)与deploy/工件已落盘,Task1-8原范围已完成。下一步先做[M0 Task8a](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)的原始内容路径/slug与缓存边界修复,再做Task9服务器开通与Task10首篇上线。已有build/verify通过记录不覆盖这两项新增边界;engine/尚未创建。
 
-背景与契约审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);引擎实施契约(engine/design.md)与 M0 执行进度见[最新交接](docs/sessions/2026-10-04-m0-task2-8.md)。
+背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);本轮技术契约修订、待实现项和验证见[最新交接](docs/sessions/2026-10-04-technical-direction.md)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
 
 ## 开发与部署
 

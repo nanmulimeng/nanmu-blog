@@ -4,10 +4,10 @@
 
 ## 项目状态快照(2026-10-04)
 
-- M0 进行中:site/(Astro 5.18.2)Task 2-8 完成,`npm run verify` 全绿;部署工件已落盘
-- 里程碑:M0 Task 9-10(服务器开通/首篇上线)待用户配合执行;M1(引擎)/M2(RAG)计划各自启动时再写
+- M0进行中:Task1-8原范围已实施,site/(Astro5.18.2)与部署工件已落盘;新增Task8a路径/slug与缓存边界尚未修复,既有verify绿不覆盖该缺口
+- 顺序:先Task8a本地修复与验收,再Task9-10服务器/首篇上线;M1(引擎)/M2(RAG)计划各自启动时再写,进入条件以spec §9为准
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-04 M0 Task 2-8 执行交接](docs/sessions/2026-10-04-m0-task2-8.md);本轮 8 个提交未推 origin
+- 最新进度:[2026-10-04 技术契约与开发方向交接](docs/sessions/2026-10-04-technical-direction.md);本轮文档调整未提交/未推送,历史提交状态接手时再核对
 
 ## Agent接手入口
 
@@ -44,7 +44,7 @@ deploy/    服务器部署工件(Task 8 已落盘,Task 9 安装)
 
 仓库根:`python scripts/check_docs.py`检查文档;修改计划中的代码片段时加`--snippets`(需要Node与Git Bash)。
 
-site/创建后(verify自Task7起可用):
+site/下(已创建,verify自Task7起可用):
 
 - `npm run dev` 本地开发
 - `npm run build` 构建

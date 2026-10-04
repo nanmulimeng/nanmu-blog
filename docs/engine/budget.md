@@ -6,6 +6,7 @@
 
 - 月度全部付费LLM/embedding合计 **¥50**,按Asia/Shanghai自然月归属;**¥40**预警,同月去重。
 - 日报单期 **¥1**。分钟/小时/滚动24小时次数分别 **10/100/400**,任一档≤0立即停用;缺预算或价格配置则拒绝调用。
+- 合法停用只停止新attempt,不是配置错误;已发请求仍结算,已持久化结果仍可零网络复用并发布。启动和下一次付费授权前加载/校验有效配置版本,运行中改0不能等次日才生效;详细字段范围见[实施契约](design.md)。
 - 调用前在短事务中核对“已结算费用 + 未决预占 + 本次最坏成本”是否同时符合月/期金额和次数限制,写入receipt_attempt后提交,再访问网络。费用用整数微元,展示转元。
 - 最坏成本基于完整请求输入上界、输出token上限与已核实保守单价(例如峰时非缓存价);包含思考token等供应商计费项。不能确认输入上界/计价时不发送。M1必须验证估算上界,不以经验平均值代替。
 - 响应先持久化再处理业务;按实际用量结算。无用量或结果未知时保留预占,跨月也不得无条件释放。账户外调用和供应商调价仍需账单核对。
@@ -16,7 +17,7 @@
 
 正常:pending → received → completed。超时/崩溃:pending → unknown。
 
-unknown等待至少30分钟后可自动重试一次,持久化unknown_retry_used;二次必须人工处理。旧尝试费用仍计入,新增尝试再次查预算。received解析失败转failed,重试必须有明确限次,不能在复用坏响应与重新付费间无限循环。
+unknown等待至少30分钟后可额外自动重试一次,持久化unknown_retry_used;二次必须人工处理。旧尝试费用仍计入,新增尝试再次查预算。普通失败与unknown使用不同的持久化计数,同一logical_key总attempt不超过max_attempts+1,重启不重置。HTTP状态、业务解析和非正常终止的具体处置以[design.md错误矩阵](design.md)为准,不能把429当成必须等30分钟的unknown,也不能把400与可重试的JSON解析失败混成一类。
 
 逻辑键包含provider/endpoint/purpose/model/request_hash/attemptTag;request_hash包含输入内容、prompt版本和模型参数。两个评分使用score-1/score-2。本地去重不能保证供应商端绝不重复扣费。
 
@@ -47,7 +48,9 @@ unknown等待至少30分钟后可自动重试一次,持久化unknown_retry_used;
 
 这是来源读取快照,不是本项目已选model或账户合同。M1写plan时再次核对官方价格、模型可用性、思考模式与输出限制,把model ID/价目版本写配置;不沿用旧文档`deepseek-chat`输入1/输出2的记忆值。不同endpoint/第三方代理必须单独核价。
 
-2026-10-04 复核([定价](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)与[思考模式](https://api-docs.deepseek.com/zh-cn/guides/reasoning_model)/[错误码](https://api-docs.deepseek.com/zh-cn/quick_start/error_codes)官方文档):上表数值一致;补充事实——V4 系**思考模式默认开启**且 effort 默认 high,OpenAI 兼容接口以 `extra_body={"thinking":{"type":"disabled"}}` 关闭;定价页无思考单独加价,reasoning token 按单价计费,最坏成本一律按输出价预留;高峰=工作日 9:00-12:00/14:00-18:00(北京时间);并发限制 Flash 2500 / Pro 500(远超本项目量级,不构成约束);两模型均支持 JSON Output。调用契约(显式关思考、显式 max_tokens、json_object、HTTP 状态码→错误分类)见 [design.md](design.md) llm.py 调用契约。
+2026-10-04复核[定价](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)、[思考模式](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)与[JSON Output](https://api-docs.deepseek.com/zh-cn/guides/json_mode/):上表数值一致;思考模式默认开启且effort默认high。M1必须显式关闭:使用httpx时原始JSON顶层传`"thinking":{"type":"disabled"}`;`extra_body`是OpenAI Python SDK的参数,不能作为原始HTTP body的一层发送。调用示例及替身断言统一见[design.md](design.md)。
+
+项目预占策略采用峰时未缓存输入价与完整输出上限,实际结算按供应商usage/账单和该次价目快照,不把缓存命中与未命中输入重复计费。M1不开放思考模式;若响应意外包含reasoning,保留原始计量证据并核对输出计费口径,不能按可见文本长度结算,也不能未经核实重复叠加reasoning token。以上是客户端保守策略,不代表已在真实账户验证计量与输出上限。
 
 SiliconFlow bge-m3的当前免费资格、限速与计价本轮未核实;不按永久免费做预算。其他项目“每天一美分”不作为本项目成本依据。
 
@@ -60,8 +63,9 @@ SiliconFlow bge-m3的当前免费资格、限速与计价本轮未核实;不按�
 ## M1计划的计算与对账细节
 
 - 微元换算使用十进制定点计算;调用前预占向上取整,实付优先取供应商账单金额,仅按token估算时也保守向上取整并标明依据。不得用浮点四舍五入低估授权成本。
+- `*_per_mtok_micro_cny`单位是微元/百万token,乘token数后必须除以1000000再向上取整;完整整数公式和9600微元算例只在design.md维护。候选次数上限要分别预留摘要次数与纯重试次数,不能重复扣除或遗漏摘要。
 - 新请求月度可用额 = 50元 - 本自然月已结算attempt金额 - 所有月份尚未核清attempt预占。已核清的旧月实付归原started_utc对应月份,不再占新月预算;晚到账超过原月额度需记异常,不能抹去。该规则对跨月预占偏保守,有意避免跨月释放未知费用。
 - 单期费用按attempt.issue_date归属;跨期复用旧响应不新增付费也不把旧费用再次计入新期。旧attempt归属不得为了释放单期额度而改期;重试是新attempt,仍归恢复中的原期。
-- unknown自动重试最多一次与其他失败重试是不同限制。M1计划必须配置普通失败的总尝试上限、退避和整期超时;参数缺失拒绝自动重试,不能用“有重试”暗示无限次。
+- M1计划必须映射普通重试计数与unknown_retry_used的持久化位置,配置退避和整期超时;参数缺失拒绝自动重试。配置/请求错误与402须主动通知,即便已有条目最终发布成功也不依赖OnFailure补发。
 - 对账至少保留供应商请求/账单关联标识(可用usage_json或独立元数据)、核查时间与证据位置;具体存储在M1计划映射。月预警的去重键、发送结果和核清操作不得只存在进程内存。
 - 含未决预占的公开成本标注必须覆盖列表与详情;M1计划选择统一文案或扩展明确字段,同步site消费方,不得只在正文脚注解释而列表仍暗示实付。

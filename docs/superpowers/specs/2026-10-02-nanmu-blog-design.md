@@ -1,6 +1,6 @@
 # nanmu-blog 设计文档
 
-> 状态:设计基线已定稿;2026-10-02 文档审查修订(ADR-0009)。M0 Task 1 完成,其余功能尚未实现。
+> 状态:设计基线已定稿;M0 Task 1-8 已实施,Task 8a内容路径/缓存补验待做,Task 9-10服务器与上线验收待做。M1/M2尚未实现。2026-10-04本轮只修订技术契约与推进策略,不把文档修正算作代码修复。
 > 日期:2026-10-02
 > 路径:Architectural(brainstorming → spec → writing-plans → 实施)
 
@@ -64,7 +64,7 @@
 - 页面:首页(文章+日报双栏或单列)、`/posts/*`、`/digest/*`、`/about`、RSS(个人文章一条、日报一条)
 - 无管理后台:git 即 CMS
 
-### 4.1 混合内容组织(Astro 5 Content Layer,设计契约;待应用构建验证)
+### 4.1 混合内容组织(Astro 5 Content Layer,基础构建已验证;路径边界待Task8a补验)
 
 - 配置文件为 `src/content.config.ts`(Astro 5 起不再用 `src/content/config.ts`);两个独立 collection = 独立目录 + 独立 schema,手写与生成天然隔离:
   ```ts
@@ -92,6 +92,8 @@
 - 生成内容由 engine落盘 + commit/push触发构建(build 开始时文件已存在)——构建确定性、可回滚、离线可复现;**绝不在 build 内调 LLM**(铁律 6);`.astro/` 数据存储目录 gitignore;M0 临时工作目录构建不承诺跨构建持久化
 - 分页分开:`/posts/[...page]` 与 `/digest/[...page]` 各自 `paginate(getCollection(...))`;RSS 分开:`/rss.xml`(个人文章)与 `/digest.xml`(日报)两个 endpoint
 - 路径与展示约定:posts单层英文短横线文件名,不能纯数字;digest文件名必须与date一致。日期显示固定Asia/Shanghai,同日期按id稳定排序。详细写作操作见 [写作指南](../../writing.md)。
+- 两个collection均禁止frontmatter自定义`slug`(即使与文件名相同)。校验原始文件相对路径与最终id,不能只检查glob处理后的id;posts文件主名须匹配`[a-z0-9]+(-[a-z0-9]+)*`且非纯数字,digest须为单层`YYYY-MM-DD.md`。原始路径不得先小写/slugify后再检查,重复id须在写入内容store前拒绝。当前实现尚未覆盖slug绕过,修复与负例在M0 Task8a,不在此声称已完成。
+- 本地持久缓存不能充当内容真相源。Astro5.18.2删除最后一篇digest后可能保留旧store;删除/改名/撤回/测试fixture清理后,按[质量门禁](../../development/quality-gates.md)重新验证不存在的详情、列表和RSS。生产每次archive新建工作目录;M1的持久工作副本也须遵守该验证契约。
 - **schema 即契约**:digest frontmatter 不合法 → 构建失败 → 部署不发生——天然闸门;engine 的测试必须覆盖此 frontmatter 契约
 
 ## 5. AI 引擎(engine,M1)——项目重心
@@ -109,8 +111,8 @@ collect   读 topic-digest SQLite 只读(item JOIN source,fetched_utc近48h;字�
           source.id/name/weight/enabled;cluster/cluster_member 已用于单条目聚类,
           item 正常状态含 fresh/clustered;排除 dropped,不依赖上游聚类表或 pick/daily)
    ↓
-判重      identity_key归一(2026-10-04对照AIHOT url.ts定稿,细则见engine/design.md):
-          http/https统一https、host小写、去www/默认端口/fragment、剩余参数排序、去末尾斜杠,
+判重      identity_key归一(借鉴AIHOT,本项目边界和固定样例见engine/design.md):
+          记住原始scheme后统一https、host小写、去www/原始默认端口/fragment、剩余参数排序、去非根pathname尾斜杠,
           路径大小写与非黑名单业务参数保留;追踪参数黑名单定稿+微信四参特判(固定顺序) → entry表INSERT OR IGNORE
    ↓
 预筛      本地规则零成本:标题关键词黑名单、死源/空文本排除、已用identity_key排除;按调用与金额额度限制候选
@@ -235,7 +237,7 @@ CREATE TABLE api_usage (
 
 上述8表DDL为核心模型,不是M1最终迁移工件。无Markdown可记failed,其他期状态必须有路径。期状态以生成/远端接收/线上确认分层;entry仅在确认published后标used。人工撤回需要可持久化的暂停重试标志,不能靠一次性口头操作防重发。
 
-M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账单恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。
+M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、普通/unknown重试计数、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账单恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。
 
 公开cost_cny聚合该期全部attempt(含失败候选/重试),每次取实付或未决预占;含未决时页面/正文明确标保守上界。跨期复用与跨月预占计算以budget.md为准。
 
@@ -253,10 +255,13 @@ status ∈ {received, completed}   (同请求身份复用,零网络调用;不可
 
 **幂等键**:`provider:endpoint:purpose:model:request_hash:attemptTag`。request_hash 覆盖 identity_key、输入内容 hash、prompt 内容 hash、模型参数与输出上限;score-1/score-2 分开。它防本地重复调度,不保证供应商端 exactly-once。未知结果重试仍可能再次收费。
 
+上图是逻辑回执的恢复路径,旧attempt仍保留其unknown状态和费用,不能因新attempt重试而改写成免费失败。普通HTTP/解析失败与unknown的独立限次、累计上限和HTTP请求体以[engine/design.md](../../engine/design.md)为实施契约;收到错误HTTP响应不等于结果未知。
+
 **三级预算**(单进程下用 flock + 计数查询替代 advisory lock):
 - 统计口径:按 `receipt_attempt.started_utc` 计近 1min / 1h / 24h 尝试行数;每次重试另计,复用响应不计。检查与写预占在同一短事务,提交后再访问网络。
 - 分钟额度用于节流,按最早尝试到期时间有界等待,整期设超时;小时/日额度或金额不足则停止新增增强。预筛时留出摘要与重试额度,已有合格条目可发布,没有合格条目记failed。**任一档 ≤0 = 立即停用**。
 - 初始次数值:per_minute=10 / per_hour=100 / per_day=400。日均 116 条全量双评分会超过小时额度,候选规模须在 M1 实测后配置。
+- 次数配置接受整数,≤0是合法停用值,只禁止新增付费attempt;仍可复用响应、结算和发布已有合格产物。缺字段/错误类型属于配置错误,不能与停用混为一谈。已发出的请求仍记账,配置在下一次预算授权前生效,不等到下一期才停用。
 - **月金额 ¥50、单期 ¥1 是独立限制**:调用前以输入上界、输出 token 上限、已核实的保守单价预占,已结算+未决预占+新请求不得超限。金额用整数微元(1元=1,000,000微元),显示才转元;月按 Asia/Shanghai 自然月,所有未决预占跨月保留直至核清。¥40 去重预警。详见 budget.md 与 ADR-0009。
 
 ### 5.5 评分标准(prompt 设计,AIHOT selection-score.md 结构移植)
@@ -376,6 +381,7 @@ nanmu-blog/
 │   ├── reviews/                     # 带日期的审查证据
 │   ├── architecture.md              # 三件套架构与数据流(2026-10-02 已落盘)
 │   ├── engine/pipeline.md           # 管线各阶段说明(已落盘,M1 实施基准)
+│   ├── engine/design.md             # 模块/配置/请求/判重/错误与成本计算契约
 │   ├── engine/selection.md          # 精选标准/门槛/调整记录(编辑策略文档)
 │   ├── engine/budget.md             # 成本治理与月度成本记录
 │   ├── ops/deploy.md                # 部署准备手册已建立,Task8核对工件/Task9实测
@@ -408,6 +414,27 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 | **M2 RAG** | 向量索引 + /ask API | 个人文章+日报可问答,检索相关性抽查合格;响应 < 5s | 2-3 天 |
 | **M3 可选** | 周报/热度/更多 AIHOT 模式 | 按需定义 | — |
 
+### 9.1 当前推进顺序与进入条件
+
+用户价值优先:先能持续写作与订阅,再每天读到值得点开的日报,最后能找回已发布内容。上表量级是早期估算,不替代任务证据或形成交付期限。推进顺序如下,本节只定义阶段策略,M1/M2计划仍在各自启动时编写。
+
+| 顺序 | 本阶段交付与开发策略 | 完成/进入下一步的条件 |
+|------|----------------------|------------------------|
+| 现在:M0 Task8a | 修复原始路径/slug校验,补删除最后一篇内容的缓存验证;保留现有Astro/静态写作方案 | 正反例与verify通过,证据写session;本轮文档更新不勾选这些实现项 |
+| M0 Task9-10 | 按现有工件开通服务器、独立故障验收、首篇真实文章和订阅、主题与回滚 | 正式域名上180秒发布指标与Task9-10逐项通过;获授权后发布m0,不以M1计划是否写好阻塞M0 |
+| M1启动 | 核对线上上游只读访问、真实模型/价目/输入上界;先定恢复信息存储与迁移,再实现config/db/ledger和mock客户端 | M0已验收;M1 plan经评审;费用单位、请求体、停用和重试边界有可执行测试,首次真实付费前预算闸门已验证 |
+| M1交付 | collect/归一/预筛→双评分→摘要→安全模板→验证→提交/线上确认,先用小样本端到端贯通再扩大候选 | 连续3天自动产出、每天最多5条人工核验、单期≤¥1/月≤¥50;已收结果复用不再付费,unknown重试保留原费用并限次,撤回不自动重发;通知和备份恢复有证据 |
+| M2启动与交付 | 读取已发布SHA的Markdown;先验证中文FTS与来源返回,再加向量、融合和受保护ask;复用统一预算闸门 | M1已验收并无阻塞缺口;M2 plan经评审;固定问题集的拒答/降级/删改/回滚/并发预算与端到端p95<5s验证 |
+| M3 | 只保留有实际使用反馈支撑的候选想法 | 用户另行选择范围与验收前不实现 |
+
+### 9.2 范围与调整策略
+
+- 不新增管理后台、博客数据库、客户端脚本、队列服务或质量趋势平台;文章tags保持简单元数据。M1不做跨URL事件聚类、复杂排行和来源配额,先观察现有筛选样本。
+- M1优先使用一期同一模型,先守住来源、费用、恢复与发布契约,再调prompt和门槛。正文不足则跳过,零合格项如实记失败,不为凑满15条放宽事实要求;失败期不影响旧站。
+- M2先满足个人问答,不嵌入公开博客浏览链路。embedding不可用时FTS降级、证据不足时拒答;模型/索引选择由目标机探针和问题集决定,不提前增加服务。
+- 调整依据来自首篇真实写作、日报人工抽样和固定问题集;只记录问题与对应修复,不建立新管理系统。阶段验收通过后推进,只回补影响当前交付的缺陷,不循环扩张文档审查范围。
+- 文档、编码、部署与付费分别保持证据和授权边界。服务器/DNS前提缺失时继续独立本地工作,不能将未验收的M0写为已完成或用M1开发绕过阻塞。
+
 ## 10. 风险清单
 
 | 风险 | 对策 |
@@ -420,7 +447,7 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 | topic-digest 变更破坏读取 | 只读 + 明确 schema 依赖清单;坏读取只影响当天日报 |
 | SSH 免密部署路径不通(topic-digest 历史:remote 直连失败未诊断,退化 bundle) | Task 9 内置诊断清单;30 分钟不通降级 git bundle 同步并记录 omissions |
 | Caddy 配置错误连累同机 skills.nanmu.xyz | reload 前强制 `caddy validate`;候选validate失败不覆盖运行配置;加载失败按deploy.md恢复备份并返回失败 |
-| 开发机故障丢未推送提交(nanmuli-blog 601 行悬置教训) | M0 后会话结束 `git push server main`;服务器 bare repo 即异地副本 |
+| 开发机故障丢未推送提交(nanmuli-blog 601 行悬置教训) | M0后在有效发布授权与验证覆盖内push server main;否则交接明确未推送。bare repo是开发机代码副本,不替代数据库/凭据灾难恢复备份 |
 
 ## 11. 调研方向与实施前核查(方向确定不代表运行项已验证)
 
@@ -437,12 +464,14 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 - [x] 对照 AIHOT `packages/backend/src/lib/url.ts` 定稿追踪参数黑名单与微信特判规则(2026-10-04 线上核实其生产实现;黑名单=utm_* 前缀+22 精确项,落 engine/design.md 判重规则节,§5.2 已同步)
 - [x] 复核 DeepSeek 当期定价(2026-10-04:与 10-02 快照一致;新增思考模式默认开/关闭参数/JSON Output/错误码事实,落 budget.md 价目节与 design.md llm.py 调用契约)
 - [ ] 确认服务器 topic-digest commit、DB路径、运行用户、只读WAL访问、fresh/clustered分布与正文覆盖率,回填 server-environment.md
-- [ ] 确认服务器 node 版本与安装方式(M0 Task 9 §0 已查,回填)
+- [ ] 确认服务器 node 版本与安装方式(M0 Task 9前置核查时记录,M1启动再核对是否变化)
 - [ ] 用户申请/确认 LLM API key 与 SiliconFlow key(M2 前)可用,密钥只进服务器 env
 
 ---
 
 ## 附:变更记录
+
+- 2026-10-04 技术契约复审修订:§4.1明确原始路径/禁slug/缓存验证,代码补验列M0 Task8a;§5对齐HTTP请求体、字段级配置停用、错误重试与整数预算单位、URL归一的本项目边界;§9.1-9.2明确M0→M1→M2进入条件与功能范围,更新当前状态。本轮为文档调整,不代表实现/部署/付费验收完成。
 
 - 2026-10-02 初稿(骨架 + 已确认决策;细节章节随调研补充)
 - 2026-10-02 细节补全:§4.1(Astro 双 collection)、§5 全章详设(AIHOT 模式移植 + topic-digest schema 核实)、§6(sqlite-vec + bge-m3)、§7(部署细节),待定项清零

@@ -16,7 +16,7 @@
 | 词 | 含义 |
 |----|------|
 | entry | 候选条目快照;`identity_key` 唯一判重 |
-| identity_key | URL 归一化后的判重键;2026-10-04 对照 AIHOT url.ts 定稿(spec §5.2 与 engine/design.md):http/https 统一 https、参数排序、去末尾斜杠,路径大小写与非黑名单业务参数保留;追踪参数黑名单(utm_* 前缀+22 精确项)与微信四参特判 |
+| identity_key | URL归一后的判重键;借鉴AIHOT,本项目规则以engine/design.md固定样例为准:统一https、去原始scheme默认端口、非根pathname尾斜杠、追踪参数并排序;路径大小写/重复参数保留,微信四参特判。不是照抄可变的上游main实现 |
 | receipt | 付费调用回执;状态机 pending/received/completed/failed/unknown |
 | 幂等键(logical_key) | provider/endpoint/purpose/model/request_hash/attemptTag,防本地重复调度;不能保证供应商端exactly-once |
 | receipt_attempt | 每次网络尝试的时间、额度预占、实际用量与未知结果;窗口按此计数 |

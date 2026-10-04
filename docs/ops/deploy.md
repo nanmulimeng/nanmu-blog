@@ -24,7 +24,7 @@ ssh -o ConnectTimeout=10 nanmu@123.56.223.97 'set -eu; id; node -v; npm -v; git 
 
 逐项记录实际结果,某条失败不能被最后一条成功掩盖。核对已锁Astro包engines,非登录shell能找到Node,目标磁盘/内存够用,现有skills入口HTTP状态作为基线。不要输出完整env或含凭据的配置到session。若unit读取其他配置文件,先修本文目标再继续。
 
-本机前置:`npm run verify`绿、工作区内容明确、锁文件已提交。不存在`deploy/post-receive`、`deploy/deploy.sh`、`deploy/Caddyfile.snippet`时停在Task8,不能将文档代码块当已安装工件。
+本机前置:M0 Task8a的原始路径/slug与缓存边界已验收、`npm run verify`绿、工作区内容明确、锁文件已提交。当前Task8a仍待实施,普通verify绿不能替代它。不存在`deploy/post-receive`、`deploy/deploy.sh`、`deploy/Caddyfile.snippet`时停在Task8,不能将文档代码块当已安装工件。
 
 ## 1. 准备目录和接收仓库(服务器)
 

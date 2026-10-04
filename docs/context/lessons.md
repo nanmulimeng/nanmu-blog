@@ -12,7 +12,7 @@
 | 密钥泄漏进 git 历史 | 密钥只走环境变量;L1 门禁检查 diff 无 secrets | coding-standards;quality-gates L1 |
 | 文档过度宣称状态("MVP Beta 可试用"被自己的审计证伪) | verified/declared 声明分级,verified 必带证据 | sessions 模板;server-environment |
 | 零外部反馈,质量判断失去锚点 | 技术验收证明可用;首篇真实写作与M1每日样本阅读提供使用反馈,不以curl代替反馈 | spec §9;M0 Task 10 |
-| 带着未提交工作死去(601 行修复悬置) | 小步提交;M0 后会话结束 `git push server main`(服务器bare repo为开发机代码副本,不等于数据库异地备份) | workflow 会话结束 |
+| 带着未提交工作死去(601 行修复悬置) | 在有效授权内小步提交;M0后通过验证且获发布授权时push server main,否则交接明确未推送(服务器bare repo是开发机代码副本,不等于数据库异地备份) | workflow 会话结束 |
 
 ## 来自 topic-digest(线上运行,在产)
 

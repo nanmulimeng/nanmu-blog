@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-nanmu-blog-design.md`(本计划从 spec 立论,执行者需同时读 spec;关键依据 §2 铁律、§4/§4.1、§7、§8、§9-M0)
 
+**执行状态(2026-10-04):** Task1-8原范围已实施,已有本地构建/冒烟证据;审查新增的Task8a(原始内容路径与缓存边界)尚未实施,须先完成再进入Task9-10服务器与上线验收。已勾选的历史步骤不代表覆盖后来发现的边界。开发顺序与M1/M2启动条件统一见spec §9.1;本轮文档修订不算实现验收。
+
 ## Global Constraints
 
 - Astro 5,配置文件是 `site/src/content.config.ts`(不是旧版 `src/content/config.ts`)
@@ -211,7 +213,7 @@ cost_cny: 0
 Run: `npm --prefix site run build`
 Expected: **FAIL**,报错指向 digest schema(generated 字段缺失/literal 不匹配)。这是 spec §4.1"schema 即契约"的验证。
 
-删除该临时文件,再跑 `npm --prefix site run build`
+删除该临时文件,按quality-gates的“内容变更与缓存验证”还原缓存与内容状态,再跑 `npm --prefix site run build`。Task8a将这一已知边界纳入正式入口和回归;不能仅因源文件已删除就假定产物没有残留。
 Expected:PASS。补临时负例:空标题、generated=false、非法日历日期、负成本、非整数条数均失败;有效字段恢复后成功。fixture不提交。
 
 - [x] **Step 4: 提交**
@@ -366,6 +368,8 @@ nb_step_status=$?
 - [x] **Step 0: 共享内容路径校验**
 
 建立`src/lib/content.ts`的内容校验函数,接收页面/RSS读取的完整collection(含草稿),不自行调用getCollection。拒绝嵌套或非小写英文数字短横线的posts id、纯数字posts id,并核对digest id与date一致。所有内容出口在过滤/分页前调用,错误带entry id并使构建非零;后续页面片段展示渲染主体,实施时必须接入此校验。Task6两个RSS同样接入。Task5 Step7负例验证此入口,不依赖Zod字段schema获取文件名。
+
+2026-10-04补验说明:上述已实现的是最终entry.id检查,无法证明原始文件名合规;frontmatter slug与框架清洗能绕过。原始路径、禁slug、入store前冲突检查及缓存失效统一由Task8a补齐,不得把本步骤历史勾选当成这些新用例通过。
 
 - [x] **Step 1: 首页 index.astro**
 
@@ -551,7 +555,7 @@ Expected: `dist/posts/` 下无hello-nanmu-blog和drafts-example详情;两个grep
 (
   set -euo pipefail
   git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
-  git add site/src/pages
+  git add site/src/pages site/src/lib/content.ts
   git commit -m "feat: 全部页面路由——首页/文章/日报/关于/404,空态与 draft 排除"
 )
 nb_step_status=$?
@@ -870,13 +874,29 @@ nb_step_status=$?
 
 ---
 
+### Task 8a: 内容路径与缓存边界修复(上线前)
+
+**状态:** 待实施。来自2026-10-04审查的两个可复现缺口,是M0原有内容契约的补全,不新增产品功能。
+
+**Files/入口:** `site/src/content.config.ts`、`site/src/lib/content.ts`、`site/package.json`及必要的最小验证脚本;页面/RSS消费方按引用核对。选择loader层校验或构建前校验时,须覆盖dev与build,禁止只加一个手动脚本后仍允许正式入口绕过。实现后同步spec、quality-gates和writing中的待修复状态。
+
+- [ ] **Step 1: 在独立临时副本复现并记录负例。** 包含嵌套posts加合法slug、错误digest文件名加日期slug、与文件名相同的slug、大写/空格/下划线等可被清洗的路径、纯数字posts、重复最终id。所有posts草稿同样受约束。记录当前错误被接受的例子,不把坏fixture放进生产main。
+- [ ] **Step 2: 校验原始输入再入store。** 原始相对路径符合spec §4.1、所有内容禁slug、最终id不冲突;digest文件名与date一致。不能仅对被Astro重写过的id检查,也不能等重复id覆盖后再查。错误指向具体源文件并使构建非零;合法单层文章、日期日报、现有两篇草稿保持可构建。
+- [ ] **Step 3: 修复持久缓存失效。** 用唯一公开posts/digest各做“添加→构建→删除→同一副本再次构建”,选择最小可靠的loader失效或正式构建入口清理方案。若清理缓存,限定本站可再生目录并验证解析路径;不删除源文件/整个依赖树,不新增缓存服务。verify与实际部署调用的构建入口保持一致,dev中的删除也应及时反映。
+- [ ] **Step 4: 验收真实产物。** 合法内容正常显示;所有非法路径/slug/collision负例在覆盖前失败。删除最后一篇、改名、draft撤回后,首页/分页/详情/RSS无旧项,空collection仍正常;测试不预先手工清缓存来掩盖缺陷。fixture清理后再用正式verify入口确认仓库恢复空态,不遗留公开测试内容。
+- [ ] **Step 5: 更新文档与交接。** 记录实际命令、正反例结果及实现取舍,更新相关状态入口;适用文档检查与`npm --prefix site run verify`通过。仅在步骤1-4确有证据后勾选;提交按当前授权,未提交如实记录。
+
+**完成边界:** 不改路由/文章字段语义,不升级Astro或引入测试框架来回避根因;如必须变更版本,先证明原因与回归范围。Task8a不替代服务器韧性与首篇文章验收。
+
+---
+
 ### Task 9: 服务器开通与首次部署(含韧性实测)
 
 **Files:**
 - 无仓库内新文件(服务器操作 + 验证;runbook 即 docs/ops/deploy.md)
 
 **Interfaces:**
-- Consumes: Task 8 的全部工件与 runbook;Task 1-7 的可部署 main 分支
+- Consumes: Task8全部工件与runbook、Task8a实际通过的路径/缓存验收、Task1-7的可部署main分支
 - Produces: 线上 `https://blog.nanmu.xyz`(Task 10 的验收基础);`server` git remote
 
 - [ ] **Step 1: 按 runbook §0-§2 开通服务器**
@@ -1051,6 +1071,6 @@ nb_step_status=$?
 
 ## 文档审查修订
 
-依据与未验证项见[文档审查记录](../../reviews/2026-10-02-documentation-audit.md)。M0应用尚未创建;以上代码块是修订后的实施基线,不宣称已运行。
+早期依据见[文档审查记录](../../reviews/2026-10-02-documentation-audit.md),当前缺口与推进策略见[技术契约交接](../../sessions/2026-10-04-technical-direction.md)。Task1-8工件已存在,以实际文件和对应实施证据为准;本计划保留示例帮助理解任务,不允许重新照抄覆盖后续修订。Task8a与Task9-10仍待实际执行,不因本轮文档检查通过而勾选。
 
 2026-10-04补充:命令上下文与失败停止、暂存保护、分页/内容路径边界、详情与RSS订阅验收。工件仍待Task2-10实际实现,不把文档片段当现存应用。
