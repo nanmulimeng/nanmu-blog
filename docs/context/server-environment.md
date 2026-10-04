@@ -18,7 +18,7 @@
 
 | 服务 | 端口/入口 | 说明 |
 |------|-----------|------|
-| Caddy | 80/443 | 全局入口,自动 HTTPS;nanmu-blog 上线后加 `blog.nanmu.xyz` 站点块 |
+| Caddy | 80/443 | 全局入口,自动 HTTPS;nanmu-blog 上线后接管既有 `nanmu.xyz` 站点块(原为指向 127.0.0.1:3000 的死转发,2026-10-04 用户拍板博客直接用 apex 域名) |
 | topic-digest 站点 | nginx 8080 + basicauth | 上游数据源的展示端 |
 | topic-digest timers | systemd | hourly ingest + 每日 release 构建(9 月 720/720 全绿) |
 | nanmu-skill-mcp | 3456(skills.nanmu.xyz) | **用户在用的 MCP 服务,保留勿动** |

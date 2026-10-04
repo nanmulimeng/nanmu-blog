@@ -2,7 +2,7 @@
 
 > 执行方式:Native,按任务顺序推进,遵守 docs/development/workflow.md。环境有 executing-plans 可使用;缺少该skill不影响按本计划执行,不要求子代理。勾选只代表实际完成,本轮文档修订不勾选未来任务。
 
-**Goal:** 搭建 nanmu-blog 的 M0——Astro 5 静态博客(手写文章 + 空置的 AI 日报栏目)+ git push 自动构建部署 + blog.nanmu.xyz 子域名上线。
+**Goal:** 搭建 nanmu-blog 的 M0——Astro 5 静态博客(手写文章 + 空置的 AI 日报栏目)+ git push 自动构建部署 + `nanmu.xyz` 上线(2026-10-04 用户拍板由 blog 子域名改为 apex,apex A 记录已存在)。
 
 **Architecture:** monorepo,`site/` 是 Astro 5 站点,`deploy/` 存服务器部署工件。写作流:本地写 markdown → `git push` main → 服务器 bare repo 的 post-receive hook 后台有界等待锁后构建(`releases/<sha>/dist`)→ `mv -T` 原子切换 `current` symlink → Caddy 静态服务。digest collection 与 schema 契约 M0 就位但内容空置(M1 由引擎填充)。
 
@@ -10,14 +10,14 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-nanmu-blog-design.md`(本计划从 spec 立论,执行者需同时读 spec;关键依据 §2 铁律、§4/§4.1、§7、§8、§9-M0)
 
-**执行状态(2026-10-04):** Task1-8原范围已实施;Task8a(原始内容路径/slug/缓存边界)同日完成验收:10例负例矩阵全拦(slug经schema `.strict()`入库前拒绝、原始文件名经源目录扫描拒绝、重复id经文件数/条目数一致性拒绝),正例、添加→删除连续构建、改名/draft撤回、dev实时增删探针全部通过,证据见[Task8a交接](../../sessions/2026-10-04-m0-task8a.md)。下一步Task9-10服务器与上线验收。已勾选的历史步骤不代表覆盖后来发现的边界;开发顺序与M1/M2启动条件统一见spec §9.1。
+**执行状态(2026-10-04):** Task1-8原范围已实施;Task8a(原始内容路径/slug/缓存边界)同日完成验收:10例负例矩阵全拦(slug经schema `.strict()`入库前拒绝、原始文件名经源目录扫描拒绝、重复id经文件数/条目数一致性拒绝),正例、添加→删除连续构建、改名/draft撤回、dev实时增删探针全部通过,证据见[Task8a交接](../../sessions/2026-10-04-m0-task8a.md)。下一步Task9-10服务器与上线验收。已勾选的历史步骤不代表覆盖后来发现的边界;开发顺序与M1/M2启动条件统一见spec §9.1。**域名变更(2026-10-04用户拍板):博客由`blog.nanmu.xyz`改用apex `nanmu.xyz`,apex A记录已存在;Task2历史步骤示例中的旧URL保留原样不改写。**
 
 ## Global Constraints
 
 - Astro 5,配置文件是 `site/src/content.config.ts`(不是旧版 `src/content/config.ts`)
 - **零客户端 JS**:明暗主题只用 CSS `prefers-color-scheme`,不引入任何 JS 框架/主题切换脚本(spec 铁律 6)
 - 页面 UI 中文;站名 `nanmu blog`(常量放 `site/src/consts.ts`)
-- 站点 URL `https://blog.nanmu.xyz`(astro.config `site`,RSS 依赖它生成绝对链接)
+- 站点 URL `https://nanmu.xyz`(astro.config `site`,RSS 依赖它生成绝对链接;2026-10-04 由 `blog.nanmu.xyz` 改为 apex)
 - posts schema:`title: 非空string`、`pubDate: coerce.date`、`tags: string[] default []`、`draft: boolean default false`
 - digest schema:`date: 有效YYYY-MM-DD`、`generated: literal true`、`ai_model: 非空string`、`entry_count: 非负整数`、`cost_cny: 非负有限数值`
 - **digest 栏目从 M0 起就带 AI 生成标注**(spec 铁律 7):digest 列表页显式说明本栏目内容由 AI 生成
@@ -832,10 +832,10 @@ for candidate in "${candidates[@]}"; do
 done
 ```
 
-- [x] **Step 3: deploy/Caddyfile.snippet**
+- [x] **Step 3: deploy/Caddyfile.snippet**(2026-10-04域名随用户拍板改为apex,工件已同步)
 
 ```caddyfile
-blog.nanmu.xyz {
+nanmu.xyz {
     root * /var/www/nanmu-blog/current/dist
     encode gzip
     file_server
@@ -899,7 +899,7 @@ nb_step_status=$?
 
 **Interfaces:**
 - Consumes: Task8全部工件与runbook、Task8a实际通过的路径/缓存验收、Task1-7的可部署main分支
-- Produces: 线上 `https://blog.nanmu.xyz`(Task 10 的验收基础);`server` git remote
+- Produces: 线上 `https://nanmu.xyz`(Task 10 的验收基础);`server` git remote
 
 - [ ] **Step 1: 按 runbook §0-§2 开通服务器**
 
@@ -918,17 +918,17 @@ Expected: `0`(免密成功;密码只在首次配置时交互输入,不落盘)。
 
 - [ ] **Step 3: DNS 与 Caddy(runbook §4-§5)**
 
-提醒用户在域名控制台加 A 记录(这是用户手动操作,等确认)。然后按runbook §5准备并validate候选Caddy配置;先在Step4生成可读current再加载博客站点块。
-Expected:DNS核对正确,候选配置validate通过,原Caddy服务保持现状。
+域名已定为apex `nanmu.xyz`,2026-10-04实测apex A记录已指向123.56.223.97,无需用户再加记录(仍核对AAAA)。然后按runbook §5准备并validate候选Caddy配置——服务器已存在`nanmu.xyz`块(指向127.0.0.1:3000的死转发),按手册"已存在时编辑候选中的原块"替换为静态站配置,不追加第二份;先在Step4生成可读current再加载博客站点块。
+Expected:DNS核对正确,候选配置validate通过且diff只含本项目变化,原Caddy其他服务(skills/oj)保持现状。
 
 - [ ] **Step 4: 首次部署(runbook §6)**
 
 按部署手册§3核对已有server remote,再按§6推送并观察构建;不要重复添加同名remote。
 等待构建成功并核对Caddy用户可读(包含release根755权限),再按runbook §5加载候选配置。随后验证:
 ```bash
-curl -sI https://blog.nanmu.xyz                          # HTTP/2 200
-curl -s https://blog.nanmu.xyz/rss.xml | head -5         # <?xml ... <rss
-curl -s https://blog.nanmu.xyz/digest/ | grep -o "尚未发布任何日报"
+curl -sI https://nanmu.xyz                          # HTTP/2 200
+curl -s https://nanmu.xyz/rss.xml | head -5         # <?xml ... <rss
+curl -s https://nanmu.xyz/digest/ | grep -o "尚未发布任何日报"
 ```
 Expected: 三条全部命中且release.txt与期望SHA一致。仅代表首次部署通过,M0仍需Task10完整验收。
 
@@ -1018,7 +1018,7 @@ nb_step_status=$?
 [ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ok=0
 while [ $(( $(date +%s) - start )) -lt 180 ]; do
-  if [ "$(curl --fail --silent --max-time 10 https://blog.nanmu.xyz/release.txt)" = "$expected" ] && curl --fail --silent --max-time 10 https://blog.nanmu.xyz/rss.xml | grep -q "你好,nanmu-blog"; then
+  if [ "$(curl --fail --silent --max-time 10 https://nanmu.xyz/release.txt)" = "$expected" ] && curl --fail --silent --max-time 10 https://nanmu.xyz/rss.xml | grep -q "你好,nanmu-blog"; then
     ok=1; break
   fi
   sleep 5

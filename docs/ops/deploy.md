@@ -68,7 +68,7 @@ git remote add server nanmu@123.56.223.97:/opt/git/nanmu-blog.git
 
 ## 4. DNS
 
-核对域名归属/备案与实际接入条件,添加A记录blog.nanmu.xyz到目标IP。`nslookup blog.nanmu.xyz`检查解析;若有AAAA也必须核对,不能让客户端走错误IPv6。不要修改skills已有记录。DNS/公网验证未完成可继续本地构建与独立验收,不能把临时入口算正式站点上线。
+博客直接用apex域名`nanmu.xyz`(2026-10-04用户拍板,替代原计划的blog子域名)。核对域名归属/备案与实际接入条件;`nslookup nanmu.xyz`确认apex解析到目标IP(2026-10-04实测已指向123.56.223.97);若有AAAA也必须核对,不能让客户端走错误IPv6。不要修改skills已有记录。DNS/公网验证未完成可继续本地构建与独立验收,不能把临时入口算正式站点上线。
 
 ## 5. Caddy候选配置、验证与加载(服务器)
 
@@ -129,7 +129,7 @@ ssh nanmu@123.56.223.97 'tail -30 /var/www/nanmu-blog/deploy.log; readlink /var/
 ```bash
 ok=0
 while [ $(( $(date +%s) - start )) -lt 180 ]; do
-  observed=$(curl --fail --silent --show-error --max-time 10 https://blog.nanmu.xyz/release.txt) || observed=''
+  observed=$(curl --fail --silent --show-error --max-time 10 https://nanmu.xyz/release.txt) || observed=''
   if [ "$observed" = "$expected" ]; then ok=1; break; fi
   sleep 5
 done

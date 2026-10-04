@@ -29,7 +29,7 @@
 
 | 决策点 | 默认值 |
 |--------|--------|
-| 子域名 | `blog.nanmu.xyz`(域名/备案/接入条件在M0上线前核实,见环境文档) |
+| 子域名 | 直接用 apex `nanmu.xyz`(2026-10-04 用户拍板,替代原默认 `blog.nanmu.xyz`;apex A 记录已指向服务器,原 Caddy 块为指向 127.0.0.1:3000 的死转发) |
 | AI 内容形态 | 每日一期日报(延续旧博客想法) |
 | RAG 使用者 | 仅自己(basicauth 保护) |
 | LLM 提供商 | DeepSeek 为主(兼容端点),Qwen 备选;具体 model ID/计价在 M1 启动核查,budget.md 保存快照 |
@@ -330,7 +330,7 @@ M2计划确定事务更新或临时库切换的具体方案,验证API读者重�
 - **域名与备案前置核查**:此前设计期的概括性转述不作为上线许可证明;按[环境文档](../../context/server-environment.md)分别核对域名归属、ICP/接入与公安备案适用要求,记录官方出处和账户适用结论
 - **Caddy**(注意 v2.8+ 指令名是 `basic_auth`,不是旧名 `basicauth`):
   ```caddyfile
-  blog.nanmu.xyz {
+  nanmu.xyz {
       root * /var/www/nanmu-blog/current/dist
       encode gzip
       file_server
@@ -470,6 +470,8 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 ---
 
 ## 附:变更记录
+
+- 2026-10-04 用户拍板博客直接用apex域名`nanmu.xyz`(替代`blog.nanmu.xyz`):§1.3决策表、§7 Caddy示例、astro.config `site`、部署手册与计划同步;apex A记录实测已指向服务器,接管既有指向127.0.0.1:3000的死转发Caddy块。
 
 - 2026-10-04 M0 Task8a实施:§4.1的slug/原始路径/重复id/缓存校验落地(schema `.strict()`+源目录扫描+文件数一致性+`prebuild`/`predev`自动清缓存),状态行与§9.1顺序更新;负例与连续构建证据见sessions/2026-10-04-m0-task8a.md。
 
