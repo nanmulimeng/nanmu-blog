@@ -5,9 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "astro dev",
+    "predev": "node scripts/clean-astro-cache.mjs",
     "build": "astro build",
+    "prebuild": "node scripts/clean-astro-cache.mjs",
     "preview": "astro preview",
-    "verify": "astro build && node scripts/smoke.mjs"
+    "verify": "npm run build && node scripts/smoke.mjs"
   },
   "keywords": [],
   "author": "",

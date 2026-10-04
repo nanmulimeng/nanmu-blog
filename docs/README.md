@@ -13,15 +13,15 @@
 | [development/coding-standards.md](development/coding-standards.md) | 编码规范:site/engine/RAG + 依赖白名单 + 测试要求 | 定稿(M1/M2 遵守) |
 | [development/quality-gates.md](development/quality-gates.md) | 分阶段验证矩阵、证据口径、四类活动门禁、未来测试清单 | 定稿 |
 | [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 定稿 |
-| [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | Task1-8已实施;8a及9-10待做 |
-| [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地可用;路径/缓存补验与线上发布待验收 |
+| [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | Task1-8+8a已实施;9-10待做 |
+| [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地可用;线上发布待Task9-10验收 |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
 | [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 定稿(M1 实施基准) |
 | [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 定稿(M1 实施基准) |
 | [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 定稿(随运营调整) |
 | [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 定稿(台账按月追加) |
-| [ops/deploy.md](ops/deploy.md) | SSH/目录/权限/Caddy/上线确认/回滚操作 | 工件已落盘;先完成8a,运行验收待9-10 |
+| [ops/deploy.md](ops/deploy.md) | SSH/目录/权限/Caddy/上线确认/回滚操作 | 工件已落盘;运行验收待9-10 |
 | [ops/runbook.md](ops/runbook.md) | 巡检/回滚/故障处理 | 定稿 |
 | [reviews/2026-10-02-documentation-audit.md](reviews/2026-10-02-documentation-audit.md) | 文档审查依据、已修订问题与实施前核查 | 本轮审查完成,运行项待对应阶段验证 |
 | [sessions/](sessions/) | 开发会话交接记录(模板 `_template.md`;最新一份 = 当前进度) | 每会话一份 |
@@ -51,8 +51,8 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-04-technical-direction.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
-- 写文章:writing.md本地预览 → M0已验收后的发布流程。开发博客:spec §4 → M0 Task8a补验 → Task9-10上线。
+- 接手当前工作:先看[最新交接](sessions/2026-10-04-m0-task8a.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 写文章:writing.md本地预览 → M0已验收后的发布流程。开发博客:spec §4 → Task9-10上线。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。准备手册存在不代表部署已完成。
 - 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine三文档与design.md → quality-gates测试清单 → 编写M1计划。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。

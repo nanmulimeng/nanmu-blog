@@ -20,15 +20,15 @@
 - 检查通过后相关文件又有修改,重跑受影响检查;仅改无关记录不机械重跑所有测试。
 - 新增测试应覆盖实际风险,不要求文案修改、可逆低影响调整编写复述实现的测试。完整M1/M2清单仅在对应计划实施时适用。
 
-## 内容变更与缓存验证(M0起)
+## 内容变更与缓存验证(M0起;Task8a已实施)
 
-2026-10-04审查已复现两项边界:当前路径检查只看Astro生成的id,可被frontmatter `slug`绕过;Astro5.18.2删除最后一篇digest后,持久data-store可能继续产出旧内容。**修复和自动回归归M0 Task8a,目前不能用verify绿证明这两项已通过。**
+2026-10-04审查复现两项边界(frontmatter `slug`与文件名自动清洗绕过原始路径检查、重复最终id在store内静默覆盖;Astro5.18.2持久data-store删除内容后残留幽灵页),同日M0 Task8a修复并验收:两collection schema `.strict()`入库前拒绝slug等未知键;`site/src/lib/content.ts`源目录扫描按原始文件名校验并拒绝子目录,以文件数/条目数一致性拦截重复id;`site/scripts/clean-astro-cache.mjs`接入`prebuild`/`predev`自动清可再生缓存(`verify`经`npm run build`链式触发,与部署同入口)。10例负例矩阵与连续构建/dev探针证据见[sessions/2026-10-04-m0-task8a.md](../sessions/2026-10-04-m0-task8a.md)。
 
-- 所有posts/digest禁止`slug`字段,先按spec §4.1检查原始相对路径,再检查最终id与冲突;包含草稿。错误必须使构建非零,不能等内容进入store被覆盖后再检查。
-- 删除、改名、撤回内容或清理临时fixture后,停止dev进程;核对仓库根与解析后的缓存目录仅为本站的`site/.astro/`和`site/node_modules/.astro/`,确认未通过符号链接/junction指向外部后仅清理这两个可再生目录。不要删除整个node_modules、源内容或其他工作区。
+- 所有posts/digest禁止`slug`字段,先按spec §4.1检查原始相对路径,再检查最终id与冲突;包含草稿。错误必须使构建非零,不能等内容进入store被覆盖后再检查。**上述校验已在正式入口(build/dev)强制执行。**
+- 删除、改名、撤回内容或清理临时fixture后,正式build/dev入口会自动清理本站可再生的`site/.astro/`与`site/node_modules/.astro/`。绕过正式入口(直接调astro、复制旧缓存)或产物异常时手工处理:核对解析后的缓存目录确属本站这两个可再生目录、未通过符号链接/junction指向外部后,仅清理它们;不要删除整个node_modules、源内容或其他工作区。
 - 重新执行`npm --prefix site run verify`,并用被删除条目的id/title/URL检查首页、分页列表、详情目录与两个RSS。预期无旧详情、无旧列表/RSS项;原来只有一篇时应回到空态。现有smoke仅检查基础产物,不能代替这些具体断言。
-- Task8a必须另做**有缓存的两次连续构建**:先构建唯一公开fixture,再删除它并运行修订后的正式验证入口;不靠测试提前手动清缓存掩盖实现问题。覆盖posts与digest,并分别验证改名、draft撤回和fixture清理后无残留;负例只在独立临时副本中执行。
-- 生产deploy按SHA创建全新archive工作目录,当前风险主要在本地开发与M1持久工作副本。Task8a完成后将清理/失效处理纳入正式构建入口或loader,并更新本节的待实现说明;不得只在交接中口头要求每次手工补救。
+- 涉及内容路径/缓存代码的改动须重做**有缓存的两次连续构建**:先构建唯一公开fixture,再删除它并直接重跑`verify`(不预清缓存);覆盖posts与digest,并分别验证改名、draft撤回和fixture清理后无残留;负例只在独立临时副本中执行。
+- 生产deploy按SHA创建全新archive工作目录,风险主要在本地开发与M1持久工作副本;清理已纳入正式构建/dev入口(Task8a),M1工作副本沿用同一入口。
 
 ## L1 · commit 级(每次提交)
 

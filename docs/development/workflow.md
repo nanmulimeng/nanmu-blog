@@ -61,7 +61,7 @@ git branch --show-current
 ### 验证与失败处理
 
 - 验证命令、工作目录和适用阶段统一见 [quality-gates.md](quality-gates.md);编码约束见 [coding-standards.md](coding-standards.md),不在此复制测试清单。
-- 涉及内容删除/改名/撤回或临时fixture清理,必须执行quality-gates的“内容变更与缓存验证”,不能只看verify退出码。原始文件路径、禁用slug和缓存失效的代码补验归M0 Task8a;未完成时交接明确保留此缺口。
+- 涉及内容删除/改名/撤回或临时fixture清理,必须执行quality-gates的“内容变更与缓存验证”,不能只看verify退出码。原始文件路径、禁用slug和缓存失效校验已由M0 Task8a在正式build/dev入口强制;涉及这些代码的改动须重做其连续构建回归。
 - 每次命令检查退出码与关键输出。长任务确认最终结束后才能记为通过,启动成功/返回进程 ID 不等于任务成功。
 - shell 与运行环境先核对。Windows PowerShell、Git Bash 与服务器 shell 不混用语法;Git Bash 路径以本机实际值为准,避免把 WSL 启动器当成 Bash 环境。`.sh` 使用 LF。
 - 有依赖的操作顺序执行,前置失败停止后续写入/提交/发布;独立只读检查可以并行。外部 IO 设置超时,失败单独记录,不吞掉核心错误。
