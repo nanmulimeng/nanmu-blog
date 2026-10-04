@@ -1,0 +1,30 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { assertDigestIds } from '../../lib/content';
+
+export async function getStaticPaths({ paginate }) {
+  const all = await getCollection('digest');
+  assertDigestIds(all);
+  const digests = all
+    .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
+  return paginate(digests, { pageSize: 10 });
+}
+const { page } = Astro.props;
+---
+<Base title="AI 日报">
+  <h1>AI 日报</h1>
+  <p class="muted">本栏目由 AI 引擎自动生成:读取聚合数据、评分精选、撰写摘要。每期标注生成模型与成本。</p>
+  {page.data.length === 0 ? (
+    <p class="muted">尚未发布任何日报。</p>
+  ) : (
+    page.data.map((d) => (
+      <div class="card">
+        <a href={`/digest/${d.id}/`}><strong>{d.data.date} 日报</strong></a>
+        <div class="muted">{d.data.entry_count} 条 · 由 {d.data.ai_model} 生成 · 成本 ¥{d.data.cost_cny}</div>
+      </div>
+    ))
+  )}
+  {page.url.prev && <a href={page.url.prev}>← 上一页</a>}
+  {page.url.next && <a href={page.url.next}>下一页 →</a>}
+</Base>

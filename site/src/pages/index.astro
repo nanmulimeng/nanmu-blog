@@ -1,1 +1,37 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8" /><title>nanmu blog</title></head><body><h1>nanmu blog</h1></body></html>
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { assertPostsIds, assertDigestIds } from '../lib/content';
+
+const allPosts = await getCollection('posts');
+assertPostsIds(allPosts);
+const posts = allPosts
+  .filter(({ data }) => !data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id))
+  .slice(0, 5);
+const allDigests = await getCollection('digest');
+assertDigestIds(allDigests);
+const digests = allDigests
+  .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
+---
+<Base>
+  <h1>最新文章</h1>
+  {posts.length === 0 && <p class="muted">尚未发布文章。</p>}
+  {posts.map((p) => (
+    <div class="card">
+      <a href={`/posts/${p.id}/`}><strong>{p.data.title}</strong></a>
+      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {p.data.tags.join(' / ')}</div>
+    </div>
+  ))}
+  <h2 style="margin-top:2.5rem">AI 日报</h2>
+  {digests.length === 0 ? (
+    <p class="muted">日报尚未发布。本栏目由AI生成与筛选,每期标注生成模型与成本。</p>
+  ) : (
+    digests.slice(0, 3).map((d) => (
+      <div class="card">
+        <a href={`/digest/${d.id}/`}><strong>{d.data.date} 日报</strong></a>
+        <div class="muted">{d.data.entry_count} 条 · 由 {d.data.ai_model} 生成</div>
+      </div>
+    ))
+  )}
+</Base>

@@ -1,0 +1,19 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { assertDigestIds } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const all = await getCollection('digest');
+  assertDigestIds(all);
+  return all.map((d) => ({ params: { id: d.id }, props: { digest: d } }));
+}
+const { digest } = Astro.props;
+const { Content } = await render(digest);
+---
+<Base title={`${digest.data.date} 日报`} description={`AI 生成 · ${digest.data.entry_count} 条`}>
+  <h1>{digest.data.date} 日报</h1>
+  <p class="muted">AI 生成({digest.data.ai_model})· {digest.data.entry_count} 条 · 成本 ¥{digest.data.cost_cny}</p>
+  <hr />
+  <article><Content /></article>
+</Base>
