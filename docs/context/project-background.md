@@ -1,4 +1,4 @@
-# 项目背景:三个前项目与本项目
+# 项目背景:两个前项目、外部参考与本项目
 
 > 写给零上下文的新读者(agent 或人)。读完本文你会知道:这个项目为什么存在、它从历史里继承什么、拒绝什么。
 
@@ -10,7 +10,7 @@
 | 2026-06-28 | nanmuli-blog 停摆(12.5 周),带着 601 行未提交修复离场 |
 | 2026-08-29 | 确认放弃,5-agent 并行复盘,形成死因结论 |
 | 2026-08-31 | topic-digest M0 上线服务器(极简爬取试点),打 tag m0 |
-| 2026-09 | topic-digest 全月稳定运行(720/720) |
+| 2026-09 | 历史转述:topic-digest 720/720,原始统计本轮未复核[declared] |
 | 2026-10-02 | nanmu-blog 设计定稿(本项目) |
 
 ## 前项目一:nanmuli-blog(废弃,反面教材)
@@ -36,20 +36,20 @@
 
 **仓库**:`D:\software\item\topic-digest`;生产运行于本项目同一台服务器。
 
-**是什么**:多主题 RSS 聚合 + 静态日报站。Python 管线(SQLite + systemd timer + flock)每小时拉取 15 个信源入河,每日构建静态页发布。**刻意极简**:无后台、无框架、无数据库服务,全部运维靠 SSH + systemd。
+**是什么**:多主题 RSS 聚合 + 静态日报站。Python 管线(SQLite + systemd timer + flock)每小时拉取 15 个信源入河,每日构建静态页发布。**刻意极简**:无管理后台、无后端Web框架、无独立数据库服务;展示站使用Astro,全部运维靠 SSH + systemd。
 
-**成绩**:2026 年 9 月 720/720 小时级 ingest 全绿、30/30 构建成功、零故障,月入库 3,491 条。
+**历史运行记录**:上一会话记录2026年9月720/720次ingest、30/30构建、月入库3,491条;本轮未取得原始journal统计,标为[declared]。2026-08-31验收报告可读,见文末证据链。
 
 **对本项目的两个作用**:
 
 1. **数据上游**:本项目的 AI 引擎(M1)直接只读它的 SQLite 做日报精选——它的实况、schema、已知问题见 [topic-digest-data-source.md](topic-digest-data-source.md)
-2. **运维模式验证**:SQLite + systemd timer + flock + 原子 symlink 发布这套栈已被它跑了一个月零故障,nanmu-blog 的 engine 与部署直接复用该模式
+2. **运维模式验证**:SQLite + systemd timer + flock + 原子 symlink 发布这套栈有上线验收与一个月运行记录支持(后者本轮未复测),nanmu-blog 的 engine 与部署直接复用该模式
 
 ## 外部参考:AIHOT 与 PowerContext(借鉴不引入)
 
-**AIHOT**(github.com/KKKKhazix/AIHOT):生产级 AI 资讯聚合开源框架,2026-09-28 创建、4 天约 4.9k★。Node 24/TypeScript/Fastify/PG17/pg-boss 三进程,建议 2 核 4G——对本项目 1.8G 服务器是重装备,**不整体引入**。搬走六个模式(已进 spec §5):URL 归一判重(identity_key)、双次独立评分"和判均显"、付费请求回执+三级预算熔断、编辑策略配置包(代码与口味解耦)、append-only 判断+人工覆盖、失败隔离。有趣的事实:它的官方站 feed(aihot.virxact.com/feed.xml)正是 topic-digest 的信源之一。
+**AIHOT**(github.com/KKKKhazix/AIHOT):生产级 AI 资讯聚合开源框架,设计期参考项目(创建时间与star数不作为本项目选型依据)。Node 24/TypeScript/Fastify/PG17/pg-boss 三进程,建议 2 核 4G——对本项目 1.8G 服务器是重装备,**不整体引入**。搬走六个模式(已进 spec §5):URL 归一判重(identity_key)、双次独立评分"和判均显"、付费请求回执+三级预算熔断、编辑策略配置包(代码与口味解耦)、append-only 判断+人工覆盖、失败隔离。有趣的事实:它的官方站 feed(aihot.virxact.com/feed.xml)正是 topic-digest 的信源之一。
 
-**PowerContext**(github.com/oceanbase/powercontext):OceanBase 出品的 agent 跨会话上下文服务器(Scope/Sources/Memory/Handoff)。评估结论**不采用**(问题域是 agent 会话交接而非知识库问答;server 栈 150-250MB;六周三版 breaking change)。搬走的:检索双通道混合 + matched_by 观测、EmbeddingProfile 身份、FTS 降级(spec §6),以及**会话交接纪律**(spec §8.1:omissions/声明分级/接手检查——直击 nanmuli-blog 跨会话断层死因)。
+**PowerContext**(github.com/oceanbase/powercontext):OceanBase 出品的 agent 跨会话上下文服务器(Scope/Sources/Memory/Handoff)。评估结论**不采用**(问题域是 agent 会话交接而非知识库问答;运行与升级维护负担不符合当前需求;旧调研资源数值未复测)。搬走的:检索双通道混合 + matched_by 观测、EmbeddingProfile 身份、FTS 降级(spec §6),以及**会话交接纪律**(spec §8.1:omissions/声明分级/接手检查——直击 nanmuli-blog 跨会话断层死因)。
 
 ## 输入映射总表
 
@@ -63,3 +63,13 @@
 ## 本项目一句话
 
 极简静态博客(手写)+ AI 引擎自动日报(读 topic-digest 数据)+ 自用 RAG——**博客先上线,AI 是渐进叠加层,任何一层挂掉博客都在线**。
+
+## 背景证据与本轮补充
+
+- 旧项目复盘汇总可读:`D:/software/item/nanmuli-blog/docs/new-project-research/2026-08-29-group-wisdom.md`。本轮确认其强调自用反馈、范围止损与减少元工作;具体外部案例/法律/价格不继承为当前结论。12.5周、601行等细节保留为历史转述,未重新审计旧仓库全部历史。
+- 上游原始验收:`D:/software/item/topic-digest/m0-report.md`(2026-08-31,文档提交cb744dc),记录73测试通过、Node v20.18.1和241MB构建峰值;这是历史测量,不是本轮服务器实测。
+- 上游本地代码HEAD `f25d187`:已有单条目cluster处理,没有AI精选/摘要主流程。当前项目继续独立实现AI管线,理由是职责与写入隔离,不再用“cluster是空表”论证。
+- 自用是首个真实反馈来源。M1连续3天每天抽查最多5条(不足则全查),记录是否值得点原文、事实是否有依据、重复/低质原因;发现严重事实错误当期不验收。M2准备固定个人问题集。只做轻量记录,不新建评分趋势平台。
+- 历史项目的“标签系统不做”指标签管理/运营平台;本项目 posts 的简单 tags 元数据已在M0范围内,不矛盾。
+
+当前设计的成功标准是持续写作、实际阅读日报、需要时找回内容;文档数量、测试数量与AI评分本身不替代这些使用结果。

@@ -1,8 +1,10 @@
 # ADR-0003: engine 只读直连 topic-digest SQLite
 
-- 状态:已接受
+- 状态:已接受;事实/数学依据见文末2026-10-02勘误,当前契约以spec为准
 - 日期:2026-10-02
 - 关联:spec §5.2 / 铁律 4
+
+> 2026-10-04有效口径:当前有效读取契约见[上游数据源](../context/topic-digest-data-source.md):fresh/clustered、JOIN键与fetched_utc均需读取。下文空表论据/旧字段清单已失效;只读模式仍需验证WAL权限与资源影响,不承诺零风险。
 
 ## 背景
 
@@ -26,3 +28,7 @@ engine 以**只读**方式直读 topic-digest SQLite 文件(`item JOIN source`,�
 
 1. topic-digest 暴露 HTTP API——要改"保持现状不动"的在产服务,否决
 2. 定期复制数据到 engine 库——引入同步漂移与双份存储,否决
+
+## 2026-10-02事实勘误
+
+只读独立处理的决策不变。本地上游pipeline已使用cluster/cluster_member并将item状态改为clustered,上文“三表为空”的历史依据不成立。字段清单补JOIN键与fetched_utc,当前契约见context/topic-digest-data-source.md;线上表行数仍待核查。

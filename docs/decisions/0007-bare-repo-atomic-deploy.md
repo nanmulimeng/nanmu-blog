@@ -1,8 +1,10 @@
 # ADR-0007: 部署 = bare repo + post-receive 后台构建 + mv -T 原子 symlink
 
-- 状态:已接受
+- 状态:部分被 [ADR-0009](0009-preimplementation-contracts.md) 取代;下文保留原决策历史,当前实现以spec与ADR-0009为准
 - 日期:2026-10-02
 - 关联:spec §7;模式来源 topic-digest 生产验证 + 部署调研补强
+
+> 2026-10-04有效口径:取代范围:下文flock -n忙时跳过、/tmp锁路径及旧构建流程不可照抄。保留bare repo与原子切换决策;当前实现基线见[M0计划](../superpowers/plans/2026-10-02-m0-blog-launch.md),唯一操作入口见[部署手册](../ops/deploy.md)。
 
 ## 背景
 

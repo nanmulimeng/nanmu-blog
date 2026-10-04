@@ -1,12 +1,12 @@
 # M0 博客上线 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> 执行方式:Native,按任务顺序推进,遵守 docs/development/workflow.md。环境有 executing-plans 可使用;缺少该skill不影响按本计划执行,不要求子代理。勾选只代表实际完成,本轮文档修订不勾选未来任务。
 
 **Goal:** 搭建 nanmu-blog 的 M0——Astro 5 静态博客(手写文章 + 空置的 AI 日报栏目)+ git push 自动构建部署 + blog.nanmu.xyz 子域名上线。
 
-**Architecture:** monorepo,`site/` 是 Astro 5 站点,`deploy/` 存服务器部署工件。写作流:本地写 markdown → `git push` main → 服务器 bare repo 的 post-receive hook 后台 flock 构建(`releases/<sha>/dist`)→ `mv -T` 原子切换 `current` symlink → Caddy 静态服务。digest collection 与 schema 契约 M0 就位但内容空置(M1 由引擎填充)。
+**Architecture:** monorepo,`site/` 是 Astro 5 站点,`deploy/` 存服务器部署工件。写作流:本地写 markdown → `git push` main → 服务器 bare repo 的 post-receive hook 后台有界等待锁后构建(`releases/<sha>/dist`)→ `mv -T` 原子切换 `current` symlink → Caddy 静态服务。digest collection 与 schema 契约 M0 就位但内容空置(M1 由引擎填充)。
 
-**Tech Stack:** Astro 5(glob loader Content Layer)、@astrojs/rss、Node ≥18.17.1、Caddy 2(服务器已有)、bash git hooks。
+**Tech Stack:** Astro 5(glob loader Content Layer)、@astrojs/rss、Node 版本符合实际锁定 Astro 5 包的 engines(实施时核对)、Caddy 2(服务器已有)、bash git hooks。
 
 **Spec:** `docs/superpowers/specs/2026-10-02-nanmu-blog-design.md`(本计划从 spec 立论,执行者需同时读 spec;关键依据 §2 铁律、§4/§4.1、§7、§8、§9-M0)
 
@@ -16,13 +16,19 @@
 - **零客户端 JS**:明暗主题只用 CSS `prefers-color-scheme`,不引入任何 JS 框架/主题切换脚本(spec 铁律 6)
 - 页面 UI 中文;站名 `nanmu blog`(常量放 `site/src/consts.ts`)
 - 站点 URL `https://blog.nanmu.xyz`(astro.config `site`,RSS 依赖它生成绝对链接)
-- posts schema:`title: string`、`pubDate: coerce.date`、`tags: string[] default []`、`draft: boolean default false`
-- digest schema:`date: string`、`generated: literal true`、`ai_model: string`、`entry_count: number`、`cost_cny: number`
+- posts schema:`title: 非空string`、`pubDate: coerce.date`、`tags: string[] default []`、`draft: boolean default false`
+- digest schema:`date: 有效YYYY-MM-DD`、`generated: literal true`、`ai_model: 非空string`、`entry_count: 非负整数`、`cost_cny: 非负有限数值`
 - **digest 栏目从 M0 起就带 AI 生成标注**(spec 铁律 7):digest 列表页显式说明本栏目内容由 AI 生成
 - **服务器凭据不落盘**:123.56.223.97 的密码只允许出现在交互式命令行输入,禁止写入任何文件/脚本/配置(历史约定)
-- 每次 push 到 main 必须可部署:commit 前本地 `npm run verify`(build + 冒烟)必须绿
+- 生产main保持可部署:Task 2-6提交前build绿,Task 7起verify绿;纯文档按文档门禁。故障注入只在独立验收仓库/目录
 - 保留最近 5 个 release 目录,更旧的删除;回滚 = 切 symlink
 - 本计划完成后 M1/M2 各自另写 plan,不在本计划内实现任何 AI 功能
+
+## 命令执行约定
+
+除明确写“服务器”或部署脚本工件外,本计划命令均在本机Git Bash的仓库根执行。开发/安装需要切换目录时使用子shell,结束后仍在仓库根。Run中的npm统一用--prefix site;dist检查显式写site/dist。预期FAIL的负例单独执行并记录非零退出,还原后必须重新通过验证。
+
+提交块先检查已有暂存,不得混入其他工作;git add仅含列出的本任务文件。验证结果必须对应拟提交版本,不能借未提交的依赖修改让本地构建变绿。阶段适用验证失败时停止,不继续commit/push;每块都不能以最后一条命令成功掩盖前面的失败。
 
 ## Review Focus
 
@@ -32,119 +38,59 @@ spec 未显式测试、但最容易咬人的五类输入/故障,及钉住它们�
 2. **digest collection 为空时 `/digest/` 页面与 `/digest.xml` 必须优雅空态,不能 500**(M0 上线时 digest 就是空的)——Task 5/6 的空态代码与验证;Task 7 冒烟断言两文件存在。
 3. **`draft: true` 的文章必须从列表、详情页、RSS 全部排除**——Task 5 getStaticPaths/getCollection 过滤;Task 7 冒烟断言 `drafts-example` 不出现在 rss.xml。
 4. **RSS 标题特殊字符(`&`、`<`)必须正确转义**——Task 6 用临时 fixture 验证输出含 `&amp;`。
-5. **部署韧性:推非 main 分支不触发部署;构建失败的 commit 不切换 symlink(线上保持旧版);并发 push 由 flock 串行**——Task 8 脚本逻辑;Task 9 服务器实测(推坏 commit 后线上仍 200)。
+5. **部署韧性:推非 main 分支不触发部署;构建失败的 commit 不切换 symlink(线上保持旧版);并发push后台有界等待,最后成功发布最新main;超时有日志和重跑路径**——Task 8 脚本逻辑;Task 9独立验收目标实测(坏commit不切换已有release),不推坏生产main。
 
 ---
 
 ### Task 1: 仓库骨架与文档基线
 
-**Files:**
-- Create: `AGENTS.md`、`README.md`、`CLAUDE.md`、`.gitignore`、`.gitattributes`
+已完成,证据提交`c0e8a84`。当前根文档已扩充,以现文件为准,不保留会覆盖新内容的旧模板。
 
-**Interfaces:**
-- Consumes: 无(首任务)
-- Produces: 仓库根文档三件套(后续所有任务的执行者先读 AGENTS.md);`.gitignore` 保证 node_modules/dist/.astro 不入库;`.gitattributes` 保证 hook 脚本 LF(Task 8/9 依赖)
-
-- [ ] **Step 1: 写 .gitignore 与 .gitattributes**
-
-`.gitignore`:
-```
-node_modules/
-dist/
-.astro/
-.env
-```
-
-`.gitattributes`:
-```
-* text=auto
-*.sh text eol=lf
-deploy/post-receive text eol=lf
-```
-
-- [ ] **Step 2: 写 AGENTS.md**
-
-```markdown
-# AGENTS.md — nanmu-blog
-
-极简静态博客(Astro 5)+ AI 引擎(Python,读 topic-digest 数据产日报)+ RAG(自用问答)。
-当前阶段:M0 博客上线。完整设计与八条铁律见 `docs/superpowers/specs/2026-10-02-nanmu-blog-design.md`(§2 必读)。
-
-## 结构
-- `site/` — Astro 5 站点(手写文章 posts + AI 日报 digest)
-- `engine/` — AI 引擎(M1,未创建)
-- `docs/` — specs/plans/ops 文档系统
-- `deploy/` — 服务器部署工件(hook 与构建脚本)
-
-## 常用命令(在 site/ 下)
-- `npm run dev` 本地开发
-- `npm run build` 构建
-- `npm run verify` build + 冒烟检查(commit 前必须绿)
-
-## 部署
-push 到 main → 服务器 post-receive 后台构建原子发布。Runbook:`docs/ops/deploy.md`。
-回滚 = 切 `/var/www/nanmu-blog/current` symlink 到旧 release。
-
-## 会话交接
-每个开发会话结束在 `docs/sessions/` 写交接记录,格式见 spec §8.1
-(objective/state/disposition/next_action/omissions,声明分级 verified|declared)。
-```
-
-- [ ] **Step 3: 写 README.md 与 CLAUDE.md**
-
-`README.md`:
-```markdown
-# nanmu-blog
-
-个人博客:手写文章(Astro 5 静态站)+ AI 日报(引擎读 topic-digest 数据自动精选发布)+ RAG 知识库(自用)。
-
-前项目结论:nanmuli-blog(废弃,过度设计教训)、topic-digest(在产,爬取试点)、AIHOT/PowerContext(借鉴对象)——见 spec §1。
-
-## 快速开始
-    cd site && npm install && npm run dev
-
-## 部署
-push main 即部署,详见 docs/ops/deploy.md。
-```
-
-`CLAUDE.md`(与 AGENTS.md 同口径):
-```markdown
-# nanmu-blog 项目记忆
-
-读 `AGENTS.md`(同口径)。补充:中文回复;修改前先读相关文件;不确定即查;
-服务器凭据不落盘;commit 前 `cd site && npm run verify` 必须绿。
-设计文档:docs/superpowers/specs/2026-10-02-nanmu-blog-design.md。
-```
-
-- [ ] **Step 4: 验证并提交**
-
-Run: `ls AGENTS.md README.md CLAUDE.md .gitignore .gitattributes && git status --short`
-Expected: 五个文件都是 untracked/新增,无其他意外文件。
-
-```bash
-git add AGENTS.md README.md CLAUDE.md .gitignore .gitattributes
-git commit -m "chore: 仓库骨架与文档基线(AGENTS/README/CLAUDE + gitignore)"
-```
+- [x] Step1:建立.gitignore与.gitattributes。
+- [x] Step2:建立AGENTS.md。
+- [x] Step3:建立README.md与CLAUDE.md。
+- [x] Step4:核对文件并提交。
 
 ---
 
 ### Task 2: Astro 5 脚手架
 
 **Files:**
-- Create: `site/`(npm create astro 生成:package.json、astro.config.mjs、src/pages/index.astro、tsconfig.json 等)
+- Create: `site/package.json`、`site/package-lock.json`、`site/astro.config.mjs`、`site/src/pages/index.astro`、`site/tsconfig.json`
 
 **Interfaces:**
 - Consumes: Task 1 的 .gitignore(排除 node_modules/dist/.astro)
 - Produces: `site/` 可构建的 Astro 5 项目;`npm run build` 产出 `site/dist/`(Task 7 依赖);astro.config 的 `site` URL(Task 6 RSS 依赖)
 
-- [ ] **Step 1: 生成最小模板**
+- [ ] **Step 1: 创建明确主版本的最小项目**
 
-在仓库根目录运行:
+不要用create-astro@latest推断会得到Astro 5。先核对开发机Node与拟安装Astro 5包的engines;服务器在Task 9单独核对。Astro 5不同小版本要求可能不同。
+
 ```bash
-npm create astro@latest site -- --template minimal --no-install --no-git --yes
-cd site && npm install && npm install @astrojs/rss
+(
+  set -euo pipefail
+  mkdir -p site/src/pages
+  cd site
+  npm init -y
+  npm pkg set type=module scripts.dev="astro dev" scripts.build="astro build" scripts.preview="astro preview"
+  npm install --save-exact astro@5 @astrojs/rss@4
+  node -p "JSON.stringify({astro:require('./node_modules/astro/package.json').version,engines:require('./node_modules/astro/package.json').engines,rss:require('./node_modules/@astrojs/rss/package.json').version})"
+)
 ```
-Expected: 无交互报错;`site/package.json` 含 astro ^5.x 与 @astrojs/rss。
+
+记录精确版本与Node版本到session,提交package-lock.json。发现engines不符先选择兼容运行时,不忽略警告继续;不擅自升级同机公共Node。
+
+`site/tsconfig.json`:
+```json
+{"extends":"astro/tsconfigs/strict"}
+```
+
+`site/src/pages/index.astro`:
+```astro
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8" /><title>nanmu blog</title></head><body><h1>nanmu blog</h1></body></html>
+```
+
+Expected:package.json显式锁定5.x与RSS4.x,无engines冲突。依据:[Astro5官方迁移文档](https://docs.astro.build/en/guides/upgrade-to/v5/),版本最终以本次安装结果为准。
 
 - [ ] **Step 2: 配置 site URL**
 
@@ -159,14 +105,20 @@ export default defineConfig({
 
 - [ ] **Step 3: 验证构建**
 
-Run: `cd site && npm run build`
+Run: `npm --prefix site run build`
 Expected: 结束输出 "complete";`site/dist/index.html` 存在。
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add site
-git commit -m "feat: Astro 5 最小脚手架(site URL 指向 blog.nanmu.xyz)"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add site
+  git commit -m "feat: Astro 5 最小脚手架(site URL 指向 blog.nanmu.xyz)"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -192,7 +144,7 @@ import { glob } from 'astro/loaders';
 const posts = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/posts' }),
   schema: z.object({
-    title: z.string(),
+    title: z.string().trim().min(1),
     pubDate: z.coerce.date(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
@@ -202,11 +154,11 @@ const posts = defineCollection({
 const digest = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/digest' }),
   schema: z.object({
-    date: z.string(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, '日期必须是有效的YYYY-MM-DD'),
     generated: z.literal(true),
-    ai_model: z.string(),
-    entry_count: z.number(),
-    cost_cny: z.number(),
+    ai_model: z.string().trim().min(1),
+    entry_count: z.number().int().nonnegative(),
+    cost_cny: z.number().finite().nonnegative(),
   }),
 });
 
@@ -215,7 +167,7 @@ export const collections = { posts, digest };
 
 - [ ] **Step 2: 建目录与首篇内容**
 
-`mkdir -p site/src/content/digest`(空目录,M1 填充)。
+`mkdir -p site/src/content/digest`并创建空`.gitkeep`(glob只读md);Git不跟踪空目录,M1后填充内容。M0的posts文件暂约束为单层小写短横线文件名,避开纯数字ID与分页路由冲突。
 
 `site/src/content/posts/hello-nanmu-blog.md`:
 ```markdown
@@ -248,7 +200,7 @@ draft: true
 ```markdown
 ---
 date: '2026-10-01'
-ai_model: deepseek-chat
+ai_model: example-model-id
 entry_count: 0
 cost_cny: 0
 ---
@@ -256,17 +208,23 @@ cost_cny: 0
 缺 generated 字段,构建必须失败。
 ```
 
-Run: `cd site && npm run build`
+Run: `npm --prefix site run build`
 Expected: **FAIL**,报错指向 digest schema(generated 字段缺失/literal 不匹配)。这是 spec §4.1"schema 即契约"的验证。
 
-删除该临时文件,再跑 `npm run build`
-Expected: PASS(两个 draft 文章存在但被排除不影响构建;此刻还没有页面消费 collection,下一任务补)。
+删除该临时文件,再跑 `npm --prefix site run build`
+Expected:PASS。补临时负例:空标题、generated=false、非法日历日期、负成本、非整数条数均失败;有效字段恢复后成功。fixture不提交。
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add site/src/content.config.ts site/src/content
-git commit -m "feat: posts/digest 双 collection,schema 即契约(含 draft fixture)"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add site/src/content.config.ts site/src/content
+  git commit -m "feat: posts/digest 双 collection,schema 即契约(含 draft fixture)"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -378,12 +336,18 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
 
 - [ ] **Step 5: 验证并提交**
 
-Run: `cd site && npm run build`
-Expected: PASS(布局尚未被引用,先确认无语法错误)。
+Run: `npm --prefix site run build`
+Expected:现有路由构建PASS;尚未引用的布局/组件不据此宣称已验证。Task5引用后才验收实际渲染与样式。Astro build不做TypeScript类型检查,strict tsconfig也不是类型检查命令;本阶段门禁仍为构建+产物验证,如引入独立astro check需记录开发依赖和适用范围。依据:[官方类型检查说明](https://docs.astro.build/en/guides/typescript/#type-checking)。
 
 ```bash
-git add site/src/consts.ts site/src/styles site/src/layouts site/src/components
-git commit -m "feat: Base 布局与零 JS 明暗主题(prefers-color-scheme)"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add site/src/consts.ts site/src/styles site/src/layouts site/src/components
+  git commit -m "feat: Base 布局与零 JS 明暗主题(prefers-color-scheme)"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -392,11 +356,16 @@ git commit -m "feat: Base 布局与零 JS 明暗主题(prefers-color-scheme)"
 
 **Files:**
 - Modify: `site/src/pages/index.astro`(替换模板首页)
+- Create: `site/src/lib/content.ts`(共享内容路径校验,不在组件内抓取数据)
 - Create: `site/src/pages/about.astro`、`site/src/pages/404.astro`、`site/src/pages/posts/[...page].astro`、`site/src/pages/posts/[id].astro`、`site/src/pages/digest/[...page].astro`、`site/src/pages/digest/[id].astro`
 
 **Interfaces:**
 - Consumes: Task 3 的 collections(`getCollection('posts'|'digest')`,posts 字段 `title/pubDate/tags/draft`,digest 字段 `date/generated/ai_model/entry_count/cost_cny`);Task 4 的 `Base.astro`、global.css 变量
 - Produces: 路由 `/`、`/about/`、`/posts/`、`/posts/{id}/`、`/digest/`、`/digest/{id}/`、`/404`(Task 7 冒烟清单依赖);条目排序契约:posts 按 pubDate 降序,digest 按 date 降序
+
+- [ ] **Step 0: 共享内容路径校验**
+
+建立`src/lib/content.ts`的内容校验函数,接收页面/RSS读取的完整collection(含草稿),不自行调用getCollection。拒绝嵌套或非小写英文数字短横线的posts id、纯数字posts id,并核对digest id与date一致。所有内容出口在过滤/分页前调用,错误带entry id并使构建非零;后续页面片段展示渲染主体,实施时必须接入此校验。Task6两个RSS同样接入。Task5 Step7负例验证此入口,不依赖Zod字段schema获取文件名。
 
 - [ ] **Step 1: 首页 index.astro**
 
@@ -406,22 +375,23 @@ import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 
 const posts = (await getCollection('posts', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id))
   .slice(0, 5);
 const digests = (await getCollection('digest'))
-  .sort((a, b) => (a.data.date < b.data.date ? 1 : -1));
+  .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
 ---
 <Base>
   <h1>最新文章</h1>
+  {posts.length === 0 && <p class="muted">尚未发布文章。</p>}
   {posts.map((p) => (
     <div class="card">
       <a href={`/posts/${p.id}/`}><strong>{p.data.title}</strong></a>
-      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN')} · {p.data.tags.join(' / ')}</div>
+      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {p.data.tags.join(' / ')}</div>
     </div>
   ))}
   <h2 style="margin-top:2.5rem">AI 日报</h2>
   {digests.length === 0 ? (
-    <p class="muted">日报尚未开始——本栏目内容由 AI 自动生成与筛选(M1 上线后每日一期),每期标注生成模型与成本。</p>
+    <p class="muted">日报尚未发布。本栏目由AI生成与筛选,每期标注生成模型与成本。</p>
   ) : (
     digests.slice(0, 3).map((d) => (
       <div class="card">
@@ -442,17 +412,18 @@ import Base from '../../layouts/Base.astro';
 
 export async function getStaticPaths({ paginate }) {
   const posts = (await getCollection('posts', ({ data }) => !data.draft))
-    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
   return paginate(posts, { pageSize: 10 });
 }
 const { page } = Astro.props;
 ---
 <Base title="文章">
   <h1>文章</h1>
+  {page.data.length === 0 && <p class="muted">尚未发布文章。</p>}
   {page.data.map((p) => (
     <div class="card">
       <a href={`/posts/${p.id}/`}><strong>{p.data.title}</strong></a>
-      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN')} · {p.data.tags.join(' / ')}</div>
+      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {p.data.tags.join(' / ')}</div>
     </div>
   ))}
   {page.url.prev && <a href={page.url.prev}>← 上一页</a>}
@@ -464,7 +435,7 @@ const { page } = Astro.props;
 
 ```astro
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 
 export async function getStaticPaths() {
@@ -472,11 +443,11 @@ export async function getStaticPaths() {
   return posts.map((p) => ({ params: { id: p.id }, props: { post: p } }));
 }
 const { post } = Astro.props;
-const { Content } = await post.render();
+const { Content } = await render(post);
 ---
 <Base title={post.data.title} description={post.data.title}>
   <h1>{post.data.title}</h1>
-  <p class="muted">{post.data.pubDate.toLocaleDateString('zh-CN')} · {post.data.tags.join(' / ')}</p>
+  <p class="muted">{post.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {post.data.tags.join(' / ')}</p>
   <hr />
   <article><Content /></article>
 </Base>
@@ -491,7 +462,7 @@ import Base from '../../layouts/Base.astro';
 
 export async function getStaticPaths({ paginate }) {
   const digests = (await getCollection('digest'))
-    .sort((a, b) => (a.data.date < b.data.date ? 1 : -1));
+    .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
   return paginate(digests, { pageSize: 10 });
 }
 const { page } = Astro.props;
@@ -500,7 +471,7 @@ const { page } = Astro.props;
   <h1>AI 日报</h1>
   <p class="muted">本栏目由 AI 引擎自动生成:读取聚合数据、评分精选、撰写摘要。每期标注生成模型与成本。</p>
   {page.data.length === 0 ? (
-    <p class="muted">尚未发布任何日报(M1 上线后每日一期)。</p>
+    <p class="muted">尚未发布任何日报。</p>
   ) : (
     page.data.map((d) => (
       <div class="card">
@@ -518,7 +489,7 @@ const { page } = Astro.props;
 
 ```astro
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 
 export async function getStaticPaths() {
@@ -526,7 +497,7 @@ export async function getStaticPaths() {
   return digests.map((d) => ({ params: { id: d.id }, props: { digest: d } }));
 }
 const { digest } = Astro.props;
-const { Content } = await digest.render();
+const { Content } = await render(digest);
 ---
 <Base title={`${digest.data.date} 日报`} description={`AI 生成 · ${digest.data.entry_count} 条`}>
   <h1>{digest.data.date} 日报</h1>
@@ -563,20 +534,28 @@ import Base from '../layouts/Base.astro';
 
 - [ ] **Step 7: 验证 draft 排除与空态**
 
-Run: `cd site && npm run build`
+Run: `npm --prefix site run build`
 Expected: PASS。检查产物:
 ```bash
-ls dist/posts/         # 只有 hello-nanmu-blog(无 drafts-example)
-grep -c drafts-example dist/index.html dist/posts/index.html || true   # 都是 0
-grep -o "尚未发布任何日报" dist/digest/index.html   # 空态文案存在
+ls site/dist/posts/         # 只有列表index.html;两篇都还是draft,无详情目录
+grep -c drafts-example site/dist/index.html site/dist/posts/index.html || true   # 都是 0
+grep -o "尚未发布任何日报" site/dist/digest/index.html   # 空态文案存在
 ```
-Expected: `dist/posts/` 下无 drafts-example 页面;两个 grep 计数为 0;digest 空态文案命中。
+Expected: `dist/posts/` 下无hello-nanmu-blog和drafts-example详情;两个grep计数为0;posts/digest空态文案命中。Astro5.13.2官方paginate实现为空数组保留一页,实际安装版本仍以此构建验证为准。
+
+追加有限边界验收:用临时公开fixture超过10篇验证第二页与前后翻页链接,同日期按id稳定排序;验证纯数字/嵌套posts与日报文件名不匹配date会被内容检查明确拒绝。文件名约束不是当前Zod字段schema自动完成的:Task5实现一个共享内容校验入口,页面/构建消费它,禁止让重复路由靠框架优先级静默覆盖。验证后移除临时fixture并还原空态,不新增长期测试框架。
 
 - [ ] **Step 8: 提交**
 
 ```bash
-git add site/src/pages
-git commit -m "feat: 全部页面路由——首页/文章/日报/关于/404,空态与 draft 排除"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add site/src/pages
+  git commit -m "feat: 全部页面路由——首页/文章/日报/关于/404,空态与 draft 排除"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -599,7 +578,7 @@ import { SITE_TITLE, SITE_DESC } from '../consts';
 
 export async function GET(context) {
   const posts = (await getCollection('posts', ({ data }) => !data.draft))
-    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
   return rss({
     title: SITE_TITLE,
     description: SITE_DESC,
@@ -622,7 +601,7 @@ import { SITE_TITLE } from '../consts';
 
 export async function GET(context) {
   const digests = (await getCollection('digest'))
-    .sort((a, b) => (a.data.date < b.data.date ? 1 : -1));
+    .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
   return rss({
     title: `${SITE_TITLE} · AI 日报`,
     description: 'AI 引擎自动生成与精选的每日日报',
@@ -638,24 +617,34 @@ export async function GET(context) {
 
 - [ ] **Step 3: 验证——空 feed 合法、draft 排除、转义**
 
-Run: `cd site && npm run build`
+Run: `npm --prefix site run build`
 ```bash
-head -3 dist/rss.xml dist/digest.xml
-grep -c drafts-example dist/rss.xml || true   # 0
+head -3 site/dist/rss.xml site/dist/digest.xml
+grep -c drafts-example site/dist/rss.xml || true   # 0
 ```
-Expected: 两个文件首行均为 `<?xml version="1.0"` 且含 `<rss`;rss.xml 中 drafts-example 计数 0;digest.xml 是合法空 channel(M0 的正常状态)。
+Expected:两个文件含rss/channel且无草稿。不能只看字符串就宣称XML合法;用标准解析器验证(开发机Python已有):
+```bash
+python -c "import xml.etree.ElementTree as E; [E.parse(p) for p in ['site/dist/rss.xml','site/dist/digest.xml']]; print('RSS XML parse OK')"
+```
+两个空feed均能解析是M0验收项。
 
 转义验证(Review Focus 4):临时把 `hello-nanmu-blog.md` 的 title 改为 `你好,nanmu-blog & <重启>`,先把 frontmatter 的 `draft: true` 改为 `false`,build 后:
 ```bash
-grep -o "nanmu-blog &amp; &lt;重启&gt;" dist/rss.xml
+grep -o "nanmu-blog &amp; &lt;重启&gt;" site/dist/rss.xml
 ```
 Expected: 命中(`&` 与 `<>` 均已转义)。验证后**还原**:title 改回 `你好,nanmu-blog`,`draft` 改回 `true`,重新 build 确认 PASS。
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add site/src/pages/rss.xml.js site/src/pages/digest.xml.js
-git commit -m "feat: /rss.xml 与 /digest.xml 双 RSS 出口,空 feed 合法"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add site/src/pages/rss.xml.js site/src/pages/digest.xml.js
+  git commit -m "feat: /rss.xml 与 /digest.xml 双 RSS 出口,空 feed 合法"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -673,7 +662,7 @@ git commit -m "feat: /rss.xml 与 /digest.xml 双 RSS 出口,空 feed 合法"
 - [ ] **Step 1: smoke.mjs**
 
 ```js
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 
 const dist = new URL('../dist/', import.meta.url);
 const mustExist = [
@@ -685,18 +674,31 @@ for (const f of mustExist) {
   if (!existsSync(new URL(f, dist))) problems.push(`缺失 ${f}`);
 }
 
-const rss = readFileSync(new URL('rss.xml', dist), 'utf8');
-if (!rss.includes('<rss')) problems.push('rss.xml 不是 RSS');
-if (rss.includes('drafts-example')) problems.push('draft 文章泄漏进 rss.xml');
-
-const dxml = readFileSync(new URL('digest.xml', dist), 'utf8');
-if (!dxml.includes('<rss')) problems.push('digest.xml 不是 RSS');
+for (const f of ['rss.xml', 'digest.xml']) {
+  if (!existsSync(new URL(f, dist))) continue;
+  const xml = readFileSync(new URL(f, dist), 'utf8');
+  if (!xml.includes('<rss') || !xml.includes('<channel>')) problems.push(`${f} 缺少RSS结构`);
+  if (xml.includes('drafts-example')) problems.push(`草稿泄漏到 ${f}`);
+}
+if (existsSync(new URL('posts/drafts-example/index.html', dist))) problems.push('草稿详情泄漏');
+function checkHtml(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+    if (entry.isDirectory()) checkHtml(url);
+    else if (entry.name.endsWith('.html')) {
+      const html = readFileSync(url, 'utf8');
+      if (html.includes('drafts-example')) problems.push(`草稿链接泄漏: ${url.pathname}`);
+      if (/<script\b/i.test(html)) problems.push(`客户端脚本: ${url.pathname}`);
+    }
+  }
+}
+if (existsSync(dist)) checkHtml(dist);
 
 if (problems.length) {
   console.error('SMOKE FAIL:\n' + problems.join('\n'));
   process.exit(1);
 }
-console.log('smoke ok: 7 个必需产物齐全,draft 未泄漏,RSS 合法');
+console.log('smoke ok: 必需产物/永久草稿/零script/RSS基本结构检查通过(XML解析另验)');
 ```
 
 - [ ] **Step 2: package.json 加 verify script**
@@ -708,17 +710,22 @@ console.log('smoke ok: 7 个必需产物齐全,draft 未泄漏,RSS 合法');
 
 - [ ] **Step 3: 验证**
 
-Run: `cd site && npm run verify`
+Run: `npm --prefix site run verify`
 Expected: build complete 后输出 `smoke ok: ...`。
 
-人为破坏验证(确认脚本真的会拦):临时把 `digest.xml.js` 的 items 改成 `undefined`,重跑
-Expected: `SMOKE FAIL` 且退出码非 0。还原后再跑一次确认 `smoke ok`。
+负例验证:先build,把site/dist/digest.xml移到临时备份,单独运行 `node site/scripts/smoke.mjs`,应SMOKE FAIL且非零;恢复后verify通过。再用Task3非法frontmatter fixture运行verify,应在build阶段非零(不要求一定打印SMOKE FAIL)。所有负例只在临时文件/验收目录,提交前还原并verify。
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add site/scripts/smoke.mjs site/package.json
-git commit -m "feat: npm run verify——build+冒烟,commit 前门槛"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add site/scripts/smoke.mjs site/package.json
+  git commit -m "feat: npm run verify——build+冒烟,commit 前门槛"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -727,69 +734,98 @@ git commit -m "feat: npm run verify——build+冒烟,commit 前门槛"
 
 **Files:**
 - Create: `deploy/post-receive`、`deploy/deploy.sh`、`deploy/Caddyfile.snippet`
-- Create: `docs/ops/deploy.md`(runbook,Task 9 逐字执行它)、`docs/architecture.md`
+- Modify: `docs/ops/deploy.md`(准备版已建立;Task8核对脚本与现场前置条件)
+- Modify: `docs/architecture.md`(已存在,仅同步部署事实,不得用摘要覆盖全文)
 
 **Interfaces:**
-- Consumes: Task 7 的 `npm run build`;仓库结构(site/ 子目录)
+- Consumes: Task 7 的 `npm run verify`;仓库结构(site/ 子目录)
 - Produces: 服务器工件的标准来源(Task 9 把它们安装到 `/opt/git/nanmu-blog.git/hooks/` 与 Caddy);runbook 是唯一部署真相源,回滚/故障处理写在里面
 
 - [ ] **Step 1: deploy/post-receive**
 
 ```bash
 #!/bin/bash
-# /opt/git/nanmu-blog.git/hooks/post-receive — 只部署 main,后台 flock 构建,立即返回
-set -u
+# 只认main;后台任务等待锁,超过期限留日志;所有stdio脱离push连接
+set -eu
 NULL_SHA=0000000000000000000000000000000000000000
-DEPLOY_BRANCH=refs/heads/main
 found=0
 while read -r oldrev newrev refname; do
-  if [ "$refname" = "$DEPLOY_BRANCH" ] && [ "$newrev" != "$NULL_SHA" ]; then
-    found=1
-  fi
+  if [ "$refname" = refs/heads/main ] && [ "$newrev" != "$NULL_SHA" ]; then found=1; fi
 done
-[ "$found" = "1" ] || exit 0
-LOG=/opt/git/nanmu-blog-deploy.log
-if flock -n /tmp/nanmu-blog-build.lock -c "/opt/git/nanmu-blog.git/hooks/deploy.sh >> $LOG 2>&1"; then
-  echo "build queued: $(date -Is)"
-else
-  echo "$(date -Is) another build in progress, skipped" | tee -a "$LOG"
-fi
+[ "$found" = 1 ] || exit 0
+export NB_REPO="${NB_REPO:-/opt/git/nanmu-blog.git}"
+export NB_ROOT="${NB_ROOT:-/var/www/nanmu-blog}"
+LOG="${NB_LOG:-/var/www/nanmu-blog/deploy.log}"
+nohup bash -c '
+  if flock -E 75 -w 900 "$NB_ROOT/build.lock" timeout -k 30s 900s "$NB_REPO/hooks/deploy.sh"; then
+    exit 0
+  else
+    code=$?
+    printf "%s build failed or lock timed out, exit=%s; manual retry required\n" "$(date -Is)" "$code"
+    exit "$code"
+  fi
+' >> "$LOG" 2>&1 </dev/null &
+printf 'build scheduled; inspect %s and /release.txt for result\n' "$LOG"
 ```
 
 - [ ] **Step 2: deploy/deploy.sh(构建失败不切换 symlink = 线上保持旧版)**
 
 ```bash
 #!/bin/bash
-# /opt/git/nanmu-blog.git/hooks/deploy.sh — 构建到 releases/<sha>,mv -T 原子切换 current
+# 只能由已持有NB_ROOT/build.lock的调用者运行;手动重跑也要flock
 set -euo pipefail
-
-# 服务器 node 可能装在 nvm 下,hook 的非登录 shell 里没有 PATH
+umask 022
 if [ -f "$HOME/.nvm/nvm.sh" ]; then . "$HOME/.nvm/nvm.sh"; fi
-
-export GIT_DIR=/opt/git/nanmu-blog.git
-RELEASES=/var/www/nanmu-blog/releases
-SHA=$(git rev-parse main)
+REPO="${NB_REPO:-/opt/git/nanmu-blog.git}"
+ROOT="${NB_ROOT:-/var/www/nanmu-blog}"
+RELEASES="$ROOT/releases"
+unset GIT_WORK_TREE GIT_INDEX_FILE
+export GIT_DIR="$REPO"
+SHA=$(git rev-parse refs/heads/main)
+[[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
 DEST="$RELEASES/$SHA"
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
-
-if [ -d "$DEST/dist" ]; then
-  echo "$(date -Is) release $SHA already built, skip build"
+STAGE=""
+cleanup() {
+  rm -rf -- "$WORK"
+  if [ -n "$STAGE" ]; then rm -rf -- "$STAGE"; fi
+}
+trap cleanup EXIT
+if [ -f "$DEST/.complete" ] && [ "$(cat "$DEST/.complete")" = "$SHA" ]; then
+  [ "$(cat "$DEST/dist/release.txt")" = "$SHA" ] || exit 1
 else
-  mkdir -p "$DEST"
-  GIT_WORK_TREE="$WORK" git checkout -f main
+  if [ -e "$DEST" ]; then
+    printf 'incomplete release requires inspection: %s\n' "$DEST" >&2
+    exit 1
+  fi
+  git archive "$SHA" | tar -x -C "$WORK"
   cd "$WORK/site"
-  npm ci --prefer-offline --cache /opt/git/npm-cache
-  npm run build -- --outDir "$DEST/dist"
+  npm ci --prefer-offline --cache /opt/git/nanmu-blog-npm-cache
+  npm run verify
+  printf '%s\n' "$SHA" > dist/release.txt
+  STAGE=$(mktemp -d "$RELEASES/.build.XXXXXX")
+  cp -a dist "$STAGE/dist"
+  chmod 755 "$STAGE"
+  chmod -R a+rX "$STAGE/dist"
+  printf '%s\n' "$SHA" > "$STAGE/.complete"
+  mv -T "$STAGE" "$DEST"
+  STAGE=""
 fi
+ln -sfn "$DEST" "$ROOT/current.tmp"
+mv -T "$ROOT/current.tmp" "$ROOT/current"
+printf '%s deployed %s\n' "$(date -Is)" "$SHA"
 
-# 原子切换:先建临时软链再 mv -T(ln -f 有 unlink 窗口,不可用)
-ln -sfn "$DEST" /var/www/nanmu-blog/current.tmp
-mv -T /var/www/nanmu-blog/current.tmp /var/www/nanmu-blog/current
-
-# 只保留最近 5 个 release
-ls -1dt "$RELEASES"/*/ | tail -n +6 | xargs -r rm -rf
-echo "$(date -Is) deployed $SHA"
+# 只清理该根下的完整SHA版本,当前版永不删除;共保留当前+最近4个旧版
+kept=1
+mapfile -t candidates < <(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
+for candidate in "${candidates[@]}"; do
+  name="${candidate##*/}"
+  [[ "$name" =~ ^[0-9a-f]{40}$ ]] || continue
+  [ "$candidate" != "$DEST" ] || continue
+  [ -f "$candidate/.complete" ] || continue
+  if [ "$kept" -lt 5 ]; then kept=$((kept + 1)); continue; fi
+  rm -rf -- "$candidate" || printf 'warning: old release cleanup failed: %s\n' "$candidate" >&2
+done
 ```
 
 - [ ] **Step 3: deploy/Caddyfile.snippet**
@@ -808,81 +844,28 @@ blog.nanmu.xyz {
 
 (404 用 `handle_errors` 返回真 404 状态码;`try_files` 回退是软 404,不采用。)
 
-- [ ] **Step 4: docs/ops/deploy.md(runbook,Task 9 逐字执行)**
+- [ ] **Step4: 核对部署手册**
 
-```markdown
-# nanmu-blog 部署 runbook
+按 [ops/deploy.md](../../ops/deploy.md) 检查脚本路径、专用npm缓存、日志、权限、SSH/DNS、候选Caddy配置、发布确认和回滚。它是唯一操作手册;发现与工件不符先同步,不在本计划复制第二份。
 
-服务器:123.56.223.97(user nanmu,sudo NOPASSWD)。凭据不落盘:密码只在交互输入。
+- [ ] **Step5: 同步架构与状态**
 
-## 0. 前置检查
-    ssh nanmu@123.56.223.97 'node -v && which node && ls /opt/git/'
-node ≥18.17.1(Astro 5 要求)。若 node 在 nvm 下,记下路径(deploy.sh 已做 nvm 兼容)。
-
-## 1. 目录与 bare repo
-    ssh nanmu@123.56.223.97
-    sudo mkdir -p /var/www/nanmu-blog/releases && sudo chown -R nanmu:nanmu /var/www/nanmu-blog
-    git init --bare /opt/git/nanmu-blog.git
-    mkdir -p /opt/git/npm-cache
-
-## 2. 安装 hook 工件(本机仓库根目录执行)
-    scp deploy/post-receive deploy/deploy.sh nanmu@123.56.223.97:/opt/git/nanmu-blog.git/hooks/
-    ssh nanmu@123.56.223.97 'chmod +x /opt/git/nanmu-blog.git/hooks/post-receive /opt/git/nanmu-blog.git/hooks/deploy.sh'
-
-## 3. SSH 免密(本机;若无 key 先 ssh-keygen -t ed25519)
-    type %USERPROFILE%\.ssh\id_ed25519.pub | ssh nanmu@123.56.223.97 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
-    ssh nanmu@123.56.223.97 true   # 验证免密
-
-## 4. DNS(用户在域名控制台操作)
-添加 A 记录:blog.nanmu.xyz → 123.56.223.97。验证:nslookup blog.nanmu.xyz
-
-## 5. Caddy(先 validate 再 reload——坏配置会连累同机 skills.nanmu.xyz)
-    scp deploy/Caddyfile.snippet nanmu@123.56.223.97:/tmp/blog.caddy
-    ssh nanmu@123.56.223.97 'sudo sh -c "cat /tmp/blog.caddy >> /etc/caddy/Caddyfile && caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile"'
-    # validate 失败:从 /etc/caddy/Caddyfile 删掉刚追加的块,绝不 reload
-    ssh nanmu@123.56.223.97 'sudo systemctl reload caddy && sleep 3 && systemctl is-active caddy'
-Caddy 自动签 TLS(DNS 生效后)。验证:curl -sI https://blog.nanmu.xyz;同时确认 https://skills.nanmu.xyz 仍 200
-
-## 6. 首次部署与验收
-    git remote add server nanmu@123.56.223.97:/opt/git/nanmu-blog.git
-    git push server main
-    sleep 60 && ssh nanmu@123.56.223.97 'tail -20 /opt/git/nanmu-blog-deploy.log'
-    curl -sI https://blog.nanmu.xyz          # 200
-    curl -s https://blog.nanmu.xyz/rss.xml | head -5
-    curl -s https://blog.nanmu.xyz/digest/ | grep -o "尚未发布任何日报"
-
-## 7. 回滚
-    ssh nanmu@123.56.223.97 'ls -1dt /var/www/nanmu-blog/releases/*'
-    ssh nanmu@123.56.223.97 'ln -sfn /var/www/nanmu-blog/releases/<旧sha> /var/www/nanmu-blog/current.tmp && mv -T /var/www/nanmu-blog/current.tmp /var/www/nanmu-blog/current'
-
-## 8. 故障
-- 构建失败:看 /opt/git/nanmu-blog-deploy.log;线上仍是旧 release(current 未切换),修好后重新 push。
-- 并发 push:flock 自动跳过后到者,等先到者完成再推或手动重跑 deploy.sh。
-```
-
-- [ ] **Step 5: docs/architecture.md(从 spec §3 摘要)**
-
-```markdown
-# nanmu-blog 架构
-
-三件套:site(Astro 5 静态站,git 即 CMS)/ engine(M1,读 topic-digest SQLite 产日报)/ rag(M2,自用问答)。
-
-数据流:
-1. 写作流:人写 markdown → git push → post-receive 后台 flock 构建 → releases/<sha> + mv -T 原子 symlink → Caddy
-2. AI 流(M1):engine 定时读 topic-digest → 评分精选 → 摘要 → digest markdown 入库 git → 同一构建链
-3. RAG 流(M2):engine 建向量索引 → FastAPI /ask(basicauth)
-
-铁律与详设:docs/superpowers/specs/2026-10-02-nanmu-blog-design.md
-```
+同步已有architecture.md、环境文档和session,保留证据等级。此时只能称工件已落盘,不能将部署手册改成已验收。
 
 - [ ] **Step 6: 语法检查并提交**
 
 Run: `bash -n deploy/post-receive && bash -n deploy/deploy.sh && git status --short`
-Expected: 两个脚本语法 OK(bash -n 无输出即通过)。
+Expected: 两个脚本语法OK(bash -n无输出即通过);这不代表Linux运行/权限/并发已验收,Task9必须实测。
 
 ```bash
-git add deploy docs/ops docs/architecture.md
-git commit -m "feat: 部署工件(post-receive/deploy.sh/Caddyfile)与运维 runbook"
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add deploy docs/ops docs/architecture.md
+  git commit -m "feat: 部署工件(post-receive/deploy.sh/Caddyfile)与运维 runbook"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -898,68 +881,69 @@ git commit -m "feat: 部署工件(post-receive/deploy.sh/Caddyfile)与运维 run
 
 - [ ] **Step 1: 按 runbook §0-§2 开通服务器**
 
-逐字执行 `docs/ops/deploy.md` §0-§2:前置检查(node 版本)→ 目录/bare repo/npm-cache → 安装 hook 并 chmod +x。
+核对现场后执行 `docs/ops/deploy.md` §0-§2:前置检查(node版本)→ 目录/bare repo/专用npm缓存 → 安装hook并chmod +x;现场与手册不符先修正文档。
 Expected: `ssh nanmu@123.56.223.97 'ls -la /opt/git/nanmu-blog.git/hooks/post-receive /opt/git/nanmu-blog.git/hooks/deploy.sh'` 两个文件存在且带 x 权限。
 
 - [ ] **Step 2: SSH 免密(runbook §3)**
 
-按 runbook §3 配置公钥。验证:`ssh nanmu@123.56.223.97 true; echo $?`
+按 runbook §3 配置公钥。验证:`ssh -o BatchMode=yes -o ConnectTimeout=10 nanmu@123.56.223.97 true; echo $?`
 Expected: `0`(免密成功;密码只在首次配置时交互输入,不落盘)。
 
 若非 0,按序排查(**历史教训:topic-digest 当年 remote 直连失败未诊断,退化成手工 bundle 同步——这次把原因查清**):
 1. `ssh -v nanmu@123.56.223.97 true 2>&1 | tail -20`——看 offered public key 是否被服务器拒收
 2. 服务器端 `sudo tail -20 /var/log/secure`(或 `sudo journalctl -u sshd -n 20`)看拒绝原因(常见:`~/.ssh/authorized_keys` 权限非 600、`~/.ssh` 非 700、home 目录组可写)
-3. 修复后重试;**30 分钟内仍不通 → 降级为 git bundle 同步**(topic-digest 模式:`git bundle create /tmp/nb.bundle main` → scp → 服务器 bare repo `git fetch /tmp/nb.bundle main:main` 再手动触发 hook),并把"免密未通+根因"写入 session 的 omissions
+3. 修复后重试;**30 分钟内仍不通 → 降级为 git bundle 同步**(topic-digest 模式:`git bundle create "${TMPDIR:-/tmp}/nb.bundle" main` → scp → 服务器bare repo `git fetch /tmp/nb.bundle main:main` 再按runbook带锁运行deploy.sh(直接调用无stdin的hook不会触发部署)),并把"免密未通+根因"写入 session 的 omissions
 
 - [ ] **Step 3: DNS 与 Caddy(runbook §4-§5)**
 
-提醒用户在域名控制台加 A 记录(这是用户手动操作,等确认)。然后执行 runbook §5 装 Caddy 块并 reload。
-Expected: `nslookup blog.nanmu.xyz` 解析到 123.56.223.97;Caddy reload 无报错。
+提醒用户在域名控制台加 A 记录(这是用户手动操作,等确认)。然后按runbook §5准备并validate候选Caddy配置;先在Step4生成可读current再加载博客站点块。
+Expected:DNS核对正确,候选配置validate通过,原Caddy服务保持现状。
 
 - [ ] **Step 4: 首次部署(runbook §6)**
 
-```bash
-git remote add server nanmu@123.56.223.97:/opt/git/nanmu-blog.git
-git push server main
-```
-等待约 60-120 秒(npm ci 首次无缓存会慢),然后验证:
+按部署手册§3核对已有server remote,再按§6推送并观察构建;不要重复添加同名remote。
+等待构建成功并核对Caddy用户可读(包含release根755权限),再按runbook §5加载候选配置。随后验证:
 ```bash
 curl -sI https://blog.nanmu.xyz                          # HTTP/2 200
 curl -s https://blog.nanmu.xyz/rss.xml | head -5         # <?xml ... <rss
 curl -s https://blog.nanmu.xyz/digest/ | grep -o "尚未发布任何日报"
 ```
-Expected: 三条全部命中。M0 站点上线。
+Expected: 三条全部命中且release.txt与期望SHA一致。仅代表首次部署通过,M0仍需Task10完整验收。
 
-- [ ] **Step 5: 韧性实测(Review Focus 5)**
+- [ ] **Step 5: 独立验收目标的韧性实测(Review Focus 5)**
 
-推一个构建必失败的 commit(schema 违约):
-```bash
-printf -- "---\ntitle: 坏条目\ndate: '2026-10-02'\n---\n缺 generated 字段\n" > site/src/content/digest/bad.md
-git add site/src/content/digest/bad.md && git commit -m "test: 故意构建失败(部署韧性验证,随后回滚)"
-git push server main && sleep 90
-```
-验证线上未受影响:
-```bash
-curl -sI https://blog.nanmu.xyz        # 仍然 200(旧 release)
-ssh nanmu@123.56.223.97 'tail -5 /opt/git/nanmu-blog-deploy.log'   # 有构建失败记录
-```
-清理:
-```bash
-git rm site/src/content/digest/bad.md
-git commit -m "revert: 移除韧性验证的坏条目"
-git push server main && sleep 60
-curl -s https://blog.nanmu.xyz/digest/ | grep -o "尚未发布任何日报"   # 恢复正常
-```
-Expected: 坏 commit 线上仍 200;修复后正常。证明"构建失败不切换 symlink"。
+不得提交坏生产main。先核对并建立独立目标:`/opt/git/nanmu-blog-acceptance.git`、`/var/www/nanmu-blog-acceptance`、独立日志。复制同一版本hook/deploy脚本;在验收hook的set -eu后设置NB_REPO/NB_ROOT/NB_LOG指向上述目标,绝不沿用生产默认值。本地使用临时clone和专属remote,不修改主工作区历史。记录目标清单后再执行。
+
+在验收目标按顺序验证并保存日志/退出码/readlink/release.txt:
+
+1. 推好版本,确认current指向完整release,`.complete`及release.txt等于已接收SHA。
+2. 推非main分支,确认无构建;删除临时分支不触发发布。
+3. 在验收clone的main加入Task3非法digest并push;确认有构建错误,current及已发布内容保持好版本,坏SHA没有.complete。移除坏文件后提交,push应恢复。
+4. 阻塞第一次构建或短暂持有验收锁,连续push两个不同提交;释放锁后最后线上标记必须包含第二个main提交,不能静默丢弃后到者。记录push返回时间证明hook没有等待整个构建。
+5. 模拟构建中断/半成品;重试同一SHA不得把部分dist当成功缓存。验证超时可观测,再带锁手动重跑成功。
+
+验收目录不配置公网Caddy入口,用文件标记/readlink确认原子发布。生产端同时抽查博客与skills入口基线;生产首篇发布/HTTP/回滚由Task10验证。验收结束保留证据,列出临时目录后按用户授权清理,不使用宽泛rm。
 
 - [ ] **Step 6: 提交验证记录**
 
-把韧性实测结果(时间点、curl 输出摘要)记入 `docs/sessions/2026-10-02-m0-deploy.md`(格式按 spec §8.1:objective/state[verified]/disposition/next_action/omissions)。
+把独立目标韧性实测结果及生产冒烟(时间点、SHA、退出码、HTTP输出摘要)记入实际执行日期的session(格式按spec §8.1:objective/state[verified]/disposition/next_action/omissions)。先确定文件名,再使用模板填写证据,不要预写“通过”:
 
 ```bash
-git add docs/sessions/2026-10-02-m0-deploy.md
-git commit -m "docs: M0 部署与会话交接记录(韧性实测通过)"
-git push server main
+deploy_session="docs/sessions/$(date +%F)-m0-deploy.md"
+```
+
+填写完成、适用检查通过后提交:
+
+```bash
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add "$deploy_session"
+  git commit -m "docs: M0 部署与会话交接记录(韧性实测通过)"
+  git push server main
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -988,49 +972,72 @@ draft: false
 - [ ] **Step 2: 本地验证并计时发布**
 
 ```bash
-cd site && npm run verify && cd ..
-git add site/src/content/posts/hello-nanmu-blog.md
-git commit -m "feat: 首篇文章——你好,nanmu-blog"
-date +%s   # 记下推送前时间戳
-git push server main
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  npm --prefix site run verify
+  git add site/src/content/posts/hello-nanmu-blog.md
+  git commit -m "feat: 首篇文章——你好,nanmu-blog"
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
+test "$(git branch --show-current)" = main || exit 1
+start=$(date +%s)   # 同一shell中的验收轮询复用,包含push耗时
+git push server main || exit 1
 ```
 
 - [ ] **Step 3: 验收(spec §9 M0 标准)**
 
 循环检查直到出现(总耗时应 ≤180 秒):
 ```bash
-until curl -s https://blog.nanmu.xyz/rss.xml | grep -q "你好,nanmu-blog"; do sleep 10; done; date +%s
+: "${start:?先记录push前时间}"
+expected=$(git rev-parse refs/heads/main)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
+ok=0
+while [ $(( $(date +%s) - start )) -lt 180 ]; do
+  if [ "$(curl --fail --silent --max-time 10 https://blog.nanmu.xyz/release.txt)" = "$expected" ] && curl --fail --silent --max-time 10 https://blog.nanmu.xyz/rss.xml | grep -q "你好,nanmu-blog"; then
+    ok=1; break
+  fi
+  sleep 5
+done
+echo "elapsed=$(( $(date +%s) - start ))s"
+[ "$ok" = 1 ] && [ $(( $(date +%s) - start )) -le 180 ] || { echo 'publish timeout'; exit 1; }
 ```
-三条验收:
+三条验收(除RSS标题外,必须直接访问`/posts/hello-nanmu-blog/`,核对200与一段本次正文;随机不存在URL为真实404):
 1. push 后 3 分钟内线上可见(两个时间戳之差 ≤180s)
-2. RSS 可订阅:`curl -s https://blog.nanmu.xyz/rss.xml | grep 你好` 命中
+2. 两条RSS用XML解析器验证,文章feed含本次标题/链接,并用实际阅读器或订阅客户端完成一次订阅;grep只作辅助
 3. 明暗主题正常:浏览器 DevTools Rendering → Emulate CSS prefers-color-scheme 切换 dark/light,配色切换、无 JS(人工确认)
 
 - [ ] **Step 3b: 回滚演练(runbook §7 实操一次)**
 
-此刻 releases/ 里已有两个版本(首篇文章 + 上一版),把回滚路径真实走一遍:
+此刻releases里已有首篇文章版与上一版。按[部署手册](../../ops/deploy.md)§7选择完整旧SHA,暂停新push并取得同一build.lock,回滚后确认旧内容与旧release.txt,再切回新版本。
 
-```bash
-ssh nanmu@123.56.223.97 'ls -1dt /var/www/nanmu-blog/releases/*'
-# 取较旧的一个目录作为 <旧sha>,切换过去:
-ssh nanmu@123.56.223.97 'ln -sfn /var/www/nanmu-blog/releases/<旧sha> /var/www/nanmu-blog/current.tmp && mv -T /var/www/nanmu-blog/current.tmp /var/www/nanmu-blog/current'
-curl -s https://blog.nanmu.xyz/ | grep -c '你好'      # 0——旧版没有首篇文章
-# 再切回最新版本(重跑上一条,sha 换回最新):
-curl -s https://blog.nanmu.xyz/ | grep -c '你好'      # ≥1——恢复
-```
-Expected: 两次切换均秒级生效、线上始终 200。回滚不是纸上流程,是实测可用的。
+Expected:两次切换均秒级生效、首页始终200、release.txt命中各目标SHA;记录结果到session。运维回滚不删除任何原文/费用记录。
 
 - [ ] **Step 4: 打 tag 并收尾**
 
 ```bash
-git tag m0 && git push server m0
+git tag -a m0 -m 'M0 博客上线验收通过' && git push server m0
 ```
-写 `docs/sessions/2026-10-02-m0-acceptance.md` 交接记录(验收证据、M1 启动提示:M1 plan 待写)。
+用实际执行日期写验收交接(验收证据、M1启动提示:M1 plan待写),同时更新README/AGENTS/文档索引状态并通过文档检查:
 
 ```bash
-git add docs/sessions/2026-10-02-m0-acceptance.md
-git commit -m "docs: M0 验收通过,tag m0"
-git push server main && git push server m0
+acceptance_session="docs/sessions/$(date +%F)-m0-acceptance.md"
+```
+
+填写完成后:
+
+```bash
+(
+  set -euo pipefail
+  git diff --cached --quiet || { echo "已有暂存内容,先核对归属"; exit 1; }
+  git add "$acceptance_session" README.md AGENTS.md docs/README.md
+  git commit -m "docs: M0 验收通过,tag m0"
+  git push server main && git push server m0
+)
+nb_step_status=$?
+[ "$nb_step_status" -eq 0 ] || exit "$nb_step_status"
 ```
 
 ---
@@ -1038,6 +1045,12 @@ git push server main && git push server m0
 ## 自审记录(writing-plans Self-Review)
 
 1. **Spec 覆盖**:spec §4(站点/collection/页面/RSS)= Task 2-7;§4.1 schema 契约 = Task 3;§7 部署(runbook 全节)= Task 8-9;§8 文档系统(AGENTS/README/architecture/ops/deploy + §8.1 sessions)= Task 1/8/9/10;§9 M0 验收三条 = Task 10 步骤 3。spec §5/§6 属 M1/M2,不在本计划(见 Global Constraints 最后一条)。
-2. **占位符扫描**:无 TBD/TODO;所有代码步骤含完整代码;服务器步骤含完整命令。
+2. **占位符扫描**:无 TBD/TODO;代码步骤给实施基线;部署流程统一在ops/deploy.md,先决条件和现场差异必须核对。
 3. **类型一致性**:collections 名(posts/digest)与字段在 Task 3 定义、Task 5/6/7 消费一致;`SITE_TITLE/SITE_DESC` 在 Task 4 定义、Task 6 消费;路由产物清单在 Task 5 产出、Task 7 冒烟清单一致;hook 路径 `/opt/git/nanmu-blog.git/hooks/` 在 Task 8/9 一致。
 4. **Review Focus 五条**均已钉到任务步骤(见每条括号内任务号)。
+
+## 文档审查修订
+
+依据与未验证项见[文档审查记录](../../reviews/2026-10-02-documentation-audit.md)。M0应用尚未创建;以上代码块是修订后的实施基线,不宣称已运行。
+
+2026-10-04补充:命令上下文与失败停止、暂存保护、分页/内容路径边界、详情与RSS订阅验收。工件仍待Task2-10实际实现,不把文档片段当现存应用。
