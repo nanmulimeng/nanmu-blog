@@ -62,7 +62,7 @@ spec 未显式测试、但最容易咬人的五类输入/故障,及钉住它们�
 - Consumes: Task 1 的 .gitignore(排除 node_modules/dist/.astro)
 - Produces: `site/` 可构建的 Astro 5 项目;`npm run build` 产出 `site/dist/`(Task 7 依赖);astro.config 的 `site` URL(Task 6 RSS 依赖)
 
-- [ ] **Step 1: 创建明确主版本的最小项目**
+- [x] **Step 1: 创建明确主版本的最小项目**
 
 不要用create-astro@latest推断会得到Astro 5。先核对开发机Node与拟安装Astro 5包的engines;服务器在Task 9单独核对。Astro 5不同小版本要求可能不同。
 
@@ -92,7 +92,7 @@ spec 未显式测试、但最容易咬人的五类输入/故障,及钉住它们�
 
 Expected:package.json显式锁定5.x与RSS4.x,无engines冲突。依据:[Astro5官方迁移文档](https://docs.astro.build/en/guides/upgrade-to/v5/),版本最终以本次安装结果为准。
 
-- [ ] **Step 2: 配置 site URL**
+- [x] **Step 2: 配置 site URL**
 
 `site/astro.config.mjs` 全文替换为:
 ```js
@@ -103,12 +103,12 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: 验证构建**
+- [x] **Step 3: 验证构建**
 
 Run: `npm --prefix site run build`
 Expected: 结束输出 "complete";`site/dist/index.html` 存在。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 (
@@ -135,7 +135,7 @@ nb_step_status=$?
 - Consumes: Task 2 的 site/ 项目
 - Produces: collection `posts` 与 `digest`(字段见 Global Constraints)——Task 5/6 用 `getCollection('posts'|'digest')` 消费;digest 目录 `site/src/content/digest/`(M1 引擎写入目标,路径契约从此固定)
 
-- [ ] **Step 1: 写 content.config.ts**
+- [x] **Step 1: 写 content.config.ts**
 
 ```ts
 import { defineCollection, z } from 'astro:content';
@@ -165,7 +165,7 @@ const digest = defineCollection({
 export const collections = { posts, digest };
 ```
 
-- [ ] **Step 2: 建目录与首篇内容**
+- [x] **Step 2: 建目录与首篇内容**
 
 `mkdir -p site/src/content/digest`并创建空`.gitkeep`(glob只读md);Git不跟踪空目录,M1后填充内容。M0的posts文件暂约束为单层小写短横线文件名,避开纯数字ID与分页路由冲突。
 
@@ -194,7 +194,7 @@ draft: true
 这是 draft 功能的永久 fixture:它必须被列表、详情页、RSS 同时排除。
 ```
 
-- [ ] **Step 3: 契约验证——非法 digest frontmatter 必须让构建失败**
+- [x] **Step 3: 契约验证——非法 digest frontmatter 必须让构建失败**
 
 临时创建 `site/src/content/digest/2026-10-01.md`:
 ```markdown
@@ -214,7 +214,7 @@ Expected: **FAIL**,报错指向 digest schema(generated 字段缺失/literal 不
 删除该临时文件,再跑 `npm --prefix site run build`
 Expected:PASS。补临时负例:空标题、generated=false、非法日历日期、负成本、非整数条数均失败;有效字段恢复后成功。fixture不提交。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 (
@@ -238,14 +238,14 @@ nb_step_status=$?
 - Consumes: Task 2 的项目
 - Produces: `Base.astro`(props:`title: string`、`description?: string`)——Task 5 所有页面用它包壳;`consts.ts` 导出 `SITE_TITLE = 'nanmu blog'`、`SITE_DESC = '个人文章与 AI 日报'`(Task 6 RSS 消费);`global.css` 的 CSS 变量体系(`--bg/--fg/--muted/--link/--border/--card`)
 
-- [ ] **Step 1: consts.ts**
+- [x] **Step 1: consts.ts**
 
 ```ts
 export const SITE_TITLE = 'nanmu blog';
 export const SITE_DESC = '个人文章与 AI 日报';
 ```
 
-- [ ] **Step 2: global.css(零 JS 明暗主题)**
+- [x] **Step 2: global.css(零 JS 明暗主题)**
 
 ```css
 :root {
@@ -275,7 +275,7 @@ pre { overflow-x: auto; padding: 0.75rem; border-radius: 6px; background: var(--
 hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 ```
 
-- [ ] **Step 3: Header.astro**
+- [x] **Step 3: Header.astro**
 
 ```astro
 ---
@@ -302,7 +302,7 @@ const links = [
 </style>
 ```
 
-- [ ] **Step 4: Base.astro**
+- [x] **Step 4: Base.astro**
 
 ```astro
 ---
@@ -334,7 +334,7 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
 </html>
 ```
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 Run: `npm --prefix site run build`
 Expected:现有路由构建PASS;尚未引用的布局/组件不据此宣称已验证。Task5引用后才验收实际渲染与样式。Astro build不做TypeScript类型检查,strict tsconfig也不是类型检查命令;本阶段门禁仍为构建+产物验证,如引入独立astro check需记录开发依赖和适用范围。依据:[官方类型检查说明](https://docs.astro.build/en/guides/typescript/#type-checking)。
@@ -363,11 +363,11 @@ nb_step_status=$?
 - Consumes: Task 3 的 collections(`getCollection('posts'|'digest')`,posts 字段 `title/pubDate/tags/draft`,digest 字段 `date/generated/ai_model/entry_count/cost_cny`);Task 4 的 `Base.astro`、global.css 变量
 - Produces: 路由 `/`、`/about/`、`/posts/`、`/posts/{id}/`、`/digest/`、`/digest/{id}/`、`/404`(Task 7 冒烟清单依赖);条目排序契约:posts 按 pubDate 降序,digest 按 date 降序
 
-- [ ] **Step 0: 共享内容路径校验**
+- [x] **Step 0: 共享内容路径校验**
 
 建立`src/lib/content.ts`的内容校验函数,接收页面/RSS读取的完整collection(含草稿),不自行调用getCollection。拒绝嵌套或非小写英文数字短横线的posts id、纯数字posts id,并核对digest id与date一致。所有内容出口在过滤/分页前调用,错误带entry id并使构建非零;后续页面片段展示渲染主体,实施时必须接入此校验。Task6两个RSS同样接入。Task5 Step7负例验证此入口,不依赖Zod字段schema获取文件名。
 
-- [ ] **Step 1: 首页 index.astro**
+- [x] **Step 1: 首页 index.astro**
 
 ```astro
 ---
@@ -403,7 +403,7 @@ const digests = (await getCollection('digest'))
 </Base>
 ```
 
-- [ ] **Step 2: 文章列表(分页)posts/[...page].astro**
+- [x] **Step 2: 文章列表(分页)posts/[...page].astro**
 
 ```astro
 ---
@@ -431,7 +431,7 @@ const { page } = Astro.props;
 </Base>
 ```
 
-- [ ] **Step 3: 文章详情 posts/[id].astro**
+- [x] **Step 3: 文章详情 posts/[id].astro**
 
 ```astro
 ---
@@ -453,7 +453,7 @@ const { Content } = await render(post);
 </Base>
 ```
 
-- [ ] **Step 4: 日报列表(分页 + 空态 + AI 标注)digest/[...page].astro**
+- [x] **Step 4: 日报列表(分页 + 空态 + AI 标注)digest/[...page].astro**
 
 ```astro
 ---
@@ -485,7 +485,7 @@ const { page } = Astro.props;
 </Base>
 ```
 
-- [ ] **Step 5: 日报详情 digest/[id].astro**
+- [x] **Step 5: 日报详情 digest/[id].astro**
 
 ```astro
 ---
@@ -507,7 +507,7 @@ const { Content } = await render(digest);
 </Base>
 ```
 
-- [ ] **Step 6: about.astro 与 404.astro**
+- [x] **Step 6: about.astro 与 404.astro**
 
 `site/src/pages/about.astro`:
 ```astro
@@ -532,7 +532,7 @@ import Base from '../layouts/Base.astro';
 </Base>
 ```
 
-- [ ] **Step 7: 验证 draft 排除与空态**
+- [x] **Step 7: 验证 draft 排除与空态**
 
 Run: `npm --prefix site run build`
 Expected: PASS。检查产物:
@@ -545,7 +545,7 @@ Expected: `dist/posts/` 下无hello-nanmu-blog和drafts-example详情;两个grep
 
 追加有限边界验收:用临时公开fixture超过10篇验证第二页与前后翻页链接,同日期按id稳定排序;验证纯数字/嵌套posts与日报文件名不匹配date会被内容检查明确拒绝。文件名约束不是当前Zod字段schema自动完成的:Task5实现一个共享内容校验入口,页面/构建消费它,禁止让重复路由靠框架优先级静默覆盖。验证后移除临时fixture并还原空态,不新增长期测试框架。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 (
@@ -569,7 +569,7 @@ nb_step_status=$?
 - Consumes: Task 3 collections、Task 4 `consts.ts`(`SITE_TITLE/SITE_DESC`)、Task 2 astro.config `site`(经 `context.site`)
 - Produces: `/rss.xml`(文章)与 `/digest.xml`(日报)endpoint——Task 7 冒烟依赖;路由契约固定,M1 日报发布后自动进 digest.xml,无需改动
 
-- [ ] **Step 1: rss.xml.js**
+- [x] **Step 1: rss.xml.js**
 
 ```js
 import rss from '@astrojs/rss';
@@ -592,7 +592,7 @@ export async function GET(context) {
 }
 ```
 
-- [ ] **Step 2: digest.xml.js(空 feed 也合法)**
+- [x] **Step 2: digest.xml.js(空 feed 也合法)**
 
 ```js
 import rss from '@astrojs/rss';
@@ -615,7 +615,7 @@ export async function GET(context) {
 }
 ```
 
-- [ ] **Step 3: 验证——空 feed 合法、draft 排除、转义**
+- [x] **Step 3: 验证——空 feed 合法、draft 排除、转义**
 
 Run: `npm --prefix site run build`
 ```bash
@@ -634,7 +634,7 @@ grep -o "nanmu-blog &amp; &lt;重启&gt;" site/dist/rss.xml
 ```
 Expected: 命中(`&` 与 `<>` 均已转义)。验证后**还原**:title 改回 `你好,nanmu-blog`,`draft` 改回 `true`,重新 build 确认 PASS。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 (
@@ -659,7 +659,7 @@ nb_step_status=$?
 - Consumes: Task 2 build、Task 5 路由产物、Task 6 RSS 文件(路径契约:`dist/index.html`、`dist/posts/index.html`、`dist/digest/index.html`、`dist/about/index.html`、`dist/rss.xml`、`dist/digest.xml`、`dist/404.html`)
 - Produces: `npm run verify`(build + 冒烟)——Global Constraints 规定的 commit 前门槛;M1 引擎的 CI/回滚流程复用同一脚本
 
-- [ ] **Step 1: smoke.mjs**
+- [x] **Step 1: smoke.mjs**
 
 ```js
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -701,21 +701,21 @@ if (problems.length) {
 console.log('smoke ok: 必需产物/永久草稿/零script/RSS基本结构检查通过(XML解析另验)');
 ```
 
-- [ ] **Step 2: package.json 加 verify script**
+- [x] **Step 2: package.json 加 verify script**
 
 在 `site/package.json` 的 `scripts` 中加入:
 ```json
 "verify": "astro build && node scripts/smoke.mjs"
 ```
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 Run: `npm --prefix site run verify`
 Expected: build complete 后输出 `smoke ok: ...`。
 
 负例验证:先build,把site/dist/digest.xml移到临时备份,单独运行 `node site/scripts/smoke.mjs`,应SMOKE FAIL且非零;恢复后verify通过。再用Task3非法frontmatter fixture运行verify,应在build阶段非零(不要求一定打印SMOKE FAIL)。所有负例只在临时文件/验收目录,提交前还原并verify。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 (
@@ -741,7 +741,7 @@ nb_step_status=$?
 - Consumes: Task 7 的 `npm run verify`;仓库结构(site/ 子目录)
 - Produces: 服务器工件的标准来源(Task 9 把它们安装到 `/opt/git/nanmu-blog.git/hooks/` 与 Caddy);runbook 是唯一部署真相源,回滚/故障处理写在里面
 
-- [ ] **Step 1: deploy/post-receive**
+- [x] **Step 1: deploy/post-receive**
 
 ```bash
 #!/bin/bash
@@ -768,7 +768,7 @@ nohup bash -c '
 printf 'build scheduled; inspect %s and /release.txt for result\n' "$LOG"
 ```
 
-- [ ] **Step 2: deploy/deploy.sh(构建失败不切换 symlink = 线上保持旧版)**
+- [x] **Step 2: deploy/deploy.sh(构建失败不切换 symlink = 线上保持旧版)**
 
 ```bash
 #!/bin/bash
@@ -828,7 +828,7 @@ for candidate in "${candidates[@]}"; do
 done
 ```
 
-- [ ] **Step 3: deploy/Caddyfile.snippet**
+- [x] **Step 3: deploy/Caddyfile.snippet**
 
 ```caddyfile
 blog.nanmu.xyz {
@@ -844,15 +844,15 @@ blog.nanmu.xyz {
 
 (404 用 `handle_errors` 返回真 404 状态码;`try_files` 回退是软 404,不采用。)
 
-- [ ] **Step4: 核对部署手册**
+- [x] **Step4: 核对部署手册**
 
 按 [ops/deploy.md](../../ops/deploy.md) 检查脚本路径、专用npm缓存、日志、权限、SSH/DNS、候选Caddy配置、发布确认和回滚。它是唯一操作手册;发现与工件不符先同步,不在本计划复制第二份。
 
-- [ ] **Step5: 同步架构与状态**
+- [x] **Step5: 同步架构与状态**
 
 同步已有architecture.md、环境文档和session,保留证据等级。此时只能称工件已落盘,不能将部署手册改成已验收。
 
-- [ ] **Step 6: 语法检查并提交**
+- [x] **Step 6: 语法检查并提交**
 
 Run: `bash -n deploy/post-receive && bash -n deploy/deploy.sh && git status --short`
 Expected: 两个脚本语法OK(bash -n无输出即通过);这不代表Linux运行/权限/并发已验收,Task9必须实测。

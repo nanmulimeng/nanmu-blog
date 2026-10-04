@@ -4,10 +4,10 @@
 
 ## 项目状态快照(2026-10-04)
 
-- 设计基线与文档系统已落盘;文档审查已修订实施契约(ADR-0009),应用尚未创建
-- 里程碑:M0(博客上线)待执行,Task 1 已完成;M1(引擎)/M2(RAG)计划各自启动时再写
+- M0 进行中:site/(Astro 5.18.2)Task 2-8 完成,`npm run verify` 全绿;部署工件已落盘
+- 里程碑:M0 Task 9-10(服务器开通/首篇上线)待用户配合执行;M1(引擎)/M2(RAG)计划各自启动时再写
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-04 引擎技术设计交接](docs/sessions/2026-10-04-engine-design.md);当前变更仍在工作区,尚未提交
+- 最新进度:[2026-10-04 M0 Task 2-8 执行交接](docs/sessions/2026-10-04-m0-task2-8.md);本轮 8 个提交未推 origin
 
 ## Agent接手入口
 
@@ -34,10 +34,10 @@
 
 ```
 scripts/   已有文档检查工具
-site/      尚未创建;Astro 5 静态站(posts 手写 + digest 生成)
+site/      Astro 5 静态站已建(M0 Task 2-8;posts 手写 + digest 生成)
 engine/    尚未创建;AI 引擎(M1,Python + SQLite + systemd timer)
 docs/      specs/plans/decisions/engine/ops/sessions/context
-deploy/    服务器部署工件(随 M0 Task 8 落盘)
+deploy/    服务器部署工件(Task 8 已落盘,Task 9 安装)
 ```
 
 ## 常用命令

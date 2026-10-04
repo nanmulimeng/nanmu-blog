@@ -4,15 +4,15 @@
 
 ## 当前状态(2026-10-04)
 
-设计基线与文档系统已建立,M0 Task 1 完成。当前仓库包含文档、基础配置与文档检查脚本,尚无 `site/`、`engine/`、`deploy/`。下一步按 [M0 计划](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)执行 Task 2。
+M0 进行中:site/ 已建(Astro 5.18.2,Task 2-8 完成,`npm run verify` 全绿),deploy/ 工件已落盘;engine/ 留 M1。下一步 M0 [Task 9](docs/superpowers/plans/2026-10-02-m0-blog-launch.md)(服务器开通,需用户配合)与 Task 10(首篇文章上线)。
 
-背景与契约审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);引擎技术实施契约层(engine/design.md)与本轮设计交接见[最新交接](docs/sessions/2026-10-04-engine-design.md)。
+背景与契约审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);引擎实施契约(engine/design.md)与 M0 执行进度见[最新交接](docs/sessions/2026-10-04-m0-task2-8.md)。
 
-## 开发与部署(待 M0 实现)
+## 开发与部署
 
-Task 2 创建 site 后才可运行 `cd site && npm install && npm run dev`。Task 7 建立 `npm run verify`。部署手册准备版已建立;Task8创建部署工件并核对手册,Task9验证server remote与自动发布。
+本地:`cd site && npm install && npm run dev` 开发;`npm run verify`(build + 冒烟)自 Task 7 起是提交门槛。部署工件已落盘(Task 8);服务器安装与自动发布在 Task 9 验证,首篇文章走完整链路在 Task 10。
 
-目标写作流为 Markdown → git push main → 后台构建与冒烟 → 原子静态发布。现在不能把这些命令当作已可用能力。
+目标写作流为 Markdown → git push main → 后台构建与冒烟 → 原子静态发布。服务器侧链路未验收前,不能把线上发布当作已可用能力。
 
 ## 从哪里读
 
