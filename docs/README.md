@@ -12,15 +12,16 @@
 | [development/workflow.md](development/workflow.md) | Agent工作流:接手核对、范围/授权、工作区保护、失败处理、交接 | 定稿(约束所有会话) |
 | [development/coding-standards.md](development/coding-standards.md) | 编码规范:site/engine/RAG + 依赖白名单 + 测试要求 | 定稿(M1/M2 遵守) |
 | [development/quality-gates.md](development/quality-gates.md) | 分阶段验证矩阵、证据口径、四类活动门禁、未来测试清单 | 定稿 |
-| [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 定稿 |
+| [development/design-review.md](development/design-review.md) | 模块详细设计与设计评审规范:可开发八件事、五设计单元、评审结束条件、文档控制约束 | 定稿(约束 M1 起的设计阶段) |
+| [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 总体设计基线(定稿;编码许可以设计评审为准) |
 | [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | Task1-9已实施(线上https://nanmu.xyz);Task10挂起(文档阶段指示) |
 | [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地与发布流程可用(Task9已验收);首篇正式文章待Task10 |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
-| [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 定稿(M1 实施基准) |
-| [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 定稿(M1 实施基准) |
-| [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 定稿(随运营调整) |
-| [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 定稿(台账按月追加) |
+| [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 总体设计基线(模块级编码许可以设计评审为准) |
+| [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 总体设计基线(期生命周期等设计缺口见design-review) |
+| [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 总体设计基线(权重表样例待设计阶段落盘) |
+| [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 总体设计基线(成本标注文案选择待设计阶段定) |
 | [ops/deploy.md](ops/deploy.md) | SSH/目录/权限/Caddy/上线确认/回滚操作 | 已实际执行一轮(Task9);Task10复测待做 |
 | [ops/runbook.md](ops/runbook.md) | 巡检/回滚/故障处理 | 定稿 |
 | [reviews/2026-10-02-documentation-audit.md](reviews/2026-10-02-documentation-audit.md) | 文档审查依据、已修订问题与实施前核查 | 本轮审查完成,运行项待对应阶段验证 |
@@ -52,10 +53,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-04-doc-review-round2.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于文档完善阶段(2026-10-04用户指示),实施类操作暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-04-design-review-phase.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine三文档与design.md → quality-gates测试清单 → 编写M1计划。
+- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → **[设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审** → 编写M1计划。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令
@@ -83,7 +84,7 @@ python scripts/check_docs.py --snippets --bash 'D:/software/Git/Git/bin/bash.exe
 
 ## 状态与变更边界
 
-“定稿”表示可作为设计基线,不表示代码已存在;“准备版”表示已有操作步骤但先决工件/现场验证未完成;“已验收”必须有运行证据。未来任务中的checkbox只有实际执行后才勾选。
+“定稿”表示可作为设计基线,不表示代码已存在;“总体设计基线”进一步明确:它回答做什么与边界,不构成模块编码许可——编码许可以[设计评审](development/design-review.md)通过为准。“准备版”表示已有操作步骤但先决工件/现场验证未完成;“已验收”必须有运行证据。未来任务中的checkbox只有实际执行后才勾选。
 
 变更产品或跨组件契约:先spec/ADR,再同步消费它的plan/engine文档。纯事实勘误可修改正文或给历史ADR附勘误;旧session不重写。完成的计划任务只保留简要结果与证据,删除失效模板;不要让同一操作流程在多份文档中复制。
 
