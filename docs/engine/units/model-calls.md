@@ -38,18 +38,19 @@
 
 ## 3. 业务规则(优先级从高到低)
 
-1. **授权闸门唯一**(budget.md/spec §5.4):一切新增付费 attempt 只经 ledger——短事务内查窗口次数(receipt_attempt.started_utc 聚合;复用响应不计)+金额(已结算+全部未决预占)与限额,通过则写 receipt_attempt(pending+reserved)并 COMMIT,**之后**才出网。业务模块禁止绕过;预筛截断与公式预留都是容量**估算**,不替代逐次授权(**预留不构成调用许可**,规则 6)。
-2. **完整请求身份(覆盖实际发送的有效输入及参数)**:request_hash = sha256(确定性序列化的以下全部字段)——provider、endpoint、purpose、model、**prompt_version、模板实例化后的完整 system+user 文本(含截断标记后的实际输入,非原始材料)**、max_tokens、thinking=disabled、response_format、identity_key、manifest 正文 content_hash、attemptTag(score-1/score-2/understand)。**费用预占按 max_input_tokens 上界计算,与截断无关**(预占保守性不依赖字符换算精度);截断规则本体在单元三 §3 规则 5。
+1. **授权闸门唯一**(budget.md/spec §5.4):一切新增付费 attempt 只经 ledger——短事务内查窗口次数(receipt_attempt.started_utc 聚合;复用响应不计)+金额(已结算+全部未决预占)与限额,通过则写 receipt_attempt(pending+reserved)并 COMMIT,**之后**才出网。**闸门同时检查 engine_meta.pay_paused=1(备份恢复后的全局付费暂停,单元五)——置位即拒绝一切新增,复用/结算/只读不受限**。业务模块禁止绕过;预筛截断与公式预留都是容量**估算**,不替代逐次授权(**预留不构成调用许可**,规则 6)。
+2. **完整请求身份(覆盖实际发送的有效输入及参数)**:request_hash = sha256(确定性序列化的以下全部字段)——provider、endpoint、purpose、model、**prompt_version、模板实例化后的完整 system+user 文本(含截断标记后的实际输入,非原始材料)**、max_tokens、thinking=disabled、response_format、identity_key、manifest 正文 content_hash、attemptTag(score-1/score-2/understand)。**费用预占按 max_input_tokens 上界计算;该上界必须由输入侧截断实际保证**(单元三 §3 规则 5:完整请求——system+标题+正文+截断标记——总字符数 ≤ max_input_tokens,按 1 字符=1 token 的保守上界;DeepSeek 官方换算中文≈0.6 token/字、英文≈4 字符/token,1:1 覆盖两者最坏情况,且输入侧预先 strip 控制字符与非常规字符)。由此闭合"实付输入 ≤ 预占"——**字符比例只用于截断执行,不作为独立授权证明**;响应回填后 usage.prompt_tokens 与预占对账,超出记警示日志(观测校验项)。
    - **复用验证与首次消费使用同一有效性规则**:reusable_scores 命中即返回 receipt 引用,消费方按该引用读取响应,**不做第二次不同规则的判定**——不存在"预筛说可复用、评分单元说无效"的分叉;判定与消费共用本规则的 request_hash 构造。
    - **analysis/summary 通过关联回执核对身份**:业务行有效 = receipt_ids 所引 receipt 的 request_hash 与当前 identity_ctx 一致(prompt 升级/正文变化后旧行自动失效,不迁移不删除,append-only)。
-3. **复用判定接口**:`reusable_scores(members, identity_ctx)` 只读、零副作用;输出复用快照=每成员 `{score_1: ok?, score_2: ok?, needs: [待补 attemptTag], analysis_ref?}`。**有效性条件**(同一套,判定与消费通用):完整请求身份匹配(规则 2)+ receipt.status ∈ {received, completed} + 响应业务可解析;本期同身份 analysis/summary 行同等视为有效进度。
+3. **复用判定接口**:`reusable_scores(members, identity_ctx)` 只读、零副作用;输出复用快照=每成员 `{score_1: ok?, score_2: ok?, needs: [待补 attemptTag], analysis_ref?}`。**有效性条件**(同一套,判定与消费通用):完整请求身份匹配(规则 2)+ receipt.status ∈ {received, completed} + 响应通过**完整 E4 业务验证器**(与首次消费同一验证器,非仅"可解析":正常终止 finish_reason=stop、JSON 契约字段类型与范围全过——`finish_reason=length` 等非正常终止即使 JSON 恰好可解析也**不可消费**,按 E4 处置;design.md 错误矩阵为验证器真相源);本期同身份 analysis/summary 行同等视为有效进度。
 4. **N_new 究竟限制什么**:N_new=本期**确需新增付费评分**(score-1 与 score-2 **均无**有效响应)的条目容量上限,且只限制这一件事。作用顺序:**排除(内容/编辑/占用)→ 复用判定 → 剩余=确需新增付费 → 确定性排序 → 截断前 N_new**。不占 N_new、不被截断的三类:①**至少一条有效评分响应**的成员(进度保留,needs 补全);②摘要调用(N 公式按 max_entries 预留);③重试(retry_reserve 单列)。**不因 N_new=0 丢失任何可恢复工作**。
-5. **双次评分完成度分类与恢复(2026-10-05 评审修正)**:
+5. **双次评分完成度分类与恢复(2026-10-05 评审修正+核验修正:计数按 logical_key 独立)**:
    | 完成度 | 判定 | 去向 | 恢复行为 | 计数 |
    |--------|------|------|----------|------|
    | 全部完成 | score-1、score-2 均有效 | recoverable(needs=∅) | 零评分网络;直接进入入选判断/组装 | — |
-   | 部分完成 | 恰一条有效 | recoverable(needs=缺失项) | **只补缺失那条**;已有响应保留不重发;补全调用逐次过闸门 | attempt 序号继续,**不重置** |
-   | 均未完成 | 两条均无效(含从未发起、身份变化致旧响应失效) | 确需新增付费,参与排序截断 | to_score 全新双评;capped 可见停增 | 新起序号 |
+   | 部分完成 | 恰一条有效 | recoverable(needs=缺失项) | **只补缺失那条**;已有响应保留不重发;补全调用逐次过闸门 | **缺失侧按其自身 logical_key 计数顺延**:从未发送则从 1 起,已有失败/unknown 则续计 |
+   | 均未完成·未发起/未耗尽 | 两条均无效(从未发起、或身份变化致旧响应失效),且各 logical_key 计数 < max_attempts+1 | 确需新增付费,参与排序截断 | to_score 补评;capped 可见停增 | **各自 logical_key 续计**,重启不重置:同身份逻辑回执续在原计数上,不因重跑重获尝试额度 |
+   | 均未完成·已耗尽 | 待评侧 logical_key 计数已达 max_attempts+1 上限(budget.md 回执与恢复节) | 不再自动发起 | 最终处置=**E7 剔除该条**(普通项;强制项→暂停联动,单元三);重启后仍视为耗尽;仅身份变化(新 logical_key)或人工显式操作才可能新调用 | 计数不重置、不重获额度 |
    身份变化的本期 selected 落"均未完成"类(旧响应不得冒充当前结果),被截断则 capped 可见,组装边界按"曾 selected 而无当前有效评分"暂停联动(单元三)。
 6. **三种"不新增"的区分(2026-10-05 评审修正)**:
    | 概念 | 性质 | 发生时点 | 效果 |
@@ -76,11 +77,11 @@
 
 **非法输入处置**:budget 行缺失=E1 拒付费(design.md 加载契约);价目版本缺该 model=E1;账单证据不足→不核清(保持未决);identity_ctx 字段不全→拒绝发起调用(E1 类配置缺陷)。
 
-## 5. 数据与状态(表操作协议;spec §5.3 现为 11 表,本单元涉 4 表)
+## 5. 数据与状态(表操作协议;spec §5.3 现为 12 表,本单元涉 4 表)
 
 | 操作 | 事务边界 | 写入 |
 |------|----------|------|
-| 授权 reserve | 短事务 BEGIN IMMEDIATE→COMMIT 后出网 | receipt_attempt(attempt_no 顺延, pending, reserved, issue_date, started_utc, pricing_version);首 attempt 同事务建 receipt 行 |
+| 授权 reserve | 短事务 BEGIN IMMEDIATE→COMMIT 后出网 | receipt_attempt(**attempt_no=该 logical_key 既有计数+1**:score-1/score-2/understand 各自独立序列,重启不重置, pending, reserved, issue_date, started_utc, pricing_version);首 attempt 同事务建 receipt 行 |
 | 响应回写 | 单事务 | receipt_attempt→received+usage_json+actual_micro_cny(可结算时);receipt.response_json/status→received |
 | 业务完成 | **与单元三同一事务** | receipt.status→completed + analysis/summary 行 + entry 状态/占用(生产方=单元三,见其 §5) |
 | 失败/未知 | 单事务 | attempt→failed(有 usage 则结算)/unknown(预占保留);receipt.status 同步 |
@@ -109,13 +110,14 @@
 
 ## 7. 验收场景(M1 plan 强制测试种子;输入→期望)
 
-1. **复用判定矩阵**:同身份 completed→可复用;prompt 版本变→不可;**截断标记差异(实际输入变)→不可**;received 可解析→可;received 不可解析→不可(走 E4)。
+1. **复用判定矩阵**:同身份 completed→可复用;prompt 版本变→不可;**截断标记差异(实际输入变)→不可**;received 过完整 E4 验证器→可;received 不可解析→不可(走 E4);**received 且 finish_reason=length 而 JSON 恰好可解析→不可**(非正常终止,走 E4)。
 2. **N_new 作用顺序**:10 合格成员中 4 条可复用+6 条需新增,N_new=4 → 4 recoverable+4 to_score+2 capped;N_new=0 → 4 recoverable+6 capped,**无成员丢失**。
-3. **部分完成恢复**:score-1 有效、score-2 缺失 → needs=[score-2] → 仅补发 score-2(attempt_no=2,断言不重发 score-1);计数不重置(重启后 attempt_no 连续)。
+3. **部分完成恢复**:score-1 有效、score-2 缺失 → needs=[score-2] → 仅补发 score-2(**若 score-2 该 logical_key 从未发送则其 attempt_no=1;已有失败/unknown 则按其自身计数顺延**;断言不重发 score-1);重启后计数连续不重置。
 4. **身份变化的 selected**:prompt 升级→两条均无效→参与排序;落 capped 可见,不静默。
 5. **三分行为**:N_new=0(可复用照常)/限额置 0(N_new=0 且闸门拒绝)/闸门单次拒绝(该条跳过,他条不受影响)——三路径分别断言;摘要预留内调用被金额拒绝→跳过该条(强制项→暂停联动,接口断言)。
 6. **授权闸门**:小时窗口将满→新增 attempt 被拒(不写预占);复用查询不计窗口次数。
 7. **unknown**:替身时钟+进程中断→30min 从 started_utc 起、标志持久化、二次转人工;不因重启重置。
+7b. **耗尽不重获额度**:同身份普通重试达上限后重启→仍视为耗尽(不再自动发起,断言零新增 attempt);仅 prompt 版本/输入变化(新 logical_key)才从 attempt_no=1 起。
 8. **费用快照单查询**:3 settled+1 未决(含 1 条 received 未核清的非 unknown)→ cost_cny=Σ(3 actual+1 reserved)、cost_pending=true;**零 attempt 期→0/false**;两值断言出自同一查询(查询计数替身)。
 9. **核清**:证据四要素齐→actual+reconcile_json 同事务落账、月投影更新、下期月可用变化;**证据缺失→拒绝核清保持未决**(断言 actual 仍 NULL);核清后已发布期数字过期提示产生(内容更新属单元四验收)。
 10. **跨期复用费用归属**:上期 attempt ¥0.01 已结算,本期复用→本期快照不含该 ¥0.01,上期快照不变。
@@ -133,7 +135,8 @@
 | ~~对账证据存储与事务边界~~ | **已定稿(本文 §3 规则 8/§5)**:reconcile_json 与 actual 同事务 | — | — | 已闭环 |
 | ~~通知去重键持久化~~ | **已定稿(单元五)**:notify_sent 表 | — | — | 已闭环 |
 | M2 并发时的请求所有权/超时机制 | M2 计划 | 不把活跃调用误改 unknown | 进程级租约 | M2(既定延期) |
+| 1:1 字符上界的实际充分性 | M1 试运行:usage.prompt_tokens 与预占对账(规则 2 警示日志) | 零超预占事件,或仅孤立个位且金额可忽略 | 引入经验证的离线 tokenizer 重算截断,或下调 max_input_tokens | 待实施验证(观测) |
 
 ## 评审提示
 
-v2 落实三组评审修正:①请求身份覆盖**实际发送的有效输入及参数**(截断后文本入 hash,预占按 token 上界与截断解耦);复用判定与首次消费**同一有效性规则**(共用 request_hash 构造,消费按判定返回的引用);analysis/summary 以 receipt_ids 关联回执核对身份。②双次评分**全部/部分/均未完成**三分+恢复表(needs 只补缺失、计数不重置)。③N_new=0/合法停用/逐次授权拒绝**三分表**;预留不构成调用许可。核清证据=reconcile_json 与 actual 同事务(**本轮定稿**);费用快照算例与零 attempt 结果补齐。与单元一联合定稿的回填见其文档;占用写入释放已在单元三定稿(entry.claim_issue)。
+v2 落实三组评审修正:①请求身份覆盖**实际发送的有效输入及参数**(截断后文本入 hash,预占按 token 上界与截断解耦);复用判定与首次消费**同一有效性规则**(共用 request_hash 构造,消费按判定返回的引用);analysis/summary 以 receipt_ids 关联回执核对身份。②双次评分**全部/部分/均未完成**三分+恢复表(needs 只补缺失、计数不重置)。③N_new=0/合法停用/逐次授权拒绝**三分表**;预留不构成调用许可。核清证据=reconcile_json 与 actual 同事务(**本轮定稿**);费用快照算例与零 attempt 结果补齐。**2026-10-05 联合核验修正**:预占上界由截断实际保证(1 字符=1 token 保守上界覆盖完整请求,实付≤预占闭合);复用有效性纳入**完整 E4 验证器**(非正常终止不可消费);"均未完成"拆未耗尽/已耗尽(耗尽=E7 剔除不重获额度);attempt 计数粒度=**logical_key 独立**(score-1/score-2 各自序列,重启不重置,对齐 budget.md/pipeline.md 既有契约)。与单元一联合定稿的回填见其文档;占用写入释放已在单元三定稿(entry.claim_issue)。

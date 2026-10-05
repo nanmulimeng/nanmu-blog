@@ -106,7 +106,7 @@
 
 ## 5. 数据与状态(存储映射定稿)
 
-**新增 `issue_freeze` 表**(DDL 已同步 spec §5.3——11 表中第 9 张,后续 summary/notify_sent 由单元三/五追加;check_docs expected 同步):
+**新增 `issue_freeze` 表**(DDL 已同步 spec §5.3——12 表中第 8 张,后续 summary/notify_sent/engine_meta 由单元三/五追加;check_docs expected 同步):
 
 ```sql
 CREATE TABLE issue_freeze (

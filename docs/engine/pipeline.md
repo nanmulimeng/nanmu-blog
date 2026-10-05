@@ -19,7 +19,7 @@
 
 ## 数据落点
 
-- `engine.db`(WAL):entry / receipt / receipt_attempt / budget / analysis / override / digest_issue / issue_freeze / api_usage / summary / notify_sent(**11 表** DDL 见 spec §5.3;2026-10-05 五单元批量定稿:issue_freeze=期冻结确认+paused 三列,summary=摘要结果第 10 表,notify_sent=通知去重第 11 表,entry.claim_issue=占用归属)
+- `engine.db`(WAL):entry / receipt / receipt_attempt / budget / analysis / override / digest_issue / issue_freeze / api_usage / summary / notify_sent / engine_meta(**12 表** DDL 见 spec §5.3;2026-10-05 五单元批量定稿+核验修正:issue_freeze=期冻结确认+paused 三列,summary=摘要结果,notify_sent=通知去重(同 key UPSERT),engine_meta=全局运行标志(pay_paused 备份恢复付费暂停),entry.claim_issue=占用归属,digest_issue.content_sha256=产物内容身份)
 - `rag.db`(M2):向量,独立库,可随时删除全量重建
 - `site/src/content/digest/YYYY-MM-DD.md`:唯一公开内容源;经过push、构建和线上确认才算发布
 
@@ -115,6 +115,6 @@ Git和SQLite不是同一事务:必须覆盖“commit成功但状态未写入”�
 | 普通重试与unknown计数 | 同一logical_key跨重启累计,分别限次且总attempt不超过design规定;不能通过重启或切换错误类型重新领次数 |
 | 条目与未完成期的归属 | draft/submitted占用条目;failed经核对后释放或恢复,避免永久卡死与跨期重复 |
 
-M1计划逐项选择现有表字段/JSON或本项目状态文件,同步spec DDL及操作命令后实施,不引入队列服务。正常运行先恢复未完成期,再选新候选;scored/selected不能因只查询pending而丢失。已收响应按完整请求hash复用,输入变化走新请求身份,旧attempt费用保留。
+M1计划逐项选择现有表字段/JSON或本项目状态文件,同步spec DDL及操作命令后实施,不引入队列服务。正常运行先恢复未完成期(**恢复阶段有预算上限 recover_budget_s,旧期失败不挤占当天新期采集与生成,见 units/scheduling-ops.md**),再选新候选;scored/selected不能因只查询pending而丢失。已收响应按完整请求hash复用(**复用有效性=完整 E4 验证器,非正常终止不可消费,见 units/model-calls.md**),输入变化走新请求身份,旧attempt费用保留。**上述恢复信息映射已于 2026-10-05 五单元设计+核验修正轮全部定稿(spec §5.3.1 清单)。**
 
 engine工作副本在已有未推送提交时不能先盲目fast-forward同步。先保存并识别本期提交,再检查远端差异;仅无冲突且内容身份保持时同步,否则暂停自动发布并留人工处理证据。

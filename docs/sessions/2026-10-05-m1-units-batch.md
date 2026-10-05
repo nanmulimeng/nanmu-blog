@@ -88,3 +88,12 @@ commit 成功 DB 未记 draft:副本 git log 有该期内容身份提交、无 d
   - llm.py HTTP 契约/DeepSeek 调用细节未在单元文档重复(design.md/budget.md 既有)。
   - 命令形态(run/resume/abandon/pause/unpause/status)与测试实现细节留 M1 plan(本文已定语义与序列)。
   - 用户侧待办不变(skills DNS/ICP/origin 推送/验收目录清理/Task10);线上仍 c8a4567。
+
+## erratum(2026-10-05 联合核验后追加,原文不改)
+
+用户联合核验指出本文两处推演数字不成立,更正如下(作为未来测试输入时不得沿用原数字):
+
+1. **"12 条评分候选 → 15 次摘要调用"推导错误**:摘要调用量由入选条目数(max_entries=15 上限内)决定,不由评分候选数直接推出;该场景行中"15 次摘要调用"应改为"按实际入选条目数逐条调用"。此外当时按"12 候选×2 评分"计 24 次评分 attempt 的口径保留,但**任何场景中的摘要次数都必须重新按入选结果推算**。
+2. **"补发 score-2 记为 attempt_no=2"错误**:attempt_no 按 logical_key 独立计数(score-1/score-2/understand 各自序列);score-2 从未发送时其首次发送 attempt_no=1,不因 score-1 已有一次而顺延。原文把"该条第 2 次调用"误写成"score-2 的第 2 次 attempt"。计数契约以 units/model-calls.md §3 规则 5/§5(核验修正轮)为准。
+
+受影响的下游表述已在核验修正轮统一修正;本文其余内容保持原样作为历史记录。

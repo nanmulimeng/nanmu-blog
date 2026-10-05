@@ -1,6 +1,6 @@
 # 调度与运行维护·单元详细设计(M1 第 3 步·单元五)
 
-> 状态:**设计稿,批量闭环轮**(2026-10-05;五单元之五,收口 spec §5.3.1 恢复数据映射)。
+> 状态:**设计稿 v2,联合核验修正轮**(2026-10-05;修正:旧期恢复预算上限与新期保底、资格锚点统一 frozen_utc、通知 UPSERT 与"立即"语义、备份恢复付费暂停 engine_meta)。
 > 定位:回答"一次运行做什么、按什么顺序、旧期恢复到什么时候为止、失败与告警如何持久化、运维靠什么判断"的**实现层设计**。功能契约(补跑语义/自动恢复上限/failed 不自动重跑)以 [digest-design.md](../digest-design.md) §4.5/§4.6 为准;调度参数与通知边界在 [pipeline.md](../pipeline.md);错误矩阵/退出码在 [design.md](../design.md);备份策略在 spec §7。
 > 引用而非复制:本单元落**顺序、时限判定、字段映射与 status 事实清单**。
 
@@ -11,7 +11,8 @@
 | 运行编排(单次进程内阶段顺序) | **定义并执行**(§3 规则 1) | 各单元提供阶段实现 |
 | issue_freeze.paused | **唯一写入者**(置位/解除命令) | 单元四撤回序列置位(调用本单元命令);调度检查只读 |
 | digest_issue fail_reason/last_exit/last_run_utc/updated_utc | **唯一写入者**(失败落行/运行收尾) | 单元四写状态推进+withdrawn |
-| notify_sent 表 | **唯一写入者**(发送结果) | 通知脚本执行发送(design.md 通知边界);去重键定义在此 |
+| notify_sent 表 | **唯一写入者**(发送结果,同 key UPSERT) | 通知脚本执行发送(design.md 通知边界);去重键定义在此 |
+| engine_meta(pay_paused) | **唯一写入者**(restore-backup 置位/人工核对后解除) | 单元二闸门只读消费 |
 | status 命令 | **实现**(只读聚合) | 各表提供事实(§3 规则 8 清单) |
 | 预算告警事件 | 消费(E5/¥40/402) | 单元二产生 |
 
@@ -31,12 +32,13 @@
 | failed 人工重跑 | 人工命令 | 用户显式 | 续跑语义(冻结+回执复用) |
 | 放弃失败期 | 人工命令 | failed 且核对 | 释放占用(单元三协议)+留痕 |
 | 巡检 | status --issue / runbook | — | 只读输出期/条目/费用/最近 run |
+| 备份恢复 | restore-backup 命令 | 备份文件在 | 整库恢复+pay_paused=1+核对清单;人工核对账单后解除 |
 
 ## 3. 业务规则(优先级从高到低)
 
-1. **运行序(单次进程)**:flock 单实例 → config/预算校验(E1 即退出)→ **先恢复存量未完成期**(issue_date 升序;期内顺序=submitted 只读线上确认→draft 发布恢复→生成中续跑预筛及以后;**paused 期跳过**)→ **当天新期**(冻结→预筛→评分→摘要→组装→发布)→ 汇总记账 → 收尾写 digest_issue.last_exit/last_run_utc(有行者)/结构化 run 日志。整期超时 issue_timeout_s=1800;剩余窗口不足以等待/退避→保存状态退出,下次续接(不忙等)。先恢复后新期的理由:旧期大多只差零成本步骤(确认/复用),先清可释放占用与副本阻塞。
-2. **"1 个后续调度日"精确截止(定稿)**:某未完成期(生成中/draft/submitted,非 paused)的自动推进资格截止于——**其 issue_date 之后第 2 个调度触发窗的结束**(即 frozen/pushed 发生日 D,可自动推进 D 日与 D+1 日两个触发窗;D+1 窗结束=当日 08:30+300s 随机延迟+issue 超时之内)。到期仍非终态→通知(去重)+移出自动恢复清单(**只读判定:issue_freeze.frozen_utc 与 digest_issue 状态/updated_utc 运行时计算,不加标志列**);人工处理后(终态或显式重跑)自然退出清单。submitted 的**只读线上确认不受此限**(不产生新费用与新提交)。
-3. **单次恢复与整期时限**:单次恢复占用当次运行的剩余期窗(整期 1800s 含多期共享——每期按序消费,所剩不足即保存退出);单条等待(unknown 30min)不得突破整期超时;同轮多事件退出码优先级按 design.md(1→2→4→3→0)。
+1. **运行序(单次进程)**:flock 单实例 → config/预算校验(E1 即退出;**engine_meta.pay_paused=1 时跳过恢复与生成的新增付费部分,只读步骤照常**)→ **先恢复存量未完成期**(issue_date 升序;期内顺序=submitted 只读线上确认→draft 发布恢复→生成中续跑预筛及以后;**paused 期跳过**;**恢复阶段总预算 recover_budget_s,默认 600s**,config 运行参数)→ **当天新期**(冻结→预筛→评分→摘要→组装→发布)→ 汇总记账 → 收尾写 digest_issue.last_exit/last_run_utc(有行者)/结构化 run 日志。**恢复预算耗尽处置**:用满 recover_budget_s→保存未完期状态、**退出恢复循环并继续当天新期**(不退出运行;未完旧期留待次日自动推进或到期转人工)——旧期失败不得挤占新期采集与生成(digest-design §4.6"不让旧期恢复耗尽运行窗口";发布可因副本隔离暂停,生成不受阻)。整期超时 issue_timeout_s=1800(每期各自上限);剩余窗口不足以等待/退避→保存状态下次续接(不忙等)。先恢复后新期的理由:旧期大多只差零成本步骤(确认/复用),先清可释放占用与副本阻塞——但这是期望,**保证来自 recover_budget_s 上限与新期保底**(规则 3)。
+2. **"1 个后续调度日"精确截止(核验修正:资格锚点唯一化)**:未完成期(生成中/draft/submitted,非 paused)的自动推进资格,锚点=**issue_freeze.frozen_utc(冻结确认时刻,唯一锚点)**——设其所在调度日为 D,自动推进限于 **D 与 D+1 两个触发窗**;D+1 窗内**已开始**的期执行可跑完(含 issue_timeout_s);**D+2 起不再自动开始该期**。不因晚 push、状态更新(updated_utc)或续跑次数延长资格——它们都不是锚点。到期仍非终态→通知(去重)+移出自动恢复清单(**只读判定:frozen_utc 运行时计算,不加标志列**);人工处理后(终态或显式重跑)自然退出清单。submitted 的**只读线上确认不受此限**(不产生新费用与新提交)。
+3. **单次恢复与整期时限**:单期恢复消费恢复预算(recover_budget_s 内按序推进,预算尽按规则 1 处置);单期自身执行受 issue_timeout_s=1800 约束;单条等待(unknown 30min)不得突破整期超时;同轮多事件退出码优先级按 design.md(1→2→4→3→0)。**新期保底**:当天新期至少获得一次完整 collect+生成机会(恢复预算与新期预算互不侵占);仅发布环节可因隔离检查/推送冲突转人工。
 4. **暂停与恢复**:置位=issue_freeze.paused=1+reason+utc(UPDATE 单事务,命令带原因);效果=调度跳过该期一切自动动作(生成/发布/重发防护);**解除只恢复调度可见性**,不改状态、不触发发布、不撤回撤回(digest-design §4.2);暂停可叠加任何冻结后状态;failed 不自动重跑故无需暂停。撤回流程的置位由单元四序列调用本单元命令(同一实现)。
 5. **failed 人工重跑**:显式命令(期参数)→续跑语义:冻结在则读 manifest、回执按身份复用、未完成阶段继续;**不自动**:调度不触碰 failed(digest-design §4.6)。放弃失败期=核对(该期确无产物且不打算再试)→释放 claim(单元三协议)→留痕(命令日志:期/成员清单/原因)→digest_issue 保持 failed(历史)。
 6. **恢复字段映射(收口 spec §5.3.1,DDL 均已落)**:
@@ -44,14 +46,14 @@
    |------------------|------|--------|
    | 失败阶段/原因 | digest_issue.fail_reason(E2 子类/E6 子类/no_candidates/zero_qualified)+结构化日志 | 本单元(落 failed 行时) |
    | 状态更新时间 | digest_issue.updated_utc | 各推进写者同事务 |
-   | 产物内容身份/git_commit | digest_issue.markdown_path+git_commit(内容身份=文件 sha256,恢复时现算比对) | 单元三/四 |
+   | 产物内容身份/git_commit | digest_issue.**content_sha256**(draft 落盘同事务持久化=恢复比对的不变预期值)+git_commit(commit 成功即回填) | 单元三写/单元四回填 |
    | 重试暂停 | issue_freeze.paused(+reason/utc) | 本单元命令 |
    | 普通/unknown 重试计数 | receipt_attempt 行数(attempt_no 顺延)/receipt.unknown_retry_used | 单元二(既有) |
    | 通知去重/发送结果 | notify_sent(dedup_key 主键) | 本单元 |
    | 对账证据 | receipt_attempt.reconcile_json | 单元二 |
-7. **通知去重(design.md 通知边界的键规则)**:dedup_key=错误子类+":"+issue_date(事件类);`warn-monthly:`+YYYY-MM(¥40 预警);配置错误类按配置 hash(变更后新键)。发送成功写 notify_sent(ok);失败有界重试(同 key 不重复占用告警名额,成功后另起一行 result=ok);**发送结果持久化、重启不重置**。立即通知类(E1/402/E8/E9/W1)不去重(每次发生即发);连续 2 期类(E2/E6/无合格)按子类+期判二期。OnFailure 兜底非零退出;¥40/402 由应用主动通知(design.md 既有)。
+7. **通知去重与"立即"语义(核验修正:同 key UPSERT,主键即防重;对齐 pipeline 通知边界)**:dedup_key=错误子类+":"+issue_date(事件类);`warn-monthly:`+YYYY-MM(¥40 预警);配置错误类附配置 hash(变更后新键)。**写法=同 key UPSERT**:首现 INSERT,重试后 UPDATE result/sent_utc——dedup_key 是主键,同 key INSERT 第二次必然冲突(用户实测),不得"另起一行"。**"立即通知"=发送时机**(E1/402/E8/E9/W1 发生即发,不等连续 2 期聚合),不是"每次重跑都重发"——立即类同样入表按 key 去重(pipeline 既有口径:"立即通知"与"按子类+issue_date 去重"并存);连续 2 期类(E2/E6/无合格)按子类+期判二期后发送。**崩溃边界**:发送成功但结果未落库即崩溃→重启后同 key 重发,至多多发一次——DB 主键防同期重复,不承诺外部 exactly-once(接受并写明);发送失败有界重试(不改变账本与旧站)。OnFailure 兜底非零退出;¥40/402 由应用主动通知(design.md 既有)。
 8. **status 所需事实(只读聚合,无新存储)**:`status --issue` 输出=①期状态与叠加(freeze 行存在性→生成中;digest_issue.status;paused;withdrawn;fail_reason);②条目计数(manifest entry_count vs entry 现状:scored/selected/used);③attempt 结算与未决(该期 settled Σ/unknown 与未核清计数+保守预占);④最近 run(last_exit/last_run_utc);⑤下一步建议(人工重跑/等待确认/转人工原因)。字段顺序与措辞按 digest-design §3.5 样例,实现可微调(其 §7 既定)。`status` 无参=全部未完成期+当日概览。
-9. **备份与恢复边界(spec §7 引用+定界)**:备份对象=engine.db 全量(11 表,含 manifest/回执/费用/通知)+config 四件套+prompts;**不含** site 内容(git 是唯一真相源)、上游库(他人资产,铁律 4)、rag.db(M2 可重建)。恢复粒度=整库文件(备份时点);恢复后一致性依赖各单元幂等(冻结在→续跑;draft→重验;published→比对线上)。备份频率/保留=spec §7 既有;**manifest 清理(终态期>30 天只留成员与 hash)=运维观察项,不预先实现**(单元一 §8 既定)。
+9. **备份与恢复边界(核验修正:恢复旧库先停新增付费)**:备份对象=engine.db 全量(12 表,含 manifest/回执/费用/通知/engine_meta)+config 四件套+prompts;**不含** site 内容(git 是唯一真相源)、上游库(他人资产,铁律 4)、rag.db(M2 可重建)。**恢复必须经 `restore-backup` 命令**(恢复整库文件+置 engine_meta.**pay_paused=1**+输出核对清单;裸文件恢复属 runbook 违规)。pay_paused=1 时授权闸门拒绝一切新增付费 attempt(单元二消费,复用/结算/只读步骤照常)——理由:恢复旧库会丢失备份之后已发生的 receipt/attempt 事实,同身份请求将查无回执、按"从未发起"重发,**重复付费**。解除=人工核对恢复点之后的供应商调用与账单(确认无需补录或已修正预算)后显式置 0。恢复后状态一致性仍依赖各单元幂等(冻结在→续跑;draft→按远端证据重验;备份时 draft、实际已 published→线上证据链补记)。备份频率/保留=spec §7 既有;**manifest 清理(终态期>30 天只留成员与 hash)=运维观察项,不预先实现**(单元一 §8 既定)。
 
 ## 4. 输入输出
 
@@ -61,7 +63,7 @@
 
 ## 5. 数据与状态
 
-- 本单元新增存储=notify_sent 表+issue_freeze.paused 三列+digest_issue 四列(fail_reason/updated_utc/last_exit/last_run_utc),DDL 均已落 spec §5.3(check_docs expected 同步至 11 表);
+- 本单元新增存储=notify_sent 表+issue_freeze.paused 三列+digest_issue 四列(fail_reason/updated_utc/last_exit/last_run_utc)+**engine_meta 表(pay_paused)**,DDL 均已落 spec §5.3(check_docs expected 同步至 **12 表**);
 - 自动恢复资格**不加列**(规则 2 运行时计算),避免状态双写漂移;
 - run 级证据=结构化日志(design.md 日志契约:run start/end 事件)——日志轮转可丢过程细节,但判定所需事实已全部落表(§3 规则 6 映射)。
 
@@ -75,17 +77,20 @@
 | D | paused 期存在 | 调度跳过 | 解除后按矩阵恢复 | 零 |
 | E | 通知发送失败 | notify_sent fail 行 | 有界重试(同 key);不改变账本/旧站 | — |
 | F | E1 配置错误 | 启动即退出 2 | 立即通知;修复后人工重跑(不自动) | 已发请求照常结算 |
+| G | 恢复较旧备份 | 备份后的 attempt/receipt/费用事实丢失 | restore-backup 已置 pay_paused=1→闸门拒新增付费→人工核对恢复点之后的调用与账单→显式解除;绕过命令的裸文件恢复=runbook 违规(status 输出提示核对) | 防止按丢失的回执重复授权重发 |
+| H | 恢复预算耗尽 | 旧期未完,新期待跑 | 退出恢复循环继续新期(规则 1);旧期留待 D+1 窗或到期转人工 | 零(仅推迟) |
 
 ## 7. 验收场景(M1 plan 强制测试种子)
 
 1. **运行序**:构造 submitted+draft+生成中+paused 各一期→断言恢复顺序(升序、期内先只读、paused 跳过)后才开始新期。
-2. **截止判定**:frozen D 日、D+1 窗结束仍 draft→D+2 运行不含该期+通知一次(D+3 重复运行不再通知,去重断言)。
+1b. **恢复预算与新期保底(核验反例)**:旧期评分持续失败并退避占满 recover_budget_s→断言当天新期**仍完成 collect+生成**(反例:旧期耗尽 1800s 全天窗口→新期连采集都没跑,违反 digest-design §4.6);新期发布仅可因隔离/推送冲突转人工。
+2. **截止判定(锚点=frozen_utc)**:frozen_utc 在 D 日、D+1 窗结束仍 draft→D+2 运行不含该期+通知一次(D+3 重复运行不再通知,去重断言);**晚 push/updated_utc 变化不延长资格**(构造 D+1 才首次 push 的期→D+2 仍不再自动推进);D+1 窗内已开始的执行可跑完(issue_timeout 内)。
 3. **暂停**:置位→调度零动作(评分/发布计数为零);解除→状态不变仅恢复可见。
 4. **failed 重跑/放弃**:重跑=续跑(冻结/回执复用计数断言);放弃=claim 清+status 回 scored+used 不动+留痕。
 5. **字段映射**:每个 spec §5.3.1 项在各中断窗口后可查(表断言)。
-6. **通知去重**:同子类同期二次失败→一封;跨期→新键;月预警同月一封;立即类不去重。
+6. **通知 UPSERT**:同子类同期二次失败→一封;跨期→新键;月预警同月一封;**同 key 重试成功后 UPDATE 原行(断言无第二次 INSERT/无主键冲突)**;立即类入表按 key 去重(同期重跑不重发);发送成功未落库崩溃→至多多发一次(接受,断言重启后不无限重发)。
 7. **status**:含 §3 规则 8 五组事实;与 digest-design §3.5 样例字段对应。
-8. **备份边界**:恢复备份库后——冻结期续跑零重采、published 比对线上不重发(幂等断言)。
+8. **备份恢复**:restore-backup→pay_paused=1 落 engine_meta→闸门拒绝新增付费(替身断言)+复用/结算/只读照常;核对解除后恢复授权;恢复备份时点为 draft、实际已 published 的期→线上证据链补记 published(幂等)。
 
 ## 8. 依赖与维护成本
 
@@ -98,8 +103,9 @@
 |--------|----------|----------|------|------|
 | 通知渠道与凭据(服务器 env) | M1 部署核查 | OnFailure/主动通知可达 | 换渠道(命令层) | 待实施验证 |
 | 备份频率与保留周期终值 | M1 试运行观测 | 恢复演练通过+体积可控 | 调 spec §7 参数 | 待实施验证 |
+| recover_budget_s=600s 初值适配性 | M1 试运行观测(恢复阶段实际耗时分布) | 旧期常可清完且新期从未被挤占 | 调 config 运行参数 | 待实施验证(观测) |
 | ~~spec §5.3.1 恢复字段映射~~ | **已定稿(本文 §3 规则 6)** | — | — | 已闭环 |
 
 ## 评审提示
 
-本单元收口 spec §5.3.1 全部恢复字段的存储映射(表:fail_reason 等→digest_issue;paused→issue_freeze;计数→既有 receipt 结构;去重→notify_sent;证据→reconcile_json)。"1 个后续调度日"定稿为"D 与 D+1 两个触发窗、运行时计算不加列";运行序=先恢复(升序、期内先只读)后新期;解除暂停/放弃期/重跑的操作语义与 digest-design §4.2/§4.6 对齐。开放项为部署核查与试运行观测类。
+v2 落实联合核验修正:恢复阶段预算上限 **recover_budget_s(默认 600s)+新期保底**(旧期失败不挤占新期采集与生成,反例入验收 1b);"1 个后续调度日"锚点唯一化=**frozen_utc**(D/D+1 两窗,晚 push/updated_utc 不延长);通知=同 key **UPSERT**(主键防重,用户实测另起行必冲突)+"立即"是时机不是重复发送;备份恢复=**restore-backup 命令置 engine_meta.pay_paused**(第 12 表,闸门拒新增付费防"丢回执重发重复扣费")+核对后显式解除。spec §5.3.1 映射含 content_sha256/relisted 补齐。开放项为部署核查与试运行观测类。
