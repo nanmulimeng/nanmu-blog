@@ -306,13 +306,16 @@ CREATE TABLE notify_sent (
   result TEXT NOT NULL                     -- ok | fail:原因(重试后UPDATE本行)
 );
 
--- 全局运行标志(2026-10-05 核验修正轮定稿+第二轮修正恢复序列,第12表;单元五)
--- 当前唯一键 pay_paused:建库/初始化即写入默认0(键缺失不可能是正常新库状态)。闸门读法=仅显式0
--- 放行;=1或键缺失(违规裸恢复/库损坏异常态)均拒绝一切新增付费attempt(防止恢复旧库后按丢失的
--- receipt重复授权重发),复用/结算/只读不受限。恢复必须经restore-backup命令,序列=恢复到待启用
--- 副本→副本内置1→读回校验→原子切换为活动库(不变量:切换完成⇔标志已先持久化,消除恢复操作
--- 自身中断窗口;先恢复后置位的顺序禁止);人工核对恢复点之后的调用与账单后显式置0解除。
--- 裸文件恢复属runbook违规(status检测:活动库无该键即提示核对)。
+-- 全局运行标志与校准记录(2026-10-05 核验修正轮定稿+第二轮修正恢复序列,第12表;单元五)
+-- 键内容两类(第五轮引用对齐):①pay_paused——建库/初始化即写入默认0(键缺失不可能是正常新库
+-- 状态)。闸门读法=仅显式0放行;=1或键缺失(违规裸恢复/库损坏异常态)均拒绝一切新增付费attempt
+-- (防止恢复旧库后按丢失的receipt重复授权重发),复用/结算/只读不受限。置位来源两方=单元五
+-- restore-backup 步骤②与单元二对账硬失败(其规则2/8/11;同一闸门同一解除协议:人工核对后显式
+-- 置0)。恢复必须经restore-backup命令,序列=恢复到待启用副本→副本内置1→读回校验→原子切换为
+-- 活动库(不变量:切换完成⇔标志已先持久化,消除恢复操作自身中断窗口;先恢复后置位的顺序禁止)。
+-- 裸文件恢复属runbook违规(status检测:活动库无该键即提示核对)。②校准记录——绑定 {model,
+-- tokenizer资源与版本,消息计数方式,校准系数,样本对账结果,判定时刻},任一变化即失效须重校准,
+-- 契约全文=units/model-calls.md §3 规则11,不在本注释展开。
 CREATE TABLE engine_meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
@@ -564,6 +567,7 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 
 ## 附:变更记录
 
+- 2026-10-05 第五轮核验:**4 组 P1 关闭,M1 实施计划通过评审**——阶段登记为"M1 详细设计与实施计划评审通过;待 M0 收尾及用户明确恢复实施"。通过结论的边界:tokenizer/费用上界/备份恢复/真实发布均未运行验收(实施验证任务在 plan [V1]/[V2]/Task 21/22/26),不解除实施暂停;"官方资源初始系数 1.0"须 Task 1 核实其与目标 API 模型及完整消息计数方式的对应关系,不能仅凭模型方发布过 tokenizer 即成立。同批三处**引用对齐**(非阻塞,不新增设计主题):①plan Task 25 Step 2——timer 保持 disabled **直到 Task 26 Step 5**(此前已取得正常运行授权并完成首期人工核验;步骤 3 是获得授权,不与实际启用动作混谈);②scheduling-ops §0 接口表——engine_meta(pay_paused) 写入职责对齐第四轮定稿(单元二对账硬失败亦置位,单元五恢复备份置位与人工解除,双方消费同一持久化闸门),不再是"单元五唯一写入者";③本文件 §5.3 engine_meta DDL 注释——"当前唯一键 pay_paused"更新为两类键内容(pay_paused+校准记录,校准记录契约引用单元二规则 11 不在本注释展开)。
 - 2026-10-05 第四轮核验修正(M1 plan 评审轮:4 组 P1+计划校正表;不重开五单元):①**attempt_origin 授权语义定稿**——预占时确定、响应后不改写(unknown 通道重试返回 503 保持 origin='unknown_retry';再发起普通重试是**新授权** origin='retry');**名额公式简化**:普通尝试已用数=`origin IN ('initial','retry')` 行数(**不按 error_class 过滤**,名额按授权消耗,不因响应结果保留或改写);error_class 只决定能否再发送与通道(no_retry 拒/retryable 普通通道/unknown 满等待走 unknown 通道);unknown 名额与硬上限不变;②**校准通道入契约**(单元二规则 11,不再只在 plan 中设例外)——purpose='calibration' 是"校准未完成不出网"的**唯一显式例外**(解执行循环);走完整闸门,**月预算与窗口次数照常适用**,单列 `calibration.budget_micro_cny`(design.md budget.yaml 已同步,默认 ¥0.05 预占合计上限,耗尽中止);校准记录**绑定**模型/tokenizer 资源与版本/消息计数方式/系数(配置任一变化即失效须重校准),不是可跨配置沿用的 passed 标志;**删除无依据的默认系数 1.2**——官方 tokenizer 资源初始系数=1.0(依据=资源即服务端分词器);无官方资源时不预设系数,必须先建立"近似资源+系数能覆盖目标 API 输入计量"的依据,建立不了则停;近似小额探索(如进行)表述为"尚未验证上界的小额实验",不得称"已建立保守上界";③**预占公式补输出上限**(plan Task 5 引 budget.md 原文:输入预占 token 数×峰时未缓存输入价+max_output_tokens×输出价,向上取整微元)+**停新增持久化**——对账硬失败(usage 超计数/供应商实付>预占)置 pay_paused=1 并记录原因(复用既有闸门不另建暂停系统,重启继续拒绝、人工解除,复用/结算/只读照常);④**Task 26 授权顺序解循环**——本地替身验证→获真实校准授权→执行校准→校准通过+获正常付费运行授权→首期→自动调度验收(五步不得倒置);Task 25 部署期间 timer 安装但保持 disabled 直至付费启用完成(引擎侧校准状态检查为第二道闸门);服务器授权=一次授权覆盖列明范围,范围内直接执行,范围变化再确认。**计划校正表(同批落实)**:新增 Task 0 工程初始化;Task 10/11 明确 entry upsert 与 freeze INSERT 由**同一事务拥有者一次提交**(任务拆分≠事务拆分);Task 23 路径修正 site/src/content.config.ts+补两消费页面([...page].astro/[id].astro 成本标志同步显示;schema default(false) 仅旧文件兼容,**engine 断言新产物显式写布尔值**,两职责不混);Task 24 分窗口断言(有效响应不重发/缺失评分可按授权补发/unknown 保留预占遵循等待名额/发布恢复零模型调用——"任意阶段 kill 后零新增付费"不成立,已删)。model-calls v5/scheduling-ops(置位来源)/pipeline(口径行)/design.md(calibration 字段)同步。
 - 2026-10-05 第三轮联合核验(②补齐+M1 plan 同批交付):①③④⑤ 关闭;②判定规则通过但持久化未闭合——补 **receipt_attempt 三列**:`attempt_origin`(授权来源 initial/retry/unknown_retry,预占事务写)、`error_class`(规范化 no_retry/retryable/unknown,失败或 unknown 状态更新同事务写;映射 no_retry={E1.request,E4.terminal,E5.balance}、retryable={E3.http,E4.parse}、unknown={E3.unknown})、`fail_detail_json`(http_status+矩阵子类+摘要,同事务写);**名额统计唯一口径**(§5.3.1)=普通名额消耗为 `origin∈{initial,retry} AND error_class='retryable'` 行数(≤max_attempts,即首+max_attempts−1 重),unknown 专属=unknown_retry_used 标志(与 origin='unknown_retry' 行同事务双写);"可重试类失败计数"一词统一指该公式,不再与"行数"混用;重启仅凭 DB 重放判定(400 与 503 同为 failed 未核清靠 error_class 区分)。验收 7d=落库关闭连接重读判定(替身)。model-calls v4/pipeline 计数行同步。**同批交付 M1 实施计划待评审稿**(docs/superpowers/plans/2026-10-05-m1-engine-implementation.md;含 tokenizer 校准数据来源与备份文件级验收两项验证任务)。
 

@@ -5,10 +5,10 @@
 ## 项目状态快照(2026-10-04)
 
 - M0:Task1-9已实施——site/(Astro5.18.2)、部署工件与服务器链路已验收(线上 `https://nanmu.xyz`,常态发布计时13s、韧性实测5项、Caddy接管apex域名),证据见[部署交接](docs/sessions/2026-10-04-m0-deploy.md)。Task10(首篇文章+tag m0)未做
-- **当前阶段(2026-10-04用户指示):模块详细设计与设计评审阶段**——M1 不进入编码;Task10/服务器/推送等实施类操作仍暂停。工作主线:按[设计评审规范](docs/development/design-review.md)先产出 M1 完整日报样例与一期生命周期设计,再逐单元设计评审。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
-- 顺序:M1 设计五单元评审通过→M1 plan经评审→**用户明确恢复实施**→编码;进入条件以spec §9为准。现有 spec/engine 文档是总体设计基线,单独不构成编码许可;评审通过不自动解除实施暂停
+- **当前阶段(2026-10-05 第五轮核验):M1 详细设计与实施计划评审通过**——五单元设计+M1 plan(27 任务)经五轮核验关闭全部阻塞项;**待 M0 收尾(Task 10)及用户明确恢复实施**,实施暂停未解除(编码/Task10/服务器/推送仍暂停)。工作重心转向"准备按已通过的计划实施";仅当实现证据暴露契约问题才局部回补设计。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
+- 顺序:**用户明确恢复实施**→M0 Task 10(首篇文章+tag m0)→M1 Task 0 起本地实现(替身环境费用与内容闭环)→Task 25 部署→Task 26 分两段授权启用付费;进入条件以spec §9为准。评审通过不自动解除实施暂停
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-05 第四轮核验修正(M1 plan 评审轮)](docs/sessions/2026-10-05-m1-plan-review4-fix.md)(三列持久化方案通过,但 plan 转写矛盾不批准原稿实施;已集中修正 4 组 P1+校正表:①attempt_origin=授权来源预占后不可改写,普通名额=origin∈{initial,retry} 行数不按 error_class 过滤;②校准通道入契约=units/model-calls.md 规则 11(删默认 1.2,无依据则停);③预占公式补输出上限+停新增=pay_paused 持久化置位不建第二套系统;④Task 26 五步两授权+Task 25 timer 保持 disabled;校正表=Task 0 工程初始化/Task 10-11 同一事务/Task 23 实际路径与两页面/Task 24 分窗口断言;plan 现 27 任务(Task 0-26),待用户下一轮核验列明差异与引用同步,通过≠自动恢复编码);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-05 第五轮核验:M1 实施计划通过评审+三处引用勘误落盘](docs/sessions/2026-10-05-m1-plan-review5-passed.md)(4 组 P1 关闭,plan 作为实施基线;通过边界=tokenizer/费用上界/备份恢复/真实发布均未运行验收([V1]/[V2]/Task 21/22/26 实施验证),不解除实施暂停;同批勘误:①plan Task 25 timer 保持 disabled 直到 Task 26 Step 5(含正常运行授权+首期人工核验);②scheduling-ops §0 表 pay_paused 写入职责对齐(单元二对账置位+单元五恢复置位/解除);③spec §5.3 engine_meta 注释更新为两类键(pay_paused+校准记录引规则 11);前轮链:[review4-fix](docs/sessions/2026-10-05-m1-plan-review4-fix.md)、[review3](docs/sessions/2026-10-05-m1-retry-persistence-m1-plan.md)、[review2-fix](docs/sessions/2026-10-05-m1-units-review3-fix.md)、[review2](docs/sessions/2026-10-05-m1-units-review2-fix.md)、[batch](docs/sessions/2026-10-05-m1-units-batch.md) 含 erratum);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 

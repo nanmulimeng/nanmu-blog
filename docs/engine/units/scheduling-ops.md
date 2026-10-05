@@ -12,7 +12,7 @@
 | issue_freeze.paused | **唯一写入者**(置位/解除命令) | 单元四撤回序列置位(调用本单元命令);调度检查只读 |
 | digest_issue fail_reason/last_exit/last_run_utc/updated_utc | **唯一写入者**(失败落行/运行收尾) | 单元四写状态推进+withdrawn |
 | notify_sent 表 | **唯一写入者**(发送结果,同 key UPSERT) | 通知脚本执行发送(design.md 通知边界);去重键定义在此 |
-| engine_meta(pay_paused) | **唯一写入者**(restore-backup 置位/人工核对后解除) | 单元二闸门只读消费 |
+| engine_meta(pay_paused) | 恢复备份置位(§3 规则 9 步骤②)+人工核对后解除(两来源解除协议一致) | **单元二对账硬失败亦置位**(其规则 2/8/11);闸门双方只读消费同一持久化标志 |
 | status 命令 | **实现**(只读聚合) | 各表提供事实(§3 规则 8 清单) |
 | 预算告警事件 | 消费(E5/¥40/402) | 单元二产生 |
 

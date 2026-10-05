@@ -606,7 +606,7 @@ def test_v2_backup_older_than_published_state(...):
 **步骤:**
 
 - [ ] Step 1:核查清单执行(spec §11/单元一 §9):服务器侧 topic-digest DB 路径、只读 WAL 权限以 engine 运行用户验证(`mode=ro`);fetched_utc 分布实测回填 data-source(48h 窗口候选量级证实或修订);systemd timer 时区核对。
-- [ ] Step 2:部署 timer 与 `/etc/nanmu-blog.env`(key 只进 env)——**timer 安装但保持 disabled(不 enable/start)直至 Task 26 步骤 3 完成付费启用**;期间引擎侧校准状态检查是第二道闸门(校准状态对当前配置未生效=正式管线拒绝新增付费);测试告警一次(OnFailure 链路,经手动触发 service 验证,不启动定时付费)。
+- [ ] Step 2:部署 timer 与 `/etc/nanmu-blog.env`(key 只进 env)——**timer 安装但保持 disabled(不 enable/start),直到 Task 26 Step 5;此前已取得正常运行授权,并完成首期人工核验**(第五轮引用勘误:步骤 3 是获得授权,不能与实际启用动作混为一谈;期间引擎侧校准状态检查是第二道闸门——校准状态对当前配置未生效=正式管线拒绝新增付费);测试告警一次(OnFailure 链路,经手动触发 service 验证,不启动定时付费)。
 - [ ] Step 3:commit+部署记录 session。
 
 **停点:** 任一服务器前置核查不通过 → 停,报告;**不修改 topic-digest 任何配置(铁律 4)**。
