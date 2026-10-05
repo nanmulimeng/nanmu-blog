@@ -95,6 +95,8 @@ retry:
   max_attempts: 2                        # 普通失败总尝试上限(含首次)
   unknown_retry_after_min: 30
   backoff_s: [30, 120]
+calibration:                             # 校准通道契约见 units/model-calls.md 规则 11(第四轮入契约)
+  budget_micro_cny: 50000                # 校准调用预占合计上限(¥0.05);走完整闸门,月预算/窗口照常适用,耗尽即中止
 timeouts:
   http_timeout_s: 60
   issue_timeout_s: 1800
@@ -121,6 +123,7 @@ pricing:                                 # 价目快照版本;来源与时点见
 | monthly/per_issue | 非负整数微元,0停止新增调用;monthly不超过¥50、per_issue不超过¥1,提高上限须先改产品契约 |
 | warn_monthly | 0≤值≤monthly;monthly=0时可保留原预警阈值,因为已停用不发送新的阈值预警 |
 | reserve两项 | 非负整数;retry_reserve_count仅指重试,不含摘要;0表示不专门预留重试,实际调用仍逐次查额度 |
+| calibration.budget_micro_cny | 正整数微元;校准调用(purpose='calibration')预占合计上限,耗尽即中止;**不豁免月度/窗口限额**(单元二规则 11;初始校准系数不进本文件——依据与绑定见该规则) |
 | max_attempts | 正整数,包含首次;普通自动重试最多max_attempts−1次 |
 | unknown_retry_after_min | 数值≥30;unknown仅额外自动重试一次,不能通过配置放大次数 |
 | backoff_s/timeouts | 有限正数;backoff至少覆盖普通重试次数,http/issue有界;剩余期时长不够则保存状态后退出,不忙等到超时 |

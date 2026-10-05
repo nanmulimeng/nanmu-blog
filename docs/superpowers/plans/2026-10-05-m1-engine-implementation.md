@@ -19,15 +19,16 @@
 - **八条铁律**(spec §2):范围生死线/博客零复杂度/引擎独立进程独立库/topic-digest 只读不动(`mode=ro`)/付费先记回执再消费+三级限次+月期金额预占/页面永不调模型/AI 内容必标注/文档随代码走。
 - **预算参数**(budget.yaml 真相源 engine/budget.md):monthly=50000000 微元(¥50)/per_issue=1000000(¥1)/warn_monthly=40000000(¥40);rate_limits 10/100/400(分钟/小时/日);max_attempts=2(含首次)/unknown_retry_after_min=30;max_input_tokens=4000/max_output_tokens=200;thinking=disabled、json_output=true(其他值 E1.config)。
 - **12 表 DDL 唯一真相源 = spec §5.3**(entry/receipt/receipt_attempt/budget/analysis/override/digest_issue/issue_freeze/api_usage/summary/notify_sent/engine_meta)。coding-standards 目录树注释中"8 表"为旧数字,实施时以 spec §5.3 为准(该行随 Task 3 一并修正)。
-- **再发送三条件与名额唯一口径** = units/model-calls.md §3 规则 5 + spec §5.3.1:普通名额消耗=该 logical_key 中 `attempt_origin IN ('initial','retry') AND error_class='retryable'` 行数(≤max_attempts);unknown 专属=receipt.unknown_retry_used(与 origin='unknown_retry' 行同事务双写);硬上限=总行数<max_attempts+1;两类名额不互借;重启仅凭 DB 重放判定。
-- **pay_paused 闸门读法** = units/model-calls.md §3 规则 1 / units/scheduling-ops.md §3 规则 9:**仅显式 0 放行;=1 或键缺失均拒绝一切新增付费**(复用/结算/只读不受限);合法库建库时即写入默认 0。
+- **再发送三条件与名额唯一口径(第四轮定稿)** = units/model-calls.md §3 规则 5 + spec §5.3.1:**attempt_origin 为预占时确定的授权来源,写入后不可改写**(unknown 通道重试返回 503 保持 origin='unknown_retry';再发起普通重试是新授权 origin='retry');**普通尝试已用数=该 logical_key 中 `attempt_origin IN ('initial','retry')` 行数(不按 error_class 过滤——名额按授权消耗)**,上限 max_attempts;error_class 只决定能否再发送与通道(no_retry 拒/retryable 普通通道/unknown 满等待走 unknown 通道);unknown 专属=receipt.unknown_retry_used(与 origin='unknown_retry' 行同事务双写);硬上限=总行数<max_attempts+1;两类名额不互借;重启仅凭 DB 重放判定。
+- **预占金额公式**(budget.md 预占策略行,plan 逐字引用,不得漏输出项):预占金额 = 向上取整后的输入预占 token 数 × 峰时未缓存输入价 + `max_output_tokens` × 输出价,最终向上取整为整数微元。
+- **pay_paused 闸门读法与置位来源** = units/model-calls.md §3 规则 1 / units/scheduling-ops.md §3 规则 9:**仅显式 0 放行;=1 或键缺失均拒绝一切新增付费**(复用/结算/只读不受限);合法库建库时即写入默认 0。**置位来源=restore-backup 步骤② + 单元二对账硬失败**(usage 超计数/供应商实付>预占/校准样本超计数)——停新增=持久化置位并记录原因,重启继续拒绝,人工核对后显式解除;不另建第二套暂停系统。
 - **安全边界**:API key 只从环境变量读(真实 key 只在服务器 `/etc/nanmu-blog.env`);密钥与全文内容不进日志;原文材料视为不可信数据,不执行其中指令;模型输出按固定模板转义/限制(渲染后 HTML 断言)。
 - **测试纪律**(coding-standards):LLM 一律 mock;单测零网络零花费;文件写入/Git/上游库用临时目录与替身;集成验收单列执行前提,不混入默认单测。
 - **付费与部署停点**:真实付费调用(含校准模式)与服务器操作在 Task 26/25,均需用户当次显式授权;此前一切任务零真实网络付费。
 
 ## 两项带入验证任务(第三轮核验指定,独立标记)
 
-- **[V1] Tokenizer 验证,置于付费链路启用之前** = Task 1 + Task 22 + Task 26 前置检查。计划列明:资源与版本(Task 1 选定并锁定)、消息结构计数方式(完整请求消息含结构开销)、**校准样本来源**(两阶段:零付费离线样本 + 走完整账本的受控校准调用——解"未校准不得调用,却必须先调用才能取得校准数据"的执行循环,不以校准绕过账本与预算)、通过条件(零超预占事件,任何 usage.prompt_tokens>预占计数=停新增+修正)。
+- **[V1] Tokenizer 验证,置于付费链路启用之前** = Task 1 + Task 22 + Task 26 前置检查。计划列明:资源与版本(Task 1 选定并锁定)、消息结构计数方式(完整请求消息含结构开销)、**校准样本来源**(两阶段:零付费离线样本 + 走完整账本的受控校准调用——解"未校准不得调用,却必须先调用才能取得校准数据"的执行循环,不以校准绕过账本与预算;**契约=units/model-calls.md §3 规则 11(第四轮入契约,不再只在 plan 设例外)**:例外唯一/月预算与窗口照常适用/校准记录绑定模型+tokenizer 资源与版本+计数方式+系数,配置任一变化即失效须重校准/**初始系数:官方资源=1.0,无官方资源不预设默认系数,建立不了覆盖依据则停**)、通过条件(零超预占事件,任何 usage.prompt_tokens>预占计数=置 pay_paused 停新增+修正)。
 - **[V2] 备份切换验收覆盖实际 SQLite 文件状态** = Task 21 验收内容:连接关闭、WAL checkpoint 处理、重新打开副本后暂停标志校验、切换边界中断测试(真实文件系统,非内存库)。**本轮设计评审只做了顺序审查,未执行文件级恢复实验——顺序审查 ≠ 恢复功能已验收**,该结论只能由 Task 21 的运行证据给出。
 
 ## Review Focus(最可能咬人的五类输入/失败模式 → 持有任务)
@@ -43,7 +44,7 @@
 ## 任务依赖总览
 
 ```
-Task 1 [V1]tokenizer核对 → Task 2 config → Task 3 db → Task 4 llm替身 → Task 5 ledger闸门
+Task 0 工程初始化 → Task 1 [V1]tokenizer核对 → Task 2 config → Task 3 db → Task 4 llm替身 → Task 5 ledger闸门
   → Task 6 重试判定 → Task 7 结算/unknown/快照 → Task 8 复用/N_new
   → Task 9 normalize → Task 10 collect → Task 11 冻结 → Task 12 prescreen
   → Task 13 score → Task 14 summarize → Task 15 入选/claim → Task 16 assemble/安全
@@ -55,6 +56,25 @@ Task 1 [V1]tokenizer核对 → Task 2 config → Task 3 db → Task 4 llm替身 
 串行为主链;Task 9-12(采集侧)与 Task 5-8(账本侧)可并行开发但测试种子独立。**任何任务失败(测试红且两轮修复无效)→ 停在当前任务,报告卡点,不进入后续任务。**
 
 ---
+
+### Task 0:engine 本地工程初始化(第四轮新增)
+
+**Files:**
+- Create: `engine/requirements.txt`(运行:httpx、PyYAML,+Task 1 选定的 tokenizer 包;测试:pytest、pytest-mock,分 `[dev]` 段)
+- Create: `engine/pyproject.toml`(src 布局包元数据,`pip install -e .[dev]` 可装)
+- Create: `engine/src/nanmu_engine/__init__.py`、`engine/tests/conftest.py`
+
+**Interfaces:**
+- Produces: 可安装的 `nanmu_engine` 包(src 布局,coding-standards 目录树);pytest 可发现 `engine/tests/`;`conftest.py` 提供 `tmp_engine_db`(临时 SQLite:connect_db+migrate)、替身 LLM fixture(后续任务复用)。
+
+**步骤:**
+
+- [ ] Step 1:创建上述骨架文件(pyproject 用 setuptools src-layout;requirements 与 pyproject 依赖一致)。
+- [ ] Step 2:`cd engine && pip install -e ".[dev]"`,确认 `python -c "import nanmu_engine"` 成功。
+- [ ] Step 3:写冒烟测试 `engine/tests/test_smoke.py`(`def test_package_importable(): import nanmu_engine`),`python -m pytest -v` 通过(此时 conftest 的 db fixture 尚无实现,留空函数占位,Task 3 填充——占位是 fixture 声明,不是设计占位)。
+- [ ] Step 4:commit `chore(engine): src 布局工程骨架与测试基建`。
+
+**停点:** 无。
 
 ### Task 1 [V1]:tokenizer 资源核对与 token_count.py
 
@@ -69,7 +89,7 @@ Task 1 [V1]tokenizer核对 → Task 2 config → Task 3 db → Task 4 llm替身 
 
 **步骤:**
 
-- [ ] **Step 1:核对模型方 tokenizer 发布渠道**(DeepSeek,2026-10-04 已复核官方文档基线)。记录:资源名、版本、发布渠道、离线可用性、确定性依据,写入本任务实施记录(session)。**分支**:①官方离线 tokenizer 存在 → 锁定版本进 config;②不存在 → 按单元三 §3 规则 5 备选:选可获得的已核对 tokenizer 资源 + 保守初始校准系数(见 Task 22,默认 1.2 写入 config,可通过对账下调),同时下调 max_input_tokens 预算余量;两分支都必须使"计数不可得→不出网"可测。
+- [ ] **Step 1:核对模型方 tokenizer 发布渠道**(DeepSeek,2026-10-04 已复核官方文档基线)。记录:资源名、版本、发布渠道、离线可用性、确定性依据,写入本任务实施记录(session)。**分支(依据=units/model-calls.md §3 规则 11"初始系数依据",第四轮定稿)**:①官方离线 tokenizer 存在 → 锁定版本进 config,初始校准系数=1.0(依据=资源即服务端分词器);②不存在 → **不预设默认系数**——必须先建立"近似资源+系数能覆盖目标 API 输入计量"的依据(来源、版本、覆盖论证写入实施记录),并下调 max_input_tokens 预算余量;**建立不了覆盖依据则停,不进入付费**;若以近似资源做小额探索,标注为"尚未验证上界的小额实验",不得表述为"已建立保守上界"。两分支都必须使"计数不可得→不出网"可测。
 - [ ] **Step 2:写失败测试**(种子:units/content-editing.md §7 场景 3 前半):
 
 ```python
@@ -95,7 +115,7 @@ def test_deterministic():
 - [ ] **Step 5:跑测试通过**;同步 coding-standards 白名单;commit `feat(engine): tokenizer 计数模块(资源锁定+无回退)`。
 
 **验收补充:** 离线样本=本地 topic-digest 既有 90 条正文构造真实请求结构,计数分布记入实施记录(校准阶段 A 证据)。
-**停点:** 官方渠道无离线资源且备选资源亦不可得/不确定 → 停,报告候选与保守策略方案,等用户裁决。
+**停点:** 官方渠道无离线资源,且无法建立"近似资源+系数覆盖目标 API 输入计量"的依据 → 停,报告候选与论证缺口,等用户裁决(单元二规则 11:不预设默认系数,不以无依据系数进入付费)。
 
 ### Task 2:config.py 四件套加载与校验
 
@@ -201,7 +221,7 @@ def test_hour_window_full_rejects_without_writing_attempt(...):
     # 小时窗口将满 → 拒且不写预占行(断言表内无新行)
 ```
 
-金额预占=token_count×价目快照(峰时未缓存保守价)向上取整微元。
+金额预占公式(budget.md 预占策略行逐字,**第四轮修正:输出上限必含,不得漏**):预占金额 = 向上取整后的输入预占 token 数 × 峰时未缓存输入价 + `max_output_tokens` × 输出价,最终向上取整为整数微元(budget.md"峰时未缓存输入价与完整输出上限"策略)。
 - [ ] Step 2-4:红→实现→绿。
 - [ ] Step 5:commit `feat(engine): 授权闸门(pay_paused 读法+窗口/金额+attempt_origin 预占)`。
 
@@ -215,11 +235,11 @@ def test_hour_window_full_rejects_without_writing_attempt(...):
 
 **Interfaces:**
 - Produces: `record_failure(attempt_ref, error_class, fail_detail, usage=None)`(单事务:attempt→failed/unknown + error_class + fail_detail_json 同事务写;有 usage 先结算);`can_retry(logical_key, now_utc) -> RetryVerdict`(再发送三条件判定,**输入全部来自持久化列**)。
-- 名额公式逐字=model-calls §3 规则 5 条件 2/3(spec §5.3.1):普通消耗=`attempt_origin IN ('initial','retry') AND error_class='retryable'` 行数 ≤max_attempts;unknown=receipt.unknown_retry_used=0 且 ≥30min;硬上限=总行数<max_attempts+1;两类不互借。
+- 名额公式逐字=model-calls §3 规则 5 条件 2/3(spec §5.3.1,**第四轮口径**):普通尝试已用数=`attempt_origin IN ('initial','retry')` 行数(**不按 error_class 过滤,名额按授权消耗**)≤max_attempts;unknown=receipt.unknown_retry_used=0 且 ≥30min;硬上限=总行数<max_attempts+1;两类不互借;**origin 预占后不可改写**——record_failure 只写 error_class/fail_detail_json。
 
 **步骤:**
 
-- [ ] Step 1:写失败测试——种子:model-calls 验收 **7/7b/7c/7d 全部**(7d 为第三轮核验反例,逐句落实):
+- [ ] Step 1:写失败测试——种子:model-calls 验收 **7/7b/7c/7d 全部**(7d 含第三轮反例与第四轮 origin 授权语义序列表,逐句落实):
 
 ```python
 def test_7d_replay_from_disk_after_close(tmp_path, fake_http_400):
@@ -231,9 +251,14 @@ def test_7d_replay_from_disk_after_close(tmp_path, fake_http_400):
 
 def test_7d_503_counts_against_normal_quota(...):  # error_class='retryable' 按普通剩余名额
 def test_7d_normal_exhausted_unknown_unused_still_rejects(...):  # 不互借
-def test_7d_unknown_channel_then_normal_failure_counts_as_retry(...):
-    # unknown 通道重试后再发生普通可重试失败 → origin='retry' 计入普通名额
-def test_7c_max2_two_normal_failures_no_send_after_restart(...)  # 总数 2<3 不构成许可
+def test_7d_origin_immutable_unknown_channel_returns_503(...):
+    # 序列:attempt1 initial/超时未知 → attempt2(≥30min,unknown 通道)返回 503
+    # → 断言 attempt2 行保持 origin='unknown_retry'/error_class='retryable'(不因返回类型改写)
+    # 若普通名额仍有剩余而再发起 → attempt3 是新授权 origin='retry',计入普通尝试已用数
+def test_6_quota_counts_attempts_not_error_classes(...):
+    # 普通尝试已用数=origin∈{initial,retry} 行数:initial/unknown 与 initial/retryable
+    # 各占一个普通名额(不按 error_class 过滤);失败更新事务断言不改写 attempt_origin
+def test_7c_max2_two_normal_failures_no_send_after_restart(...)  # 普通已用 2=max_attempts,总数 2<3 不构成许可
 ```
 
 - [ ] Step 2-4:红→实现(record_failure 同事务写三列;can_retry 纯 SQL 查询)→绿。
@@ -316,7 +341,8 @@ def test_7c_max2_two_normal_failures_no_send_after_restart(...)  # 总数 2<3 �
 - Create: `engine/src/nanmu_engine/collect.py`(冻结函数)或独立冻结段;Test: `engine/tests/test_freeze.py`
 
 **Interfaces:**
-- Produces: `freeze_issue(conn, issue_date, manifest, now_utc) -> frozen_utc`(单事务:issue_freeze 行 + manifest_json 全文快照+content_hash 每成员;幂等:同 issue_date 再调直接返回 frozen)。
+- Produces: `freeze_issue(conn, issue_date, manifest, now_utc) -> frozen_utc`(幂等:同 issue_date 再调直接返回 frozen)。
+- **事务边界(第四轮澄清:任务拆分 ≠ 事务拆分)**:entry upsert 与 issue_freeze INSERT 属于**同一个事务拥有者(collect_once),一次提交**——data-ingestion"collect 本地写单事务"契约;Task 10/11 只是测试关注点拆分,任何把两者拆成两次 COMMIT 的实现即偏离契约,验收 2(冻结原子性:事务内注入 kill→无行无半写)会抓住跨事务半写。
 
 **步骤:**
 
@@ -360,7 +386,7 @@ def test_7c_max2_two_normal_failures_no_send_after_restart(...)  # 总数 2<3 �
 - [ ] Step 2-4:红→实现→绿;回跑 Task 8 复用矩阵。
 - [ ] Step 5:commit `feat(engine): 双次评分(prompt 附录A+E4 验证器+tokenizer 截断)`。
 
-**停点:** "超预占=停新增"机制需全局生效位 → 在 ledger 增加 `halt_new_charges` 状态位(engine_meta,仅内存+日志?)——**注意:若需持久化停增标志,先回 spec §5.3 补契约再实现,不得静默扩表**。实现时若发现无需持久化(每次启动重查对账历史即可判定),在 session 记录理由。
+**停点与停新增机制(第四轮定稿,不留实现者自由选择):** "超预占=停新增"=**置 engine_meta.pay_paused='1' 持久化并记录原因**(复用既有闸门,与备份恢复暂停同一解除协议:人工核对后显式置 0;重启继续拒绝;复用/结算/只读照常)——不是内存态,不引入 `halt_new_charges` 第二套系统。契约已同步至 units/model-calls.md §3 规则 2/8 与 scheduling-ops §3 规则 9(第四轮),实现直接引用,无需再回写设计。
 
 ### Task 14:summarize.py 摘要写作
 
@@ -520,21 +546,22 @@ def test_v2_backup_older_than_published_state(...):
 ### Task 22 [V1]:校准模式执行体 calibrate 命令
 
 **Files:**
-- Modify: `engine/src/nanmu_engine/ops.py`、`engine/config/budget.yaml`(calibration 参数)
+- Modify: `engine/src/nanmu_engine/ops.py`、`engine/config/budget.yaml`(calibration 段,字段已入 design.md 配置契约)
 - Test: `engine/tests/test_calibrate.py`(替身)
 
 **Interfaces:**
-- Produces: `calibrate()`——**校准样本来源的执行解**(第三轮核验指定验证点):
+- Produces: `calibrate()`——**契约=units/model-calls.md §3 规则 11(第四轮入契约,本任务只实现不另行设计)**:
   - **阶段 A(零付费,Task 1 已完成)**:离线样本(本地 topic-digest 90 条正文构造请求结构)→ 计数函数自身验证;
-  - **阶段 B(受控付费)**:固定样本(3 条最小合成材料+1 条真实短文)**走完整账本流程**(purpose='calibration',经授权闸门预占/attempt/结算,单列 `calibration_budget_micro_cny` 默认 50000 微元=¥0.05),产出 usage.prompt_tokens vs 预占计数比值;
-  - **循环解法**:正式管线(purpose∈{score,understand})的授权要求 engine_meta 校准状态=passed;**calibration purpose 本身不受该检查限制**(否则"未校准不得调用,却必须先调用才能校准"死锁)——校准调用不绕账本,恰恰是走账本的受控小额授权;
-  - 通过条件:全部样本 ratio≤1 → 校准状态=passed(记 engine_meta);任一 ratio>1 → **停新增+上调校准系数**(人工确认后重校准)。
-- Config 契约追加:`tokenizers`(Task 1)+`calibration_budget_micro_cny`+初始 `calibration_factor`(官方 tokenizer=1.0;近似资源=1.2 起步)。
+  - **阶段 B(受控付费)**:固定样本(3 条最小合成材料+1 条真实短文)**走完整账本流程**(purpose='calibration',经授权闸门预占/attempt/结算,**月预算与窗口限额照常适用**,不设免检额度;`calibration.budget_micro_cny` 预占合计上限,耗尽即中止不追加),产出 usage.prompt_tokens vs 预占计数比值;
+  - **例外范围唯一**:正式管线(purpose∈{score,understand})的授权前置=校准状态对**当前配置**生效;calibration purpose 是该检查的唯一例外(解"未校准不得调用,却必须先调用才能校准"执行循环);
+  - **校准记录绑定配置**:engine_meta 记录 {model, tokenizer 资源与版本, 消息计数方式, 校准系数, 样本对账结果, 判定时刻}——**任一项变化即失效须重校准**,不是可跨配置沿用的 passed 标志;
+  - 通过条件:全部样本 ratio≤1 → 校准状态对当前配置生效;任一 ratio>1 → **置 pay_paused 停新增(同规则 2)+上调系数(人工确认后重新校准)**。
+- Config 契约(design.md budget.yaml 已同步):`tokenizers` 映射(Task 1)+`calibration.budget_micro_cny`;**初始系数不进 config 默认值**——官方资源=1.0(依据=资源即服务端分词器),无官方资源依 Task 1 建立的覆盖论证,建立不了则停。
 
 **步骤:**
 
-- [ ] Step 1:写失败测试(替身模拟 usage 返回):ratio≤1 全过→passed+校准记录;ratio>1→停新增断言;校准预算耗尽→中止不追加;calibration attempt 在账本中可查(不绕账本断言:attempt 行存在且结算)。
-- [ ] Step 2-4:红→实现→绿;回写 units/model-calls.md §9 未决项行("tokenizer 选型与校准有效性"→ 已有实施路径引用本任务)。
+- [ ] Step 1:写失败测试(替身模拟 usage 返回;种子=model-calls 验收 11 全部):ratio≤1 全过→校准状态生效+绑定记录落 engine_meta;ratio>1→停新增置 pay_paused 断言(持久化,重启仍拒);校准预算耗尽→中止不追加;calibration attempt 在账本中可查且**计入窗口与月预算**(不绕闸门断言);**换模型/tokenizer 资源或版本/计数方式/系数任一项→状态失效,正式管线重新拒绝新增**。
+- [ ] Step 2-4:红→实现→绿(校准状态读写与配置指纹比对;单元二规则 11 为行为规范)。
 - [ ] Step 5:commit `feat(engine): 校准模式(走账本的受控校准通道)`。
 
 **停点:** 真实校准调用(非替身)属 Task 26 授权范围;本任务只交付替身验证过的执行体。
@@ -542,14 +569,16 @@ def test_v2_backup_older_than_published_state(...):
 ### Task 23:site schema 消费与 AI 标注
 
 **Files:**
-- Modify: `site/src/content/config.ts`(digest collection schema:frontmatter 六字段,cost_pending 显式布尔,`default(false)` 仅旧文件兼容)
-- Test: site 既有 `npm run verify` + schema 负例(缺字段/类型错→构建失败)
+- Modify: `site/src/content.config.ts`(digest collection schema 加 cost_pending 字段;注意实际路径是 `src/content.config.ts`,不是 `src/content/config.ts`)
+- Modify: `site/src/pages/digest/[...page].astro`(列表页成本行,当前 L24 附近"成本 ¥{cost_cny}")
+- Modify: `site/src/pages/digest/[id].astro`(详情页成本行,当前 L16 附近"成本 ¥{cost_cny}")
+- Test: site 既有 `npm run verify` + schema 负例;engine 侧断言在 Task 16(见步骤)
 
 **步骤:**
 
-- [ ] Step 1:写失败测试——schema 负例 fixture(缺 cost_pending 的新文件→构建拒绝;ai_model 为示例 ID→拒绝,铁律 7);页面模板 AI 标注块(模型+成本+cost_pending=true 时"含未决预占,为保守上界"文案,digest-design §3.4)。
-- [ ] Step 2-4:红→实现→绿(`npm run verify`)。
-- [ ] Step 5:commit `feat(site): digest schema 消费与 AI 标注`。
+- [ ] Step 1:写失败测试——schema:digest collection 加 `cost_pending: z.boolean().default(false)`(**default 仅旧文件兼容**——site 侧验证"旧文件缺字段可过"是兼容行为,**"新生成文件必须显式写布尔值"由 engine 组装测试断言(Task 16:assemble 产物总含显式 cost_pending),两职责不混在 schema 一处**);负例=类型错(字符串 `"false"`/整数)→构建拒绝。页面:cost_pending=true 时列表页与详情页成本行同步显示"(含未决预占,为保守上界)"(digest-design §3.4 文案);ai_model 为示例 ID 的拒绝属 engine 断言(assemble 用实际调用模型,铁律 7),schema 保持 min(1) 不重复实现。
+- [ ] Step 2-4:红→实现→绿(`npm run verify`,含两个页面渲染断言)。
+- [ ] Step 5:commit `feat(site): digest cost_pending schema 与两页成本标志显示`。
 
 **停点:** 无(纯本地构建)。
 
@@ -560,7 +589,7 @@ def test_v2_backup_older_than_published_state(...):
 
 **步骤:**
 
-- [ ] Step 1:写集成测试:小样本(≤5 条)全链贯通——collect(夹具上游)→冻结→预筛→评分→摘要→组装→发布(夹具远端+线上证据桩)→published;三失败路径各一(E2 上游拒/LLM 全挂→failed+退出非零+通知;单条失败剔除不挂整期);重启重放:全链任意阶段 kill 后重跑→零新增付费(评分调用计数断言)。
+- [ ] Step 1:写集成测试:小样本(≤5 条)全链贯通——collect(夹具上游)→冻结→预筛→评分→摘要→组装→发布(夹具远端+线上证据桩)→published;三失败路径各一(E2 上游拒/LLM 全挂→failed+退出非零+通知;单条失败剔除不挂整期)。**重启重放分窗口断言(第四轮修正:"任意阶段 kill 后零新增付费"不成立,已删)**:①评分响应已有效→不重发(复用,零新增);②评分缺失/身份失效→**可按授权补发(允许新增付费,逐过闸门与名额)**;③unknown→预占保留,遵循等待条件与名额;④发布恢复(commit/push/确认窗口)→**零模型调用**。各窗口分别 kill 后重跑断言对应行为。
 - [ ] Step 2:跑通;修复跨界缝隙(接口失配在本任务暴露,修接口定义处)。
 - [ ] Step 3:commit `test(engine): 替身端到端全链`。
 
@@ -572,34 +601,39 @@ def test_v2_backup_older_than_published_state(...):
 - Create: `deploy/nanmu-blog-engine.service`+`nanmu-blog-engine.timer`(每日 08:30 + RandomizedDelaySec=300 + Persistent=true)、engine systemd EnvironmentFile 引用说明
 - Modify: `docs/ops/runbook.md`(restore-backup/status/暂停命令;备份纳管复用 topic-digest `conn.backup()` Online Backup 模式,保留 30 天)
 
-**步骤(每步服务器操作前单独请示):**
+**授权方式(第四轮修正):** 一次授权覆盖本任务列明的操作范围,范围内直接执行;**范围变化或遇未列操作再确认**(不再逐步机械请示)。
+
+**步骤:**
 
 - [ ] Step 1:核查清单执行(spec §11/单元一 §9):服务器侧 topic-digest DB 路径、只读 WAL 权限以 engine 运行用户验证(`mode=ro`);fetched_utc 分布实测回填 data-source(48h 窗口候选量级证实或修订);systemd timer 时区核对。
-- [ ] Step 2:部署 timer + `/etc/nanmu-blog.env`(key 只进 env);测试告警一次(OnFailure 链路)。
+- [ ] Step 2:部署 timer 与 `/etc/nanmu-blog.env`(key 只进 env)——**timer 安装但保持 disabled(不 enable/start)直至 Task 26 步骤 3 完成付费启用**;期间引擎侧校准状态检查是第二道闸门(校准状态对当前配置未生效=正式管线拒绝新增付费);测试告警一次(OnFailure 链路,经手动触发 service 验证,不启动定时付费)。
 - [ ] Step 3:commit+部署记录 session。
 
 **停点:** 任一服务器前置核查不通过 → 停,报告;**不修改 topic-digest 任何配置(铁律 4)**。
 
-### Task 26:真实付费链路启用(⚠️ 需用户当次显式授权:真实付费)
+### Task 26:真实付费链路启用(⚠️ 分两次授权:真实校准 / 正常付费运行)
 
-**前置检查(全部通过才请求授权):** Task 1-24 全绿;**[V1] 校准已真实执行并通过**(Task 22 执行体 + 真实校准调用,零超预占);闸门/重试/备份文件级验收有运行证据;用户明确解除实施暂停的指示在案。
+**前置检查(全部通过才请求第一次授权):** Task 0-24 全绿;校准方案与预算已按 units/model-calls.md §3 规则 11 定稿(初始系数有依据或已停);闸门/重试/备份文件级验收有运行证据;用户明确解除实施暂停的指示在案。
 
-**步骤:**
+**授权顺序(第四轮解循环,五步不得倒置):**
 
-- [ ] Step 1:`calibrate` 真实执行(受控 ¥0.05 内)→ 校准状态=passed。
-- [ ] Step 2:首期真实运行(小样本)→ 人工核验产物;连续 3 天自动产出+每天最多 5 条人工核验(spec §9.1 M1 交付)。
-- [ ] Step 3:M1 验收:连续 3 天日报、单期 ≤¥1、熔断注入测试通过(timer 环境下验证 pay_paused/E5.limit 停新增)、AI 标注可见;证据写 session。
+- [ ] Step 1:**本地与替身验证全部通过,校准方案及预算明确**(含初始系数依据)→ 请求并获**真实校准授权**(范围=calibration.budget_micro_cny 内的校准调用)。
+- [ ] Step 2:`calibrate` 真实执行(受控预算内)→ 检查结果:全部样本 ratio≤1 → 校准状态对当前配置生效;任一超出 → 置 pay_paused 停新增,报告并等人工处置(**不得进入后续步骤**)。
+- [ ] Step 3:校准通过后,请求并获**正常付费运行授权**(范围=首期小样本+后续自动调度)。
+- [ ] Step 4:首期真实运行(小样本)→ 人工核验产物。
+- [ ] Step 5:启用 timer(Task 25 保持 disabled 的对应动作)→ 连续 3 天自动产出+每天最多 5 条人工核验(spec §9.1 M1 交付);M1 验收:连续 3 天日报、单期 ≤¥1、熔断注入测试通过(timer 环境下验证 pay_paused/E5.limit 停新增)、AI 标注可见;证据写 session。
 
-**停点:** 真实运行中任何超预占/重复付费迹象 → 立即置 pay_paused=1(经 restore 语义或显式命令)→ 停,报告账本证据。
+**停点:** Step 2 校准失败 → 停在付费暂停态等人工处置;真实运行中任何超预占/重复付费迹象 → 立即置 pay_paused=1(显式命令,同 restore 语义)→ 停,报告账本证据。
 
 ---
 
-## Self-Review 结论(plan 写作自查)
+## Self-Review 结论(plan 写作自查;第四轮核验修正后复检)
 
-1. **覆盖核对**:spec §9.1 M1 范围(collect→评分→摘要→日报发布全链+成本治理)→ Task 9-19/24;五单元 §7 验收场景全部映射到任务(data-ingestion 1-13→Task 9-12;model-calls 1-10→Task 5-8;content-editing 1-9→Task 13-16;publish-withdraw 1-8→Task 17-18;scheduling-ops 1-8→Task 19-21);第三轮两项验证任务→[V1]Task 1/22/26、[V2]Task 21。
-2. **无占位符**:每任务有 Files/Interfaces/种子编号与代表性测试;数值逐字引自真相源。
+1. **覆盖核对**:spec §9.1 M1 范围(collect→评分→摘要→日报发布全链+成本治理)→ Task 9-19/24;五单元 §7 验收场景全部映射到任务(data-ingestion 1-13→Task 9-12;model-calls 1-11→Task 5-8/22;content-editing 1-9→Task 13-16;publish-withdraw 1-8→Task 17-18;scheduling-ops 1-8→Task 19-21);两项带入验证任务→[V1]Task 0/1/22/26、[V2]Task 21。
+2. **无占位符**:每任务有 Files/Interfaces/种子编号与代表性测试;数值逐字引自真相源;第四轮清除项:Task 13 停新增机制不再留实现者选择(=置 pay_paused)、Task 22 初始系数不再有默认 1.2。
 3. **类型一致**:AttemptRef/ReuseSnapshot/PrescreenResult/DigestDraft/PublishResult 跨任务引用同名。
 4. **Review Focus 五类均有持有任务测试**(见各条目)。
+5. **第四轮修正落位自查**:①origin 授权语义(授权时消耗名额)→Task 6 测试+Global Constraints+model-calls v5+spec §5.3.1+pipeline;②校准通道入契约→model-calls 规则 11+design.md calibration 字段+Task 1/22/26;③预占公式含输出上限→Task 5+Global Constraints;④Task 26 五步授权顺序+Task 25 timer 保持 disabled;校正表四项→Task 0/Task 10-11/Task 23/Task 24。
 
 ## 文档边界声明
 

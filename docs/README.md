@@ -58,10 +58,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-05-m1-retry-persistence-m1-plan.md)(第三轮核验修正:重试判定持久化契约 receipt_attempt 三列+名额唯一口径+验收 7d 落库重读;同批交付 M1 实施计划待评审稿;前轮见 [review3-fix](sessions/2026-10-05-m1-units-review3-fix.md)、[review2-fix](sessions/2026-10-05-m1-units-review2-fix.md) 与 [batch](sessions/2026-10-05-m1-units-batch.md) 含 erratum),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-05-m1-plan-review4-fix.md)(第四轮核验修正:plan 转写矛盾集中校正——①attempt_origin 授权语义不可改写+名额不按 error_class 过滤、②校准通道入 units/model-calls.md 规则 11、③预占公式补输出上限+停新增=pay_paused 持久化、④Task 26 五步两授权+timer 保持 disabled,另校正表四项;前轮见 [review3-fix](sessions/2026-10-05-m1-retry-persistence-m1-plan.md)、[review2-fix](sessions/2026-10-05-m1-units-review3-fix.md)、[review2](sessions/2026-10-05-m1-units-review2-fix.md) 与 [batch](sessions/2026-10-05-m1-units-batch.md) 含 erratum),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计**已全部产出并经三轮联合核验修正**,单元文档现状见 [units/](engine/units/),最新 [第三轮修正 session](sessions/2026-10-05-m1-retry-persistence-m1-plan.md))→ 编写M1计划(**待评审稿已产出** [plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md),plan 评审通过仍需用户明确解除暂停才编码)。
+- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计**已全部产出并经三轮联合核验修正+第四轮 plan 转写校正**,单元文档现状见 [units/](engine/units/),最新 [第四轮修正 session](sessions/2026-10-05-m1-plan-review4-fix.md))→ 编写M1计划(**待评审稿已产出并经第四轮集中修正(27 任务)** [plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md),plan 评审通过仍需用户明确解除暂停才编码)。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令

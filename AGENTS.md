@@ -8,7 +8,7 @@
 - **当前阶段(2026-10-04用户指示):模块详细设计与设计评审阶段**——M1 不进入编码;Task10/服务器/推送等实施类操作仍暂停。工作主线:按[设计评审规范](docs/development/design-review.md)先产出 M1 完整日报样例与一期生命周期设计,再逐单元设计评审。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
 - 顺序:M1 设计五单元评审通过→M1 plan经评审→**用户明确恢复实施**→编码;进入条件以spec §9为准。现有 spec/engine 文档是总体设计基线,单独不构成编码许可;评审通过不自动解除实施暂停
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-05 第三轮核验修正+M1 计划待评审稿交接](docs/sessions/2026-10-05-m1-retry-persistence-m1-plan.md)(①③④⑤ 关闭;②补齐**重试判定持久化契约**——receipt_attempt 三列 attempt_origin/error_class/fail_detail_json、名额唯一口径(普通消耗=origin∈{initial,retry} AND error_class='retryable' 行数,unknown=unknown_retry_used 同事务双写)、验收 7d 落库关闭连接重读;**同批交付 M1 实施计划待评审稿**[plans/2026-10-05-m1-engine-implementation.md](docs/superpowers/plans/2026-10-05-m1-engine-implementation.md):26 任务/两项带入验证任务(tokenizer 校准数据来源=走账本的受控校准通道、备份切换文件级验收)/逐任务停点;待用户评审 plan 与②闭环,plan 评审通过≠自动恢复编码);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-05 第四轮核验修正(M1 plan 评审轮)](docs/sessions/2026-10-05-m1-plan-review4-fix.md)(三列持久化方案通过,但 plan 转写矛盾不批准原稿实施;已集中修正 4 组 P1+校正表:①attempt_origin=授权来源预占后不可改写,普通名额=origin∈{initial,retry} 行数不按 error_class 过滤;②校准通道入契约=units/model-calls.md 规则 11(删默认 1.2,无依据则停);③预占公式补输出上限+停新增=pay_paused 持久化置位不建第二套系统;④Task 26 五步两授权+Task 25 timer 保持 disabled;校正表=Task 0 工程初始化/Task 10-11 同一事务/Task 23 实际路径与两页面/Task 24 分窗口断言;plan 现 27 任务(Task 0-26),待用户下一轮核验列明差异与引用同步,通过≠自动恢复编码);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 

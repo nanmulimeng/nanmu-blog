@@ -112,7 +112,7 @@ Git和SQLite不是同一事务:必须覆盖“commit成功但状态未写入”�
 | 产物内容身份与git_commit | commit/push返回未知时核对已有文件/远端提交;不能仅比较路径存在 |
 | 期重试暂停标志及原因 | 人工撤回后重启仍不自动重发;恢复必须显式操作并留痕 |
 | 告警去重键/发送结果 | 同期重复失败、月度预算预警去重;发送失败允许有界重试 |
-| 普通重试与unknown计数 | 同一logical_key跨重启累计,分别限次且总attempt不超过design规定;不能通过重启或切换错误类型重新领次数。**口径与落点(第三轮定稿,units/model-calls.md §3 规则 5/spec §5.3.1)**:普通名额消耗=该 logical_key 中 `attempt_origin IN ('initial','retry') AND error_class='retryable'` 行数(≤max_attempts);unknown 专属=receipt.unknown_retry_used(与 `attempt_origin='unknown_retry'` 行同事务双写);类别判定读 attempt.error_class(与 fail_detail_json 于失败更新同事务写入) |
+| 普通重试与unknown计数 | 同一logical_key跨重启累计,分别限次且总attempt不超过design规定;不能通过重启或切换错误类型重新领次数。**口径与落点(第四轮定稿,units/model-calls.md §3 规则 5/spec §5.3.1)**:普通尝试已用数=该 logical_key 中 `attempt_origin IN ('initial','retry')` 行数(**不按 error_class 过滤——名额按授权消耗;origin 预占后不可改写**;≤max_attempts);unknown 专属=receipt.unknown_retry_used(与 `attempt_origin='unknown_retry'` 行同事务双写);error_class 只决定能否再发送与通道(与 fail_detail_json 于失败更新同事务写入) |
 | 条目与未完成期的归属 | draft/submitted占用条目;failed经核对后释放或恢复,避免永久卡死与跨期重复 |
 
 M1计划逐项选择现有表字段/JSON或本项目状态文件,同步spec DDL及操作命令后实施,不引入队列服务。正常运行先恢复未完成期(**恢复阶段有预算上限 recover_budget_s,旧期失败不挤占当天新期采集与生成,见 units/scheduling-ops.md**),再选新候选;scored/selected不能因只查询pending而丢失。已收响应按完整请求hash复用(**复用有效性=完整 E4 验证器,非正常终止不可消费,见 units/model-calls.md**),输入变化走新请求身份,旧attempt费用保留。**上述恢复信息映射已于 2026-10-05 五单元设计+核验修正轮全部定稿(spec §5.3.1 清单)。**
