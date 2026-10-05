@@ -239,6 +239,7 @@ N       = max(0, min(N_money, N_hour, N_day))
 ```
 
 - 截断排序:T1 优先 → discovered_utc 降序 → identity_key 升序(确定性;与 selection.md 的展示排序是不同用途,不混用)。
+- N 只限制**确需新增付费评分**的条目:预筛先按当前完整请求身份完成复用判定(单元二 `reusable_scores` 只读接口传入,预筛不查 receipt),可复用成员不占 N、不被截断;摘要与重试由公式预留覆盖(2026-10-05 单元二联合定稿;预筛契约见 [units/data-ingestion.md](units/data-ingestion.md) §3 规则 8,接口见 [units/model-calls.md](units/model-calls.md))。
 - 先扣摘要与重试预留再算评分容量:禁止先付费评分后才发现无摘要预算(budget.md)。
 - 次数中的`max_entries`预留每条一次摘要;`retry_reserve_count`仅留重试,默认5。两者不能混写成含摘要的20后再重复扣除。金额/次数预留是候选截断估算,不是提前插入虚假attempt;真正调用必须在ledger事务中再次核对全部窗口,共享预算并发亦然。
 - 金额/次数限额合法停用时直接N=0,但允许零网络复用。若已核实免费价格使W_score=0,金额余量扣预留后≥0则N_money视为无穷、否则为0;仍受次数和配置停用约束,禁止除零。

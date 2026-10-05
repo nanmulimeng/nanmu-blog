@@ -485,6 +485,8 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 
 ## 附:变更记录
 
+- 2026-10-05 单元一复核+单元二联合定稿:单元一采集/冻结/窗口/去重/预筛排除规则通过用户复核(②③④组关闭,占用区分通过);复用识别与新增付费容量(N_new)的交接由 engine/units/model-calls.md 定稿——`reusable_scores` 只读接口传入预筛(预筛保持纯函数、不查 receipt)、N_new 仅限确需新增付费评分、先复用后截断、recoverable 单义化为"评分网络零新增"——并回填 data-ingestion.md(规则 7.6/8、输出③、验收 9 四子场景)与 engine/design.md 候选上限节;占用写入与释放协议仍留单元三联合定稿。
+
 - 2026-10-05 M1 第 3 步启动(用户确认 digest-design v3 收口为功能输入基线):§4.1/§5.3.1 同步 cost_pending 字段契约(显式布尔/default 仅旧文件兼容/三处一致更新;"待实施契约"与"当前 site 实现"分层标注,site 代码待实施许可);§5.3 增 issue_freeze 表(9 表)承载期冻结确认事件——manifest 含每成员输入版本快照,"生成中已冻结"由该行承载、digest_issue 枚举不动;§8 文档树补 engine/digest-design.md 与 engine/units/。单元一设计见 engine/units/data-ingestion.md(设计稿待评审)。
 
 - 2026-10-04 用户拍板博客直接用apex域名`nanmu.xyz`(替代`blog.nanmu.xyz`):§1.3决策表、§7 Caddy示例、astro.config `site`、部署手册与计划同步;apex A记录实测已指向服务器,接管既有指向127.0.0.1:3000的死转发Caddy块。

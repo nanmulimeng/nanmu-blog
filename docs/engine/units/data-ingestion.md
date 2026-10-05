@@ -1,6 +1,6 @@
 # 数据接入与候选管理·单元详细设计(M1 第 3 步·单元一)
 
-> 状态:**部分通过复核,联合定稿中**(2026-10-05 复核:采集/冻结/窗口/去重/预筛排除规则已通过本轮复核;复用识别与新增付费容量的交接待单元二联合定稿,占用写入与释放协议待单元三联合定稿;**整体尚未达到可开发状态**)。第 3 步五单元之首,以 [digest-design.md](../digest-design.md) v3 为功能输入基线。
+> 状态:**部分通过复核;复用/付费容量交接已由单元二联合定稿并回填(待用户复核回填);占用写入与释放协议待单元三联合定稿;整体尚未达到可开发状态**(2026-10-05)。第 3 步五单元之首,以 [digest-design.md](../digest-design.md) v3 为功能输入基线。
 > 定位:回答"上游材料如何变成身份稳定、可追溯、按期冻结的候选"的**实现层设计**——存储映射、写入协议、事务边界、恢复行为、验收场景。功能语义(冻结契约/状态×操作/人工操作)以 digest-design 为准,本文不重复;与上游契约冲突时先改上游再回改本文。
 > 引用而非复制:判重规则 R0-R7 与多源平局见 [design.md](../design.md) identity_key 节;上游只读契约与依赖字段清单见 [data-source](../../context/topic-digest-data-source.md);DDL 真相源在 [spec §5.3](../../superpowers/specs/2026-10-02-nanmu-blog-design.md);候选上限公式见 design.md 候选上限节;窗口/阶段划分见 [pipeline.md](../pipeline.md) 阶段表。
 
@@ -13,8 +13,8 @@
 | entry 占用归属(selected 的期归属) | 预筛**消费**(本期/他期判定) | **写入协议由单元三定稿**(置 selected 时同事务写、发布确认置 used 时清、放弃失败期人工清);建议形态=entry 加 `claim_issue` 列,不预设 |
 | engine.db `issue_freeze` 表 | **唯一写入者**(冻结确认事件) | 全管线只读;调度单元凭该行判定"生成中,已冻结" |
 | engine.db `digest_issue` 表 | 仅 E2 时写 failed 行 | 组装写 draft,发布推进 submitted/published(单元三/四) |
-| 候选上限 N_new | 提供 `prescreen(manifest, issue_date, 配置, 占用快照, override 快照, N_new)` 纯函数 | **N_new 的计算属模型调用与费用治理单元**(预算公式输入);N_new 仅限制**新增付费评分**的条目数,不裁已有可恢复结果(§3 规则 8) |
-| 预筛输出(PrescreenResult) | 产出:四去向全覆盖的结构化结果(§4) | 评分单元消费 to_score/recoverable;组装单元(单元三)凭全覆盖不变量比对强制项,不遗漏责任在接口结构 |
+| 候选上限 N_new 与复用快照 | 消费:预筛签名 `prescreen(manifest, issue_date, 配置, 占用快照, override 快照, 复用快照, N_new)` 纯函数 | **均由模型调用与费用治理单元提供**([model-calls.md](model-calls.md)):N_new=确需新增付费评分容量(design.md 公式);复用快照=`reusable_scores` 只读判定结果;先复用后截断(§3 规则 8) |
+| 预筛输出(PrescreenResult) | 产出:四去向全覆盖的结构化结果(§4) | 评分单元消费 to_score/recoverable(recoverable=**评分网络零新增**,单义,见 §4 输出③);组装单元(单元三)凭全覆盖不变量比对强制项,不遗漏责任在接口结构 |
 
 ## 1. 目标与范围
 
@@ -30,7 +30,7 @@
 |------|------|------|-----------|
 | 新期采集 | 调度触发该 issue_date 首次运行 | 上游可达;该期无 issue_freeze 行 | entry 台账就绪;issue_freeze 行落地;预筛输出入围清单交评分 |
 | 续跑(同期再次进入) | 调度自动推进或人工重跑 | 该期 issue_freeze 行已存在 | **跳过采集**,直接读 manifest 走预筛及以后(digest-design §4.4) |
-| 预筛单独重放 | 排查/配置调整 | 冻结已确认 | 预筛是纯函数:同 manifest+同 issue_date+同配置+**同占用/override 快照**+同 N_new → 同结果,零付费、无副作用 |
+| 预筛单独重放 | 排查/配置调整 | 冻结已确认 | 预筛是纯函数:同 manifest+同 issue_date+同配置+**同占用/override/复用快照**+同 N_new → 同结果,零付费、无副作用 |
 | 状态查询 | `status --issue` | — | 只读展示冻结成员数/入围数/entry 统计(digest-design §3.5 格式) |
 
 ## 3. 业务规则(优先级从高到低)
@@ -53,11 +53,13 @@
    4. `entry.status = 'used'`(已上过日报);
    5. override 表 `exclude` 命中(identity_key 精确匹配,阶段边界生效)。
    **占用排除**(只排除其他期,不排除本期——2026-10-05 评审修正,对齐 pipeline 预筛契约"含可恢复的 scored/selected"):
-   6. `entry.status='selected'` **且归属期 ≠ 本期 issue_date** → 排除(被其他未完成期占用);**归属期=本期 → 进入 recoverable(续跑恢复,不截断)**。归属的存储形态由单元三定稿(建议 entry.`claim_issue` 列);failed 期人工放弃时由释放操作清除归属,本单元只读现状。
-8. **截断与 N_new 的作用范围(2026-10-05 评审修正)**:内容/编辑排除后、占用分层后的其余合格成员,按 T1 优先 → discovered_utc 降序 → identity_key 升序(确定性排序,与展示排序不同用途)**排序**;`to_score` = 其中尚未被本期选中的前 N_new 条,`capped` = 排序在 N_new 之外的其余合格条目(带序号)。**N_new 只限制新增付费评分的条目数**:
-   - `recoverable`(本期 selected)**不占 N_new、不被截断**——评分/摘要已完成、只差组装时预算耗尽,不得把已有成果裁掉(对齐 design.md"N=0 但允许零网络复用"与 E5.limit"已有合格条目可继续组装")。N_new=0 → to_score 空,recoverable 照常输出。
-   - 已评分未入选条目(scored)在预筛中按普通合格成员参与排序;其**回执复用(零网络)**由评分单元按完整请求身份判定(单元二/三),预筛不查 analysis/receipt——预筛只保证本期 selected 不被 N_new 截断这一类。
-   - N_new 由调用方按 design.md 候选上限公式代入预算参数得出,本单元不查账本。**force_include 不在预筛改变排序或截断**——强制项与普通成员同规则;被 cap 或被排除的强制项如何被下游看见,由 PrescreenResult 的全覆盖不变量保证(§4 输出③),组装边界的暂停转人工动作归单元三(digest-design §5.2)。
+   6. `entry.status='selected'` **且归属期 ≠ 本期 issue_date** → 排除(被其他未完成期占用);**归属期=本期 → 不被占用排除**,其去向由规则 8 的复用判定决定(身份未变的常态进 recoverable;当前请求身份已变化时按确需新增付费参与排序,见规则 8)。归属的存储形态由单元三定稿(建议 entry.`claim_issue` 列);failed 期人工放弃时由释放操作清除归属,本单元只读现状。
+8. **截断与 N_new 的作用范围(2026-10-05 评审修正,同日经单元二联合定稿回填)**:内容/编辑排除、占用分层后,**先做复用判定,再截断**——
+   - **复用判定(输入,非本单元职责)**:编排层调用单元二 `reusable_scores(manifest 成员, 请求身份上下文)` 只读接口,得出**复用快照**(每成员当前完整请求身份下 score-1/score-2 是否各有可复用响应,契约见 [model-calls.md](model-calls.md) §3 规则 3);预筛不查 receipt,保持纯函数。
+   - `recoverable` = **通过内容/编辑/占用检查且当前完整请求身份下评分响应可复用**的成员(本期 selected 的常态、评分完成写入入选前中断的成员、跨期同身份成员)——不占 N_new、不被截断。**recoverable 只承诺"评分网络零新增"**:不承诺摘要完成、不承诺可组装;是否还需摘要或(身份变化后的)重新评分由对应阶段判断,任何新增调用仍逐次经费用授权([model-calls.md](model-calls.md) §3 规则 5)。
+   - 其余合格成员=**确需新增付费评分**,按 T1 优先 → discovered_utc 降序 → identity_key 升序(确定性排序,与展示排序不同用途)排序:`to_score` = 前 N_new 条,`capped` = N_new 之外(带序号)。**N_new=0 → to_score 空,recoverable 照常输出,capped 全可见——不因截断丢失任何可恢复工作**(对齐 design.md"N=0 但允许零网络复用"与 E5.limit"已有合格条目可继续组装")。
+   - **当前请求身份已变化的本期 selected**(如 prompt 版本升级)不再可复用 → 按确需新增付费参与排序;被截断落 capped 可见,组装边界按"曾 selected 而无当前有效评分"暂停联动(动作归单元三)。
+   - N_new 由调用方按 design.md 候选上限公式得出,本单元不查账本。**force_include 不在预筛改变排序或截断**——强制项与普通成员同规则;被 cap 或被排除的强制项由 PrescreenResult 全覆盖不变量保证可见(§4 输出③),组装边界暂停转人工归单元三(digest-design §5.2)。
 9. **淘汰**:rejected/落选条目次日自然可再入围(无冷却);discovered_utc 滑出 48h 即不再成为候选(digest-design §4.6)。
 
 ## 4. 输入输出
@@ -68,7 +70,7 @@
 - sources.yaml(tier 映射、priority、exclude、unknown_source_tier)、selection.yaml(title_blacklist);
 - override 表(exclude 键集快照);
 - entry 表现状快照(status、占用归属、既有正文、固定 discovered_utc);
-- 候选上限 N_new(调用方提供,≥0;N_new=0 合法=本期不新增付费评分,可恢复结果照常)。
+- 单元二提供的**复用快照**(`reusable_scores` 只读判定结果)与候选上限 N_new(≥0;N_new=0 合法=本期不新增付费评分,可复用结果照常;[model-calls.md](model-calls.md) §4)。
 
 **输出①:entry 行**(spec §5.3 DDL,本单元只写身份与内容字段,不碰 status):
 - 新 identity_key → 插入:identity_key / url(原始 URL 展示用)/ title / source_name / source_tier(多源合并后被选源的档位;未登记或 name 空 → unknown_source_tier 默认 T2,记 warning)/ published_utc(可空)/ discovered_utc(=首次 fetched_utc)/ content_text(可空)/ status 默认 'pending'。
@@ -92,13 +94,13 @@
 | 去向 | 内容 | 消费者 |
 |------|------|--------|
 | `to_score` | 尚未被本期选中、排序前 N_new 的合格成员(有序) | 评分单元(新增付费) |
-| `recoverable` | 归属期=本期的 selected 成员(续跑恢复,不占 N_new 不截断;仍过内容/编辑排除,命中者移入 excluded) | 评分/组装单元(零新增付费) |
+| `recoverable` | **当前完整请求身份下评分响应可复用**的成员(常态=本期 selected;含评分完成未写入入选的成员与跨期同身份成员;不占 N_new 不截断;仍过内容/编辑排除,命中者移入 excluded)——仅承诺**评分网络零新增**,摘要/组装就绪另判 | 评分/组装单元(评分零新增网络;摘要按授权逐次) |
 | `excluded` | [(identity_key, reason)]——规则 1-5 命中者(含被新命中的本期 selected)与他期占用 | 组装单元(阶段边界处理,如 §5.1 排除的重组装) |
 | `capped` | [(identity_key, rank)]——排序在 N_new 之外的合格成员 | 组装单元(强制项比对,见下) |
 
 **全覆盖不变量(接口契约)**:`to_score ∪ recoverable ∪ excluded ∪ capped` = manifest 全体成员,每个成员**恰有一个**去向。不遗漏由本结构保证——组装单元(单元三)在组装边界取有效 force_include 集,凡成员 ∉ 已完成评分集(to_score 已评完 ∪ recoverable)——即落在 capped 或 excluded——则按 digest-design §5.2 暂停组装转人工。预筛不解读 force,单元三不重算去向:双方各做一半,漏项在结构上不可能。
 
-**正常样例**(延续 digest-design §3.1 虚构口径):窗口 34 条 → 去重合并 34 条(无同键)→ 资格过滤 0 剔 → 冻结 entry_count=34 → 预筛剔空正文 8、黑名单 1、used 2(均进 excluded 带原因)→ 本期 selected 3(上次续跑遗留,进 recoverable)→ 其余 20 条排序,N_new=12 → to_score 12 + capped 8 → 交评分。其中展示分 20 的强制项若落入 capped:to_score 完成后组装边界发现该 force 成员未完成评分 → 暂停转人工(接口保证它作为 capped 条目可见,不会被静默丢失)。
+**正常样例**(延续 digest-design §3.1 虚构口径):窗口 34 条 → 去重合并 34 条(无同键)→ 资格过滤 0 剔 → 冻结 entry_count=34 → 预筛剔空正文 8、黑名单 1、used 2(均进 excluded 带原因)→ 复用判定:本期 selected 3(上次续跑遗留,身份未变)+ 上期已评分本轮入围且身份未变的 1 条 → **recoverable 4** → 其余 19 条确需新增付费,排序后 N_new=12 → **to_score 12 + capped 7** → 交评分。其中展示分 20 的强制项若落入 capped:to_score 完成后组装边界发现该 force 成员未完成评分 → 暂停转人工(接口保证它作为 capped 条目可见,不会被静默丢失)。
 
 **非法输入处置**:scheme 非 http/https(R0 invalid)→ 跳过并记日志;上游行缺依赖字段 → 依赖测试红,按 E2;同 identity_key 多行 tier/priority/name 全同(同源多 URL 归并为同键)→ 按上游 **item.id 升序**最终平局键收敛(2026-10-05 评审补,规则本体在 design.md 判重节),输入行序变化不改变选出的正文与 hash。
 
@@ -139,7 +141,7 @@ CREATE TABLE issue_freeze (
         超窗记 candidate_expired(正文刷新照常执行,资格与台账互不影响)
      c. 组装 manifest(含 content_hash 与固定 discovered_utc),INSERT issue_freeze(单行)
      COMMIT                          ← 冻结确认事件在此刻发生
-5. 预筛(纯函数:manifest + issue_date + 配置 + 占用/override 快照 + N_new)
+5. 预筛(纯函数:manifest + issue_date + 配置 + 占用/override 快照 + 单元二复用快照 + N_new)
    → PrescreenResult(to_score / recoverable / excluded / capped,§4 输出③)
 ```
 
@@ -157,7 +159,7 @@ CREATE TABLE issue_freeze (
 
 **边界区分**:`no_candidates`(冻结空集合)与"预筛全剔但冻结非空"不同——后者走零入围→评分零过线→组装记零合格 failed,不属本单元落库。两条失败路径的期行都由下游创建,本单元仅 E2 落 failed 行。
 
-**预算耗尽续跑(N_new=0)**:to_score 空,recoverable(本期 selected)照常输出、不被截断——已有成果不因预算耗尽丢失,组装路径可继续(E5.limit 既有口径,design.md"N=0 但允许零网络复用");未评分条目停增,不阻塞组装。
+**预算耗尽续跑(N_new=0)**:to_score 空,复用快照命中的成员(含本期 selected、评分已持久化未写入入选者)照常输出 recoverable、不被截断——已有成果不因预算耗尽丢失;其中摘要未完成者由摘要阶段按授权决定能否补齐,组装就绪以实际结果为准(E5.limit 既有口径,design.md"N=0 但允许零网络复用");未评分条目停增(capped 可见),不阻塞组装。
 
 ## 7. 验收场景(M1 plan 强制测试种子;输入→期望)
 
@@ -169,7 +171,11 @@ CREATE TABLE issue_freeze (
 6. **used 不刷新**:status='used' 条目再读取 → entry 与 manifest 均不反映新正文。
 7. **双层窗口与寿命锚定**:已有 entry 内容刷新再读 → discovered_utc 不变;首次发现超 48h 的身份今天经另一源/URL 变体再次进入上游窗口 → 不进入新期 manifest(candidate_expired 日志、entry 首次时间不变),且已冻结该身份的旧期 manifest 完好、续跑照常;新键同轮多行 → discovered_utc 初值=最早 fetched_utc,与胜出行选择无关。
 8. **预筛矩阵与占用分层**:黑名单/死源/空正文/used/override-exclude 各一例被剔(含"本期 selected 新命中 override-exclude → 移入 excluded 带原因");**本期 selected 续跑保留为 recoverable,他期 selected 排除为 excluded(占用原因)**;截断排序确定性(同 manifest+同占用/override 快照两次运行同输出);断言全覆盖不变量(四去向并集=manifest 全体、无重叠无遗漏)。
-9. **N_new=0 不裁已有成果**:本期已有 3 条 selected(评分摘要完成)、N_new=0 → to_score 空、recoverable 照常输出,组装路径可继续(E5.limit 口径,零新增网络)。**(2026-10-05 复核:本例仅覆盖最容易的情形,待单元二联合定稿后扩展为四子场景——评分响应已持久化未写入 selected、selected 但摘要未完成、请求身份已变化,方向与预期见 §9 未决项首行。)**
+9. **N_new=0 不裁已有成果(2026-10-05 复核扩为四子场景,单元二联合定稿)**:
+   - a. 本期 selected 评分与摘要均完成、N_new=0 → 全部 recoverable,零新增网络调用,组装就绪;
+   - b. 评分响应已持久化、尚未写入 selected、N_new=0 → 复用快照命中 → recoverable,不因截断丢失,下游零网络重新判断入选;
+   - c. 本期 selected 但摘要未完成 → recoverable 保留已完成工作;摘要仅在授权通过时调用;**接口断言 recoverable 不被当作可组装证明**(组装就绪以实际摘要结果为准);
+   - d. entry 状态看似可恢复但当前完整请求身份已变化(prompt 版本升级/正文 hash 变)→ 复用判定不命中 → 参与排序落 to_score/capped,旧响应不冒充当前结果,新调用照常受 N_new 与授权限制。
 10. **强制项截断可见性**:有效 force_include 成员排序在 N_new 之外(落入 capped)或被内容排除(落入 excluded)→ PrescreenResult 中该成员带去向与原因可见;接口测试断言组装消费方能据此识别"强制项未完成评分"并暂停,不静默发布缺少该强制项的日报(暂停动作本体属单元三,此处锁接口)。
 11. **平局收敛**:同 identity_key 两行 tier/priority/name 全同而正文不同 → item.id 小者胜出;输入行序颠倒 → 选出行、正文与 content_hash 不变。
 12. **E2**:上游文件以拒绝只读方式打开 → digest_issue failed 行落地、退出 3、collect_failed 日志。
@@ -185,7 +191,6 @@ CREATE TABLE issue_freeze (
 
 | 未决项 | 验证方法 | 通过条件 | 失败后的备选 | 定位 |
 |--------|----------|----------|--------------|------|
-| **复用识别与新增付费容量的交接**(2026-10-05 复核新开,P1×2):①评分响应已持久化但未写入 selected 的条目(写入入选前中断),当前规则 8 仍可能在复用判定前被 N_new 截断而丢失;跨期同请求身份的已存响应同病。②`recoverable` 同时承担"本期已选中"与"零新增付费"两义——先入选后摘要的正常中断下,摘要仍需付费调用,recoverable 不能当摘要完成/可组装证明 | **单元二设计定稿**:已有响应如何识别、剩余调用如何授权、N_new 究竟限制什么;交接原则=对通过内容/编辑/占用检查的成员,先完成与当前完整请求身份对应的恢复/复用判定,再对确需新增付费评分的成员应用 N_new。定稿后**一次性回填本文规则 8/输出③/验收 9** | 评分响应已持久化的条目在 N_new=0 时不因截断丢失,可消费已有响应重新判断入选;recoverable 仅表示本期进度保留不受截断,是否还需评分/摘要由阶段按完整请求身份与实际完成结果判断,新增调用仍经费用授权;组装就绪依据实际评分/摘要结果 | 调用方传入只读复用判定结果(保持预筛纯函数),或付费容量截断后移至复用判定之后;不要求本文直接查 receipt、不引入新缓存系统 | 模型调用与费用治理 × 数据接入与候选管理(联合定稿) |
 | **入选中选的占用归属存储**(预筛消费接口已定:归属期=本期/他期;写入/清空的事务边界与最终形态待定稿) | 单元三设计推演+测试:本期保留/他期排除/放弃失败期释放三路径 | 续跑不丢本期工作;跨期占用可判定;释放可追溯 | entry 加归属列(建议 `claim_issue`)或独立占用表 | 数据接入与候选管理 × 日报编辑与内容生成(联合定稿) |
 | 失败阶段/原因等恢复字段的存储映射(E2 落行时仅日志) | 单元五按 spec §5.3.1 清单设计 | §6 各中断窗口后状态可判定且原因可查 | digest_issue 扩列(如 reason/updated_utc)或独立 run 记录表 | 调度与运行维护(本单元消费其结论) |
 | 上游 15 源线上 fetched_utc 分布与正文覆盖率(本地库 12 源/90 条为样本) | M1 部署期服务器实测,回填 data-source | 48h 窗口候选量级与 manifest 体积估算被证实或修订 | 调整窗口/预筛参数(运营参数,不动结构) | 本单元(观测)/部署核查 |
@@ -193,4 +198,4 @@ CREATE TABLE issue_freeze (
 
 ## 评审提示
 
-2026-10-05 复核(用户核对 7fc0e52 实际文档与 diff):**采集、冻结、窗口、去重及预筛排除规则(含本期/他期占用区分)已通过本轮复核**;四组修订中②双层窗口、③强制项四去向交接、④item.id 最终平局键关闭,①占用区分通过。**仍开放(联合定稿,不单独再写一轮术语修订)**:复用识别与新增付费容量的交接(单元二,含规则 8/输出③/验收 9 的一次性回填,§9 首行);占用写入与释放协议(单元三,§9 次行)。**整体尚未达到可开发状态**。manifest 体积与保留策略、事务耗时是运维观察/实测项,不阻塞。
+2026-10-05 复核:采集、冻结、窗口、去重及预筛排除规则(含本期/他期占用区分)**已通过**;②双层窗口、③强制项四去向交接、④item.id 最终平局键关闭。**复用识别与新增付费容量的交接已由 [model-calls.md](model-calls.md) 联合定稿并回填本文**(§0 接口表/§3 规则 7.6 与规则 8/§4 输入与输出③/正常样例/§5 步骤 5/§6 N_new=0 段/验收 9 四子场景):复用判定=单元二 `reusable_scores` 只读接口传入,预筛保持纯函数、不查 receipt;N_new=仅限确需新增付费评分,**先复用后截断**;recoverable 收敛为"评分网络零新增"单义,不承诺摘要完成与可组装。**仍开放**:占用写入与释放协议(单元三,§9 首行)。**整体尚未达到可开发状态**。manifest 体积与保留策略、事务耗时是运维观察/实测项,不阻塞。
