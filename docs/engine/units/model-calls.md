@@ -1,6 +1,6 @@
 # 模型调用与费用治理·单元详细设计(M1 第 3 步·单元二)
 
-> 状态:**设计稿 v3,第二轮核验修正**(2026-10-05;修正:预占改 **tokenizer 计数**(计数不可得不出网、对账超计数=停新增无容忍)、再发送三条件(普通/unknown 名额拆分不互借)。v2 的请求身份/E4 验证器/logical_key 计数/核清证据保持)。
+> 状态:**设计稿 v4,第三轮核验补齐**(2026-10-05;补:重试判定的**持久化契约**——receipt_attempt 加 attempt_origin/error_class/fail_detail_json 三列,写入时机与名额唯一口径定稿,验收 7d 重启重放。v3 的 tokenizer 计数/三条件/pay_paused 读法保持)。
 > 定位:回答"每一次模型调用如何被授权、执行、结算、复用,费用如何在任何中断下不丢不重"的**实现层设计**。运营数值真相源在 [budget.md](../budget.md);错误分类/调用 HTTP 契约在 [design.md](../design.md);回执状态机与 DDL 在 spec §5.4/§5.3;功能层费用呈现(digest-design §2)不在本文重复。
 > 引用而非复制:候选上限公式本体在 design.md 候选上限节;未知结果恢复在 budget.md 回执与恢复节;本单元只落**接口、事务边界与操作协议**。
 
@@ -55,8 +55,9 @@
 
    **再发送三条件(同一判定用于"部分完成补缺失"与"均未完成重跑";第二轮核验修正——只比总数不充分,名额按类别拆)**:
    1. **错误类别允许自动重试**:该 logical_key 最近失败属可自动重试类(design.md 错误矩阵为准);HTTP 400/请求格式错误/终止原因不允许自动重试的,**计数未满也不再调用**;
-   2. **对应类别名额有剩余**:普通自动重试名额=该 logical_key 可重试类失败计数 < max_attempts;**unknown 专属额外名额**=unknown_retry_used=0 且距该次 started_utc≥30min(等待条件);**两类名额不可互借**——普通额度耗尽不因 unknown 名额未用而继续,反之亦然;
-   3. **累计硬上限+当次授权**:该 logical_key 总 attempt 数 < max_attempts+1(budget.md L20 既有契约:普通最多 max_attempts 次、unknown 满足条件的一次额外,总和即硬上限),且当次过授权闸门(含规则 1 pay_paused/键缺失检查与规则 2 计数可得)。
+   2. **对应类别名额有剩余**(**读 receipt_attempt 持久化列,唯一口径**):普通名额消耗=该 logical_key 中 `attempt_origin IN ('initial','retry') AND error_class='retryable'` 的行数(spec §5.3.1 公式;首+重试合计上限 max_attempts,即 design.md"共享 max_attempts−1 个普通重试名额");**unknown 专属额外名额**=receipt.unknown_retry_used=0 且距该次 started_utc≥30min(等待条件;标志与 `attempt_origin='unknown_retry'` 行同事务双写,判定读标志、审计按行重算);**两类名额不可互借**——普通额度耗尽不因 unknown 名额未用而继续,反之亦然;
+   3. **累计硬上限+当次授权**:该 logical_key 总 attempt 行数 < max_attempts+1(budget.md L20 既有契约:普通最多 max_attempts 次、unknown 满足条件的一次额外,总和即硬上限),且当次过授权闸门(含规则 1 pay_paused/键缺失检查与规则 2 计数可得)。
+   **判定输入全部来自持久化列(第三轮核验补齐)**:条件 1 读最近一次失败 attempt 的 `error_class`(规范化映射:矩阵 E1.request/E4.terminal/E5.balance→no_retry;E3.http/E4.parse→retryable;E3.unknown→unknown——由 llm.py 响应处理产出,失败/unknown 更新**同事务**写入,`fail_detail_json` 存 HTTP 状态+子类+摘要);条件 2/3 按上述公式查询。**重启后仅凭 DB 重放判定**,不依赖进程内存。
    反例封堵:max_attempts=2、同 logical_key 两次**普通**可重试失败、unknown_retry_used=0——条件 2 失败(普通 2≮2),不再发送;重启后判定不变。
 6. **三种"不新增"的区分(2026-10-05 评审修正)**:
    | 概念 | 性质 | 发生时点 | 效果 |
@@ -87,10 +88,10 @@
 
 | 操作 | 事务边界 | 写入 |
 |------|----------|------|
-| 授权 reserve | 短事务 BEGIN IMMEDIATE→COMMIT 后出网 | receipt_attempt(**attempt_no=该 logical_key 既有计数+1**:score-1/score-2/understand 各自独立序列,重启不重置, pending, reserved, issue_date, started_utc, pricing_version);首 attempt 同事务建 receipt 行 |
+| 授权 reserve | 短事务 BEGIN IMMEDIATE→COMMIT 后出网 | receipt_attempt(**attempt_no=该 logical_key 既有计数+1**:score-1/score-2/understand 各自独立序列,重启不重置, pending, reserved, issue_date, started_utc, pricing_version,**attempt_origin**(initial=该 logical_key 首行/retry=普通重试/unknown_retry=unknown 通道));首 attempt 同事务建 receipt 行 |
 | 响应回写 | 单事务 | receipt_attempt→received+usage_json+actual_micro_cny(可结算时);receipt.response_json/status→received |
 | 业务完成 | **与单元三同一事务** | receipt.status→completed + analysis/summary 行 + entry 状态/占用(生产方=单元三,见其 §5) |
-| 失败/未知 | 单事务 | attempt→failed(有 usage 则结算)/unknown(预占保留);receipt.status 同步 |
+| 失败/未知 | 单事务 | attempt→failed(有 usage 则结算)/unknown(预占保留)**+error_class(no_retry/retryable/unknown,矩阵映射)+fail_detail_json 同事务写入**;receipt.status 同步 |
 | 复用 | **无事务(只读)** | 无写入;logical_key 查询 |
 | 核清 | **单事务 UPDATE** | attempt.actual_micro_cny + reconcile_json(证据四要素);receipt.cost_cny 投影顺带更新;api_usage 重算该月行 |
 | 月投影 | 幂等重算 | api_usage(月,provider,model)聚合行 |
@@ -125,6 +126,7 @@
 7. **unknown**:替身时钟+进程中断→30min 从 started_utc 起、标志持久化、二次转人工;不因重启重置。
 7b. **耗尽不重获额度**:同身份普通重试达上限后重启→仍视为耗尽(不再自动发起,断言零新增 attempt);仅 prompt 版本/输入变化(新 logical_key)才从 attempt_no=1 起。
 7c. **名额不可互借(第二轮核验反例)**:max_attempts=2、同 logical_key 两次**普通**可重试失败、unknown_retry_used=0→重启后断言零新增 attempt(总数 2<3 不构成发送许可);仅当存在满足等待条件(≥30min)且名额未用的 unknown 时才允许一次额外重试;**HTTP 400 类不可重试失败计数未满→断言不再自动调用**;同一判定在"部分完成补缺失"与"均未完成重跑"两路径分别断言。
+7d. **持久化重放判定(第三轮核验反例,替身 HTTP,零真实付费)**:同一请求首 attempt 分别注入 HTTP 400 与 HTTP 503 后**落库并关闭连接**→重新打开 DB 仅凭行数据判定:400→`error_class='no_retry'` 断言拒绝自动重试(计数未满也拒);503→`error_class='retryable'` 按普通剩余名额判定;普通耗尽+unknown 名额未用→仍拒(不互借);**unknown 通道重试后再发生普通可重试失败→该失败计入普通名额消耗(origin='retry' 而非 'unknown_retry'),计数正确**;`fail_detail_json` 含 http_status 与矩阵子类;判定函数无内存依赖(两次独立进程/连接实例断言一致)。
 8. **费用快照单查询**:3 settled+1 未决(含 1 条 received 未核清的非 unknown)→ cost_cny=Σ(3 actual+1 reserved)、cost_pending=true;**零 attempt 期→0/false**;两值断言出自同一查询(查询计数替身)。
 9. **核清**:证据四要素齐→actual+reconcile_json 同事务落账、月投影更新、下期月可用变化;**证据缺失→拒绝核清保持未决**(断言 actual 仍 NULL);核清后已发布期数字过期提示产生(内容更新属单元四验收)。
 10. **跨期复用费用归属**:上期 attempt ¥0.01 已结算,本期复用→本期快照不含该 ¥0.01,上期快照不变。
@@ -147,4 +149,4 @@
 
 ## 评审提示
 
-v2 落实三组评审修正:①请求身份覆盖**实际发送的有效输入及参数**(截断后文本入 hash);复用判定与首次消费**同一有效性规则**(共用 request_hash 构造,消费按判定返回的引用);analysis/summary 以 receipt_ids 关联回执核对身份。②双次评分**全部/部分/均未完成**三分+恢复表(needs 只补缺失、计数不重置)。③N_new=0/合法停用/逐次授权拒绝**三分表**;预留不构成调用许可。核清证据=reconcile_json 与 actual 同事务;费用快照算例与零 attempt 结果补齐。首轮联合核验修正(保持):复用有效性纳入**完整 E4 验证器**;"均未完成"拆未耗尽/已耗尽;attempt 计数粒度=**logical_key 独立**。**第二轮核验修正(v3)**:预占改 **tokenizer 计数**——字符比例(含 1:1)退出授权链,计数不可得→不出网,对账超计数=停新增+修正(删"孤立个位可忽略");**再发送三条件**(错误类别允许/类别名额剩余且普通与 unknown 不互借/硬上限+当次授权),反例=max_attempts=2 两次普通失败不因 2<3 而续发;pay_paused 检查=仅显式 0 放行、键缺失同拒。占用写入释放已在单元三定稿(entry.claim_issue)。
+v2 落实三组评审修正:①请求身份覆盖**实际发送的有效输入及参数**(截断后文本入 hash);复用判定与首次消费**同一有效性规则**(共用 request_hash 构造,消费按判定返回的引用);analysis/summary 以 receipt_ids 关联回执核对身份。②双次评分**全部/部分/均未完成**三分+恢复表(needs 只补缺失、计数不重置)。③N_new=0/合法停用/逐次授权拒绝**三分表**;预留不构成调用许可。核清证据=reconcile_json 与 actual 同事务;费用快照算例与零 attempt 结果补齐。首轮联合核验修正(保持):复用有效性纳入**完整 E4 验证器**;"均未完成"拆未耗尽/已耗尽;attempt 计数粒度=**logical_key 独立**。**第二轮核验修正(v3)**:预占改 **tokenizer 计数**——字符比例(含 1:1)退出授权链,计数不可得→不出网,对账超计数=停新增+修正(删"孤立个位可忽略");**再发送三条件**(错误类别允许/类别名额剩余且普通与 unknown 不互借/硬上限+当次授权),反例=max_attempts=2 两次普通失败不因 2<3 而续发;pay_paused 检查=仅显式 0 放行、键缺失同拒。占用写入释放已在单元三定稿(entry.claim_issue)。**第三轮核验补齐(v4)**:重试判定持久化契约——`attempt_origin`(预占事务)/`error_class`+`fail_detail_json`(失败更新事务,矩阵映射 no_retry={E1.request,E4.terminal,E5.balance}/retryable={E3.http,E4.parse}/unknown={E3.unknown});**名额唯一口径**=普通名额消耗为 `origin∈{initial,retry} AND error_class='retryable'` 行数(≤max_attempts,即"首+max_attempts−1 重"),unknown=receipt.unknown_retry_used(与 origin='unknown_retry' 行同事务双写);重启仅凭 DB 重放判定(验收 7d:400/503 同为 failed 未核清,靠 error_class 区分)。

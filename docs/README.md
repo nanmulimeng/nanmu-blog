@@ -15,12 +15,13 @@
 | [development/design-review.md](development/design-review.md) | 模块详细设计与设计评审规范:可开发八件事、五设计单元、评审结束条件、文档控制约束 | 定稿(约束 M1 起的设计阶段) |
 | [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 总体设计基线(定稿;编码许可以设计评审为准) |
 | [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | Task1-9已实施(线上https://nanmu.xyz);Task10挂起(文档阶段指示) |
+| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(26任务+两项带入验证任务+逐任务停点) | **待评审稿**(评审通过≠自动恢复编码) |
 | [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地与发布流程可用(Task9已验收);首篇正式文章待Task10 |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
 | [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 总体设计基线(模块级编码许可以设计评审为准) |
 | [engine/digest-design.md](engine/digest-design.md) | M1 日报功能详细设计与一期生命周期:功能范围、完整样例、期状态机与窗口冻结、人工维护六场景 | **v3 已收口(2026-10-05 用户确认,第 3 步功能输入基线)** |
-| [engine/units/](engine/units/) | M1 五设计单元详细设计(第 3 步;含 [data-ingestion.md](engine/units/data-ingestion.md):判重/冻结 issue_freeze/预筛的实现层设计) | 单元一设计稿待评审;其余四单元未开始 |
+| [engine/units/](engine/units/) | M1 五设计单元详细设计(第 3 步;含 [data-ingestion.md](engine/units/data-ingestion.md):判重/冻结 issue_freeze/预筛的实现层设计) | 五单元已产出并经三轮联合核验修正(最新 model-calls v4);待用户评审收口 |
 | [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 总体设计基线(期生命周期等设计缺口见design-review) |
 | [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 总体设计基线(权重表样例待设计阶段落盘) |
 | [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 总体设计基线(成本标注文案选择待设计阶段定) |
@@ -57,10 +58,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-05-m1-units-review3-fix.md)(第二轮核验修正:tokenizer 计数/再发送三条件/ops_json 内容操作记录/restore-backup 先置位后切换/通知承诺收窄;前轮见 [review2-fix](sessions/2026-10-05-m1-units-review2-fix.md) 与 [batch](sessions/2026-10-05-m1-units-batch.md) 含 erratum),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-05-m1-retry-persistence-m1-plan.md)(第三轮核验修正:重试判定持久化契约 receipt_attempt 三列+名额唯一口径+验收 7d 落库重读;同批交付 M1 实施计划待评审稿;前轮见 [review3-fix](sessions/2026-10-05-m1-units-review3-fix.md)、[review2-fix](sessions/2026-10-05-m1-units-review2-fix.md) 与 [batch](sessions/2026-10-05-m1-units-batch.md) 含 erratum),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计**已全部产出并经两轮联合核验修正**,单元文档 v3 现状见 [units/](engine/units/),最新 [第二轮修正 session](sessions/2026-10-05-m1-units-review3-fix.md),待用户核验 4+1 反例)→ 编写M1计划。
+- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计**已全部产出并经三轮联合核验修正**,单元文档现状见 [units/](engine/units/),最新 [第三轮修正 session](sessions/2026-10-05-m1-retry-persistence-m1-plan.md))→ 编写M1计划(**待评审稿已产出** [plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md),plan 评审通过仍需用户明确解除暂停才编码)。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令

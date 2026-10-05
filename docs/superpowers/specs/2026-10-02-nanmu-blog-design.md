@@ -179,6 +179,20 @@ CREATE TABLE receipt_attempt (
   issue_date TEXT,                         -- 日报归属;M2问答可空
   started_utc TEXT NOT NULL,               -- 此次尝试时间,不是逻辑回执创建时间
   status TEXT NOT NULL CHECK(status IN ('pending','received','unknown','failed')),
+  attempt_origin TEXT NOT NULL
+    CHECK(attempt_origin IN ('initial','retry','unknown_retry')),
+                                           -- 授权来源,预占事务写入(第三轮核验定稿):
+                                           -- initial=该logical_key首个attempt;retry=普通重试通道;
+                                           -- unknown_retry=unknown专属额外名额通道(与receipt.unknown_retry_used
+                                           -- 同事务双写,判定读标志、审计按行重算)
+  error_class TEXT CHECK(error_class IN ('no_retry','retryable','unknown') OR error_class IS NULL),
+                                           -- 规范化错误类别,失败/unknown状态更新同事务写入(成功路径留NULL)。
+                                           -- 映射(design.md错误矩阵):no_retry={E1.request,E4.terminal,E5.balance};
+                                           -- retryable={E3.http,E4.parse};unknown={E3.unknown}。
+                                           -- 重启后再发送判定读取本列——400(no_retry)与503(retryable)
+                                           -- 同为failed+未核清时靠它区分,仅status与计数不够(第三轮反例)
+  fail_detail_json TEXT,                   -- 受约束失败明细:{http_status:int?,matrix_code:"E3.http",
+                                           -- message:截断摘要};与error_class同事务写入,诊断与审计用
   reserved_micro_cny INTEGER NOT NULL CHECK(reserved_micro_cny >= 0),
   actual_micro_cny INTEGER CHECK(actual_micro_cny >= 0),
   usage_json TEXT, pricing_version TEXT NOT NULL,
@@ -313,7 +327,7 @@ CREATE TABLE engine_meta (
 
 上述DDL为核心模型,不是M1最终迁移工件。无Markdown可记failed,其他期状态必须有路径。期状态以生成/远端接收/线上确认分层;entry仅在确认published后标used。人工撤回需要可持久化的暂停重试标志,不能靠一次性口头操作防重发。**期冻结存储已定位**(2026-10-05,数据接入与候选管理单元):issue_freeze 行存在=冻结确认,manifest 含每成员输入版本快照,旧期续跑读 manifest 而不读 entry 现值;"生成中(已冻结)"由该行承载,digest_issue 行仅在产出产物或记失败时创建——详见 [units/data-ingestion.md](../../engine/units/data-ingestion.md)。
 
-M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、普通/unknown重试计数、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账本恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。**上述映射已于 2026-10-05 五单元详细设计定稿(同日两轮核验修正补齐)**:失败原因/更新时间/退出码/撤回事实/重新上线事实→digest_issue 扩列;**产物内容身份→digest_issue.content_sha256(draft 落盘同事务写入;第二轮起语义=当前已确认线上版本,随确认类操作 UPDATE,历史经 ops_json 追溯)+内容操作记录→digest_issue.ops_json(操作开始即持久化目标版本与阶段;当前可见状态=最新 confirmed op)**;重试暂停→issue_freeze.paused;普通重试计数=receipt_attempt 行数(**按 logical_key 独立计数**:score-1/score-2/understand 各自序列,同身份耗尽后重启不重置、不重获额度;**能否再发送=再发送三条件**,普通与 unknown 名额不互借)、unknown 标志=receipt.unknown_retry_used(既有);通知去重/发送结果→notify_sent 表(同 key UPSERT);对账证据→receipt_attempt.reconcile_json(与 actual 同事务);摘要业务结果→summary 表;占用归属→entry.claim_issue;**备份恢复付费暂停→engine_meta.pay_paused(第 12 表;仅显式 0 放行、键缺失同拒;恢复=先在副本置位校验后切换活动库)**。详见 engine/units/ 各单元文档。
+M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、普通/unknown重试计数、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账本恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。**上述映射已于 2026-10-05 五单元详细设计定稿(同日两轮核验修正补齐)**:失败原因/更新时间/退出码/撤回事实/重新上线事实→digest_issue 扩列;**产物内容身份→digest_issue.content_sha256(draft 落盘同事务写入;第二轮起语义=当前已确认线上版本,随确认类操作 UPDATE,历史经 ops_json 追溯)+内容操作记录→digest_issue.ops_json(操作开始即持久化目标版本与阶段;当前可见状态=最新 confirmed op)**;重试暂停→issue_freeze.paused;**重试判定持久化(第三轮核验定稿)=receipt_attempt 三列**:`attempt_origin`(授权来源,预占事务写)、`error_class`(规范化错误类别 no_retry/retryable/unknown,失败或 unknown 状态更新同事务写,映射自错误矩阵 E1.request/E4.terminal/E5.balance→no_retry,E3.http/E4.parse→retryable,E3.unknown→unknown)、`fail_detail_json`(HTTP 状态+矩阵子类+摘要,同事务写)。**名额统计唯一口径**:普通名额消耗=该 logical_key 中 `attempt_origin IN ('initial','retry') AND error_class='retryable'` 的行数(上限 max_attempts,即首次+max_attempts−1 次重试,与 design.md 错误矩阵行一致);unknown 专属=receipt.unknown_retry_used 标志(与 `attempt_origin='unknown_retry'` 行存在同事务双写,判定读标志、审计按行重算);硬上限=该 logical_key 总行数<max_attempts+1;"可重试类失败计数"一词一律指本公式,**不是简单行数**(score-1/score-2/understand 各自序列,同身份耗尽后重启不重置、不重获额度;能否再发送=再发送三条件,普通与 unknown 名额不互借);通知去重/发送结果→notify_sent 表(同 key UPSERT);对账证据→receipt_attempt.reconcile_json(与 actual 同事务);摘要业务结果→summary 表;占用归属→entry.claim_issue;**备份恢复付费暂停→engine_meta.pay_paused(第 12 表;仅显式 0 放行、键缺失同拒;恢复=先在副本置位校验后切换活动库)**。详见 engine/units/ 各单元文档。
 
 公开cost_cny聚合该期全部attempt(含失败候选/重试),每次取实付或未决预占;含未决时页面/正文明确标保守上界。**cost_pending 布尔与 cost_cny 出自同一时点、同一期费用快照;未决判定覆盖所有 actual 未核清 attempt(不限于 status=unknown);新生成日报显式写出布尔值;核清时数字、标志与正文标注一起更新**(三约束全文见 [digest-design.md](../../engine/digest-design.md) §2,site 消费代码待 M1 实施许可)。跨期复用与跨月预占计算以budget.md为准。
 
@@ -549,6 +563,8 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 ---
 
 ## 附:变更记录
+
+- 2026-10-05 第三轮联合核验(②补齐+M1 plan 同批交付):①③④⑤ 关闭;②判定规则通过但持久化未闭合——补 **receipt_attempt 三列**:`attempt_origin`(授权来源 initial/retry/unknown_retry,预占事务写)、`error_class`(规范化 no_retry/retryable/unknown,失败或 unknown 状态更新同事务写;映射 no_retry={E1.request,E4.terminal,E5.balance}、retryable={E3.http,E4.parse}、unknown={E3.unknown})、`fail_detail_json`(http_status+矩阵子类+摘要,同事务写);**名额统计唯一口径**(§5.3.1)=普通名额消耗为 `origin∈{initial,retry} AND error_class='retryable'` 行数(≤max_attempts,即首+max_attempts−1 重),unknown 专属=unknown_retry_used 标志(与 origin='unknown_retry' 行同事务双写);"可重试类失败计数"一词统一指该公式,不再与"行数"混用;重启仅凭 DB 重放判定(400 与 503 同为 failed 未核清靠 error_class 区分)。验收 7d=落库关闭连接重读判定(替身)。model-calls v4/pipeline 计数行同步。**同批交付 M1 实施计划待评审稿**(docs/superpowers/plans/2026-10-05-m1-engine-implementation.md;含 tokenizer 校准数据来源与备份文件级验收两项验证任务)。
 
 - 2026-10-05 第二轮联合核验修正(4 组 P1 阻塞+通知承诺收窄;一次修正统一交付):①**输入计量改 tokenizer 计数**——字符比例(含 1:1)退出授权链(官方换算仅"大致比例",推不出上界);预占=发送前最终请求 token 计数×校准系数;**计数不可得→不出网**;对账 usage.prompt_tokens 超计数=停新增+修正(删除"孤立个位可忽略"通过条件,处置同"供应商实付>预占");tokenizer 资源/版本/模型映射入 config,M1 实施第一步选型核对。②**再发送三条件**(错误类别允许自动重试/对应类别名额剩余——普通 max_attempts 与 unknown 专属名额**不互借**/累计硬上限 max_attempts+1+当次授权),同一判定用于补缺失与重跑;反例封堵:max_attempts=2 两次普通失败不因总数 2<3 续发。③**内容操作记录 ops_json**(digest_issue 扩列,12 表数不变):每次改变公开内容的操作**开始即 append 未完成项=待执行目标版本持久化**,提交/远端接收/线上确认分别补记 stages;**当前可见状态=最新 confirmed op**(withdrawn/relisted 专用列降为最近一次事实,修复"撤回→重上→再撤回"误判,用户内存 SQLite 实测);content_sha256 语义=当前确认版本(随确认类操作 UPDATE,历史经 ops_json);修正后恢复的目标身份出网前落库;**查找失败=证据不足→转人工**(不把未知当重新生成许可);**远端接收判定=分支可达性**(merge-base --is-ancestor,ls-remote 只示尖端)。④**restore-backup 序列=先在待启用副本置 pay_paused 并读回校验、后原子切换活动库**(不变量:切换完成⇔标志已先持久化,消除恢复操作自身中断窗口);**闸门读法=仅显式 0 放行,键缺失(裸恢复/库异常)同拒**,合法库建库即写默认 0。⑤通知崩溃承诺收窄:重启可能重复通知,不承诺外部精确一次也不承诺最多一次。单元文档 v3:model-calls/content-editing(①②)、publish-withdraw(③)、scheduling-ops(④⑤)。逐反例核验记录见 sessions/2026-10-05-m1-units-review3-fix.md。
 
