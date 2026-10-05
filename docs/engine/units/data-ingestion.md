@@ -9,11 +9,12 @@
 | 数据 | 本单元职责 | 相邻单元职责 |
 |------|-----------|--------------|
 | 上游 topic-digest SQLite | **只读**(mode=ro,48h 窗口 JOIN,data-source 契约) | 任何人不得写上游(铁律 4) |
-| engine.db `entry` 表 | **唯一写入者**(创建/判重合并/未发布刷新) | 评分单元改 status(pending→scored→…);发布单元确认后置 used |
+| engine.db `entry` 表 | **唯一写入者**(创建/判重合并/未发布刷新;不写 status 与占用归属) | 评分单元改 status(pending→scored→…)并**同事务写占用归属**(见下);发布单元确认后置 used |
+| entry 占用归属(selected 的期归属) | 预筛**消费**(本期/他期判定) | **写入协议由单元三定稿**(置 selected 时同事务写、发布确认置 used 时清、放弃失败期人工清);建议形态=entry 加 `claim_issue` 列,不预设 |
 | engine.db `issue_freeze` 表 | **唯一写入者**(冻结确认事件) | 全管线只读;调度单元凭该行判定"生成中,已冻结" |
 | engine.db `digest_issue` 表 | 仅 E2 时写 failed 行 | 组装写 draft,发布推进 submitted/published(单元三/四) |
-| 候选上限 N | 提供 `prescreen(候选, 配置, N)` 纯函数并执行截断 | **N 的计算属模型调用与费用治理单元**(预算公式输入) |
-| 预筛输出(入围清单) | 产出:按 manifest 顺序的入围成员 | 评分/摘要单元消费;请求身份用 manifest.content_hash |
+| 候选上限 N_new | 提供 `prescreen(manifest, issue_date, 配置, 占用快照, override 快照, N_new)` 纯函数 | **N_new 的计算属模型调用与费用治理单元**(预算公式输入);N_new 仅限制**新增付费评分**的条目数,不裁已有可恢复结果(§3 规则 8) |
+| 预筛输出(PrescreenResult) | 产出:四去向全覆盖的结构化结果(§4) | 评分单元消费 to_score/recoverable;组装单元(单元三)凭全覆盖不变量比对强制项,不遗漏责任在接口结构 |
 
 ## 1. 目标与范围
 
@@ -29,7 +30,7 @@
 |------|------|------|-----------|
 | 新期采集 | 调度触发该 issue_date 首次运行 | 上游可达;该期无 issue_freeze 行 | entry 台账就绪;issue_freeze 行落地;预筛输出入围清单交评分 |
 | 续跑(同期再次进入) | 调度自动推进或人工重跑 | 该期 issue_freeze 行已存在 | **跳过采集**,直接读 manifest 走预筛及以后(digest-design §4.4) |
-| 预筛单独重放 | 排查/配置调整 | 冻结已确认 | 预筛是纯函数:同 manifest+同配置+同 N → 同结果,零付费、无副作用 |
+| 预筛单独重放 | 排查/配置调整 | 冻结已确认 | 预筛是纯函数:同 manifest+同 issue_date+同配置+**同占用/override 快照**+同 N_new → 同结果,零付费、无副作用 |
 | 状态查询 | `status --issue` | — | 只读展示冻结成员数/入围数/entry 统计(digest-design §3.5 格式) |
 
 ## 3. 业务规则(优先级从高到低)
@@ -38,26 +39,36 @@
 2. **窗口**:`fetched_utc` 近 48h;JOIN `item.source_id=source.id`,取 `source.enabled=1` 且 `item.status IN ('fresh','clustered')`,排除 dropped(data-source 实施读取契约)。窗口锚定 `fetched_utc`(采集事实),展示排序才用 `published_utc`。
 3. **判重与合并**:identity_key 归一按 design.md R0-R7;同 identity_key 多源多行在内存合并为一条,平局依据 tier(T1 优先)→ sources.yaml priority(小者优)→ source.name 字典序,选择依据写日志;**合并不提高可信度**。
 4. **entry 台账**(写入规则见 §5):`INSERT OR IGNORE` 创建;已存在且 `status != 'used'` 且正文变化时刷新;`used` 条目永不刷新(data-source"M1读取与快照补充")。
-5. **discovered_utc 锚定(决策)**:取该 identity_key **首次**发现时的上游 fetched_utc,后续再读取**不刷新**。理由:48h 窗口滑动淘汰(digest-design §4.6)需要确定锚点;若随内容刷新前移,老条目可借小改动无限续命,与"日报以新事件为主"相悖。正文刷新只改善近期评估输入质量,不延长候选寿命。
+5. **双层窗口(决策,2026-10-05 评审修订)**:**上游 `fetched_utc` 近 48h 决定本轮读取哪些行;本地 identity_key 的首次 `discovered_utc` 决定是否仍有新期候选资格**(两者是不同的检查,不能混用)。
+   - 首次时间:新 identity_key 在本轮出现多行时,`discovered_utc` 初值=**本轮同键行最早的 fetched_utc**;已存在 entry 沿用其固定值,**不取本轮合并行的新时间**——不让来源胜出规则隐含决定候选寿命。
+   - 资格判定:在**冻结成员形成前**执行——`entry.discovered_utc` 距本期冻结确认时刻不足 48h 才可进入本期 manifest;超窗身份记日志(`candidate_expired`)排除,不进冻结。正文刷新规则照常执行(台账事实与候选资格互不影响)。
+   - **旧期续跑不做资格复查**:冻结成员以 manifest 为准,不按续跑时刻的当前时间重新淘汰,否则跨天恢复会再次破坏冻结语义(digest-design §4.4)。
+   - 理由:防止同一身份借再抓取/URL 变体反复进入新期,让"不延长候选寿命"落在判定路径上而非文字说明。
 6. **冻结**(功能契约=digest-design §4.4,物理实现见 §5):collect 结束写入 issue_freeze;允许空集合;半成品不算冻结。
-7. **预筛排除**(顺序固定,全部本地零成本;输入=冻结 manifest 成员):
+7. **预筛排除**(顺序固定,全部本地零成本;输入=冻结 manifest 成员+占用快照;规则分两层):
+   **内容/编辑排除**(适用于**全体**成员,含本期已选中条目——运营参数与 override 在续跑时可能已变化,变化结果交下游按组装边界处理):
    1. 标题命中 selection.yaml `title_blacklist`;
    2. 来源命中 sources.yaml `exclude`(死源清单——上游 enabled=1 但 feed 已坏);
    3. `content_text` 为空或纯空白(data-source 实测约 30%);
    4. `entry.status = 'used'`(已上过日报);
-   5. `entry.status = 'selected'`(被其他未完成期占用;failed 期人工放弃后由那时的释放操作改回可评估,本单元只读现状);
-   6. override 表 `exclude` 命中(identity_key 精确匹配,阶段边界生效)。
-8. **截断**:排除后按 T1 优先 → discovered_utc 降序 → identity_key 升序(确定性排序,与展示排序不同用途)截断到 N;N 由调用方按 design.md 候选上限公式代入预算参数得出,本单元不查账本。**force_include 不在本单元生效**——override 的 force/score 阶段边界在评分与组装(单元三),预筛只看 exclude。
+   5. override 表 `exclude` 命中(identity_key 精确匹配,阶段边界生效)。
+   **占用排除**(只排除其他期,不排除本期——2026-10-05 评审修正,对齐 pipeline 预筛契约"含可恢复的 scored/selected"):
+   6. `entry.status='selected'` **且归属期 ≠ 本期 issue_date** → 排除(被其他未完成期占用);**归属期=本期 → 进入 recoverable(续跑恢复,不截断)**。归属的存储形态由单元三定稿(建议 entry.`claim_issue` 列);failed 期人工放弃时由释放操作清除归属,本单元只读现状。
+8. **截断与 N_new 的作用范围(2026-10-05 评审修正)**:内容/编辑排除后、占用分层后的其余合格成员,按 T1 优先 → discovered_utc 降序 → identity_key 升序(确定性排序,与展示排序不同用途)**排序**;`to_score` = 其中尚未被本期选中的前 N_new 条,`capped` = 排序在 N_new 之外的其余合格条目(带序号)。**N_new 只限制新增付费评分的条目数**:
+   - `recoverable`(本期 selected)**不占 N_new、不被截断**——评分/摘要已完成、只差组装时预算耗尽,不得把已有成果裁掉(对齐 design.md"N=0 但允许零网络复用"与 E5.limit"已有合格条目可继续组装")。N_new=0 → to_score 空,recoverable 照常输出。
+   - 已评分未入选条目(scored)在预筛中按普通合格成员参与排序;其**回执复用(零网络)**由评分单元按完整请求身份判定(单元二/三),预筛不查 analysis/receipt——预筛只保证本期 selected 不被 N_new 截断这一类。
+   - N_new 由调用方按 design.md 候选上限公式代入预算参数得出,本单元不查账本。**force_include 不在预筛改变排序或截断**——强制项与普通成员同规则;被 cap 或被排除的强制项如何被下游看见,由 PrescreenResult 的全覆盖不变量保证(§4 输出③),组装边界的暂停转人工动作归单元三(digest-design §5.2)。
 9. **淘汰**:rejected/落选条目次日自然可再入围(无冷却);discovered_utc 滑出 48h 即不再成为候选(digest-design §4.6)。
 
 ## 4. 输入输出
 
 **输入**:
-- 上游 CandidateRow(design.md collect.py 契约):url / title / published_utc / fetched_utc / content_text / source_name;
+- 上游 CandidateRow(design.md collect.py 契约):url / title / published_utc / fetched_utc / content_text / source_name(同轮同键多行时另需上游 item.id 作最终平局键);
+- 本期 issue_date(占用分层与续跑判定的输入);
 - sources.yaml(tier 映射、priority、exclude、unknown_source_tier)、selection.yaml(title_blacklist);
-- override 表(exclude 键集);
-- entry 表现状(status、既有正文);
-- 候选上限 N(调用方提供,≥0;N=0 合法=本期不新增评分)。
+- override 表(exclude 键集快照);
+- entry 表现状快照(status、占用归属、既有正文、固定 discovered_utc);
+- 候选上限 N_new(调用方提供,≥0;N_new=0 合法=本期不新增付费评分,可恢复结果照常)。
 
 **输出①:entry 行**(spec §5.3 DDL,本单元只写身份与内容字段,不碰 status):
 - 新 identity_key → 插入:identity_key / url(原始 URL 展示用)/ title / source_name / source_tier(多源合并后被选源的档位;未登记或 name 空 → unknown_source_tier 默认 T2,记 warning)/ published_utc(可空)/ discovered_utc(=首次 fetched_utc)/ content_text(可空)/ status 默认 'pending'。
@@ -72,14 +83,24 @@
 | entry_id | entry 表 | 链接台账(status 查询/占用核对) |
 | url / title | 合并行 | url 保留原始形态(R1 只用于判重键) |
 | source_name / source_tier | 合并行 | 展示与门槛用 |
-| published_utc / discovered_utc | 合并行 | published 可空;排序平局依据 |
+| published_utc / discovered_utc | published 取合并胜出行(可空);discovered 取**固定值**:已存在 entry 用其首次 discovered_utc,新键用本轮同键行最早 fetched_utc(§3 规则 5) | 排序平局依据;候选寿命锚点 |
 | content_text | **冻结时点快照** | 全文;空值允许(进冻结、被预筛剔) |
 | content_hash | sha256(content_text) hex | 进入评分请求身份(request_hash 输入之一,单元二/三) |
 
-**输出③:预筛入围清单**:manifest 成员的有序子集(§3 规则 7-8),交评分单元。
+**输出③:PrescreenResult(结构化四去向,2026-10-05 评审修订)**:
 
-**正常样例**(延续 digest-design §3.1 虚构口径):窗口 34 条 → 去重合并 34 条(无同键)→ 冻结 entry_count=34 → 预筛剔空正文 8、黑名单 1、used 2 → 余 23,N=12 → 截断排序取 12 交评分(其中含后入选的展示分 20 强制项?否——强制项不经预筛特殊处理,只要它在冻结集且未被 exclude 剔除,按同规则参与截断;若被截断排除,force 边界在评分/组装阶段处理,见 digest-design §5.2 与单元三设计)。
-**非法输入处置**:scheme 非 http/https(R0 invalid)→ 跳过并记日志;上游行缺依赖字段 → 依赖测试红,按 E2;同 identity_key 上游多行平局三依据仍同 → name 字典序必收敛,不存在悬空。
+| 去向 | 内容 | 消费者 |
+|------|------|--------|
+| `to_score` | 尚未被本期选中、排序前 N_new 的合格成员(有序) | 评分单元(新增付费) |
+| `recoverable` | 归属期=本期的 selected 成员(续跑恢复,不占 N_new 不截断;仍过内容/编辑排除,命中者移入 excluded) | 评分/组装单元(零新增付费) |
+| `excluded` | [(identity_key, reason)]——规则 1-5 命中者(含被新命中的本期 selected)与他期占用 | 组装单元(阶段边界处理,如 §5.1 排除的重组装) |
+| `capped` | [(identity_key, rank)]——排序在 N_new 之外的合格成员 | 组装单元(强制项比对,见下) |
+
+**全覆盖不变量(接口契约)**:`to_score ∪ recoverable ∪ excluded ∪ capped` = manifest 全体成员,每个成员**恰有一个**去向。不遗漏由本结构保证——组装单元(单元三)在组装边界取有效 force_include 集,凡成员 ∉ 已完成评分集(to_score 已评完 ∪ recoverable)——即落在 capped 或 excluded——则按 digest-design §5.2 暂停组装转人工。预筛不解读 force,单元三不重算去向:双方各做一半,漏项在结构上不可能。
+
+**正常样例**(延续 digest-design §3.1 虚构口径):窗口 34 条 → 去重合并 34 条(无同键)→ 资格过滤 0 剔 → 冻结 entry_count=34 → 预筛剔空正文 8、黑名单 1、used 2(均进 excluded 带原因)→ 本期 selected 3(上次续跑遗留,进 recoverable)→ 其余 20 条排序,N_new=12 → to_score 12 + capped 8 → 交评分。其中展示分 20 的强制项若落入 capped:to_score 完成后组装边界发现该 force 成员未完成评分 → 暂停转人工(接口保证它作为 capped 条目可见,不会被静默丢失)。
+
+**非法输入处置**:scheme 非 http/https(R0 invalid)→ 跳过并记日志;上游行缺依赖字段 → 依赖测试红,按 E2;同 identity_key 多行 tier/priority/name 全同(同源多 URL 归并为同键)→ 按上游 **item.id 升序**最终平局键收敛(2026-10-05 评审补,规则本体在 design.md 判重节),输入行序变化不改变选出的正文与 hash。
 
 ## 5. 数据与状态(存储映射定稿)
 
@@ -99,20 +120,27 @@ CREATE TABLE issue_freeze (
 - **行存在且完整 = 冻结确认事件**(digest-design §4.4 的物理化)。单行 INSERT 原子提交,不存在"半个冻结";半途中断 = 行不存在 = 未冻结,下次从头采集。空集合 = entry_count=0 的行,与"无行"语义不同。
 - **digest_issue 不新增 generating 状态**:"生成中(已冻结)"由 issue_freeze 行承载;digest_issue 行仅在产出产物(draft 起)或记失败(E2/零候选/零合格)时创建——spec §5.3 的 `CHECK(status='failed' OR markdown_path IS NOT NULL)` 与四值枚举保持不动,DDL 改动最小。
 - **manifest 含全文快照而非仅 hash(决策)**:entry.content_text 会被后续期的正常采集刷新(v3 快照边界),旧期续跑必须读旧输入才能保持请求身份不变、回执复用成立(digest-design §4.6);只存 hash 将无法重放已被覆盖的正文。这是满足四场景的**最小**存储方案——不引入 entry 版本表或通用版本管理。
-- **collect 本地写单事务**:上游读取(只读连接)完成后,entry 全部 upsert + issue_freeze INSERT 在**同一写事务**内提交。崩溃 → 整体回滚 → 无冻结行;entry 幂等使重跑无损。WAL + flock 单实例下长事务可接受(数百行级,毫秒)。
+- **collect 本地写单事务**:上游读取(只读连接)完成后,entry 全部 upsert + 候选资格过滤 + issue_freeze INSERT 在**同一写事务**内提交。崩溃 → 整体回滚 → 无冻结行;entry 幂等使重跑无损。WAL + flock 单实例下长事务可接受(预期数百行级、毫秒级,**待 M1 实测**,不作已验证性能承诺)。
 
 **写入协议(collect_once)**:
 
 ```text
 输入: issue_date, 上游DB, 配置, now
 1. issue_freeze 已有该期行? → 返回 frozen(跳过采集,幂等入口)
-2. 只读查询窗口候选(data-source JOIN 契约);记录 item_total/query_ms(规模护栏)
-3. 逐条 normalize → R0 invalid 跳过记日志;同 identity_key 内存合并(平局规则,记日志)
+2. 只读查询窗口候选(data-source JOIN 契约,含上游 item.id);记录 item_total/query_ms(规模护栏)
+3. 逐条 normalize → R0 invalid 跳过记日志;同 identity_key 本轮多行内存合并:
+   - 胜出行(正文/title 来源)= design.md 平局规则(tier→priority→name→item.id 升序)
+   - 新键:discovered_utc 初值 = 本轮同键行最早 fetched_utc
+   - 已存在键:manifest 将沿用固定 entry.discovered_utc,不取本轮合并行时间
 4. BEGIN IMMEDIATE:
-     a. 逐成员 entry upsert(INSERT OR IGNORE / 未used且变化则 UPDATE)
-     b. 组装 manifest(含 content_hash),INSERT issue_freeze(单行)
+     a. 逐成员 entry upsert(新键 INSERT;已有键未 used 且内容变化 → UPDATE 正文/title,
+        不动 discovered_utc)
+     b. 候选资格过滤:entry.discovered_utc 距 now 不足 48h 才进 manifest;
+        超窗记 candidate_expired(正文刷新照常执行,资格与台账互不影响)
+     c. 组装 manifest(含 content_hash 与固定 discovered_utc),INSERT issue_freeze(单行)
      COMMIT                          ← 冻结确认事件在此刻发生
-5. 预筛(纯函数,读 manifest + 配置 + override/entry 现状) → 入围清单
+5. 预筛(纯函数:manifest + issue_date + 配置 + 占用/override 快照 + N_new)
+   → PrescreenResult(to_score / recoverable / excluded / capped,§4 输出③)
 ```
 
 失败原因持久化:E2 时写 digest_issue failed 行(entry_ids='[]',无 markdown_path)+ 结构化日志 `stage=collect event=collect_failed`;**失败阶段/原因等恢复字段的位置属期状态存储映射(spec §5.3.1),未决项见 §9,本单元以日志为最小证据**。
@@ -129,6 +157,8 @@ CREATE TABLE issue_freeze (
 
 **边界区分**:`no_candidates`(冻结空集合)与"预筛全剔但冻结非空"不同——后者走零入围→评分零过线→组装记零合格 failed,不属本单元落库。两条失败路径的期行都由下游创建,本单元仅 E2 落 failed 行。
 
+**预算耗尽续跑(N_new=0)**:to_score 空,recoverable(本期 selected)照常输出、不被截断——已有成果不因预算耗尽丢失,组装路径可继续(E5.limit 既有口径,design.md"N=0 但允许零网络复用");未评分条目停增,不阻塞组装。
+
 ## 7. 验收场景(M1 plan 强制测试种子;输入→期望)
 
 1. **判重样例**:design.md 五个 URL 期望表逐条断言 identity_key;多源同 key(T1+T2 同 URL)→ 选 T1 行,tier 记 T1,选择依据在日志。
@@ -137,10 +167,13 @@ CREATE TABLE issue_freeze (
 4. **空集合**:窗口内 0 条 → freeze(entry_count=0,manifest='[]')落地;零 attempt;digest_issue failed(no_candidates)由下游写入。
 5. **快照刷新**:同 key 二次读取正文空→非空且未发布 → entry 更新;**新一期** manifest 用新 content_hash;**旧期** manifest 不变,旧期续跑请求身份=旧 hash(回执复用)。
 6. **used 不刷新**:status='used' 条目再读取 → entry 与 manifest 均不反映新正文。
-7. **discovered_utc 锚定**:内容刷新再读 → discovered_utc 不变;滑出 48h 后不再入围。
-8. **预筛矩阵**:黑名单/死源/空正文/used/selected/override-exclude 各一例被剔;截断排序确定性(同输入两次运行同输出);N=0 → 空入围,无异常。
-9. **E2**:上游文件以拒绝只读方式打开 → digest_issue failed 行落地、退出 3、collect_failed 日志。
-10. **规模护栏**:item_total>50k 或 query_ms>1000 → warning 日志(design.md collect 契约)。
+7. **双层窗口与寿命锚定**:已有 entry 内容刷新再读 → discovered_utc 不变;首次发现超 48h 的身份今天经另一源/URL 变体再次进入上游窗口 → 不进入新期 manifest(candidate_expired 日志、entry 首次时间不变),且已冻结该身份的旧期 manifest 完好、续跑照常;新键同轮多行 → discovered_utc 初值=最早 fetched_utc,与胜出行选择无关。
+8. **预筛矩阵与占用分层**:黑名单/死源/空正文/used/override-exclude 各一例被剔(含"本期 selected 新命中 override-exclude → 移入 excluded 带原因");**本期 selected 续跑保留为 recoverable,他期 selected 排除为 excluded(占用原因)**;截断排序确定性(同 manifest+同占用/override 快照两次运行同输出);断言全覆盖不变量(四去向并集=manifest 全体、无重叠无遗漏)。
+9. **N_new=0 不裁已有成果**:本期已有 3 条 selected(评分摘要完成)、N_new=0 → to_score 空、recoverable 照常输出,组装路径可继续(E5.limit 口径,零新增网络)。
+10. **强制项截断可见性**:有效 force_include 成员排序在 N_new 之外(落入 capped)或被内容排除(落入 excluded)→ PrescreenResult 中该成员带去向与原因可见;接口测试断言组装消费方能据此识别"强制项未完成评分"并暂停,不静默发布缺少该强制项的日报(暂停动作本体属单元三,此处锁接口)。
+11. **平局收敛**:同 identity_key 两行 tier/priority/name 全同而正文不同 → item.id 小者胜出;输入行序颠倒 → 选出行、正文与 content_hash 不变。
+12. **E2**:上游文件以拒绝只读方式打开 → digest_issue failed 行落地、退出 3、collect_failed 日志。
+13. **规模护栏**:item_total>50k 或 query_ms>1000 → warning 日志(design.md collect 契约)。
 
 ## 8. 依赖与维护成本
 
@@ -152,10 +185,11 @@ CREATE TABLE issue_freeze (
 
 | 未决项 | 验证方法 | 通过条件 | 失败后的备选 | 定位 |
 |--------|----------|----------|--------------|------|
+| **入选中选的占用归属存储**(预筛消费接口已定:归属期=本期/他期;写入/清空的事务边界与最终形态待定稿) | 单元三设计推演+测试:本期保留/他期排除/放弃失败期释放三路径 | 续跑不丢本期工作;跨期占用可判定;释放可追溯 | entry 加归属列(建议 `claim_issue`)或独立占用表 | 数据接入与候选管理 × 日报编辑与内容生成(联合定稿) |
 | 失败阶段/原因等恢复字段的存储映射(E2 落行时仅日志) | 单元五按 spec §5.3.1 清单设计 | §6 各中断窗口后状态可判定且原因可查 | digest_issue 扩列(如 reason/updated_utc)或独立 run 记录表 | 调度与运行维护(本单元消费其结论) |
 | 上游 15 源线上 fetched_utc 分布与正文覆盖率(本地库 12 源/90 条为样本) | M1 部署期服务器实测,回填 data-source | 48h 窗口候选量级与 manifest 体积估算被证实或修订 | 调整窗口/预筛参数(运营参数,不动结构) | 本单元(观测)/部署核查 |
 | 服务器侧 DB 路径、只读 WAL 权限 | M1 启动前核查清单(spec §11) | mode=ro 以 engine 运行用户验证通过 | 调整部署路径/权限,不改契约 | 部署核查 |
 
 ## 评审提示
 
-本设计关闭了 digest-design §7 原"冻结确认标志/候选清单/输入版本快照/期归属的存储映射"未决项(issue_freeze);新增决策共 5 处(§5 关键决策 4 处 + discovered_utc 锚定)。阻塞问题=四场景推演与 DDL 是否成立;manifest 体积与保留策略是运维观察项,不阻塞。
+本设计关闭**候选冻结与输入版本快照**的存储映射(issue_freeze 表);2026-10-05 评审修订四组:①占用与 N_new 作用范围(本期 selected 续跑保留、N_new 仅限新增付费,PrescreenResult 四去向全覆盖);②双层窗口三落点(资格在冻结前判定、manifest 用固定首次时间、旧期续跑不复查);③强制项经 capped/excluded 结构化交接,不遗漏由全覆盖不变量保证,暂停动作归单元三;④item.id 升序最终平局键(本体在 design.md)。**仍开放**:占用归属存储形态与写入事务(与单元三联合定稿,§9 首行);验收 13 例为下一轮评审对象。manifest 体积与保留策略、事务耗时是运维观察/实测项,不阻塞。

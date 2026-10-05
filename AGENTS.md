@@ -8,7 +8,7 @@
 - **当前阶段(2026-10-04用户指示):模块详细设计与设计评审阶段**——M1 不进入编码;Task10/服务器/推送等实施类操作仍暂停。工作主线:按[设计评审规范](docs/development/design-review.md)先产出 M1 完整日报样例与一期生命周期设计,再逐单元设计评审。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
 - 顺序:M1 设计五单元评审通过→M1 plan经评审→**用户明确恢复实施**→编码;进入条件以spec §9为准。现有 spec/engine 文档是总体设计基线,单独不构成编码许可;评审通过不自动解除实施暂停
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-05 单元一交接](docs/sessions/2026-10-05-unit1-data-ingestion.md)(v3 收口确认后进入第 3 步:cost_pending 契约同步+数据接入单元设计待评审);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-05 单元一评审修订交接](docs/sessions/2026-10-05-unit1-revision.md)(单元一四组阻塞问题已定点修订待复核:占用/N_new 作用范围、双层窗口、强制项四去向交接、item.id 最终平局键;预筛接口未定稿);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 

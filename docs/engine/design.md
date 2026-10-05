@@ -181,7 +181,7 @@ selection校验:thresholds两档均为0-100整数,max_entries为1-15整数;secti
 - 风险注记:`from` / `ref` / `source` 在个别技术站点可能是业务参数;本地 90 条样本(聚合源加入前)0 命中,黑名单主要防聚合源转带与未来新源;反例用例进强制测试 #1,发现误合并即从黑名单摘除该项并记 ADR。
 
 - identity_key = `url:` + 归一后完整 URL(不哈希:可读、可排查、可 LIKE);entry 与 override 共用该键。
-- 多源同 key 平局:tier(T1 优先)→ sources.yaml priority(小者优先)→ source.name 字典序;选择依据写日志;判重合并不等于提高可信度(data-source)。
+- 多源同 key 平局:tier(T1 优先)→ sources.yaml priority(小者优先)→ source.name 字典序 → **上游 item.id 升序(最小者胜,最终平局键;2026-10-05 评审补)**——name 不保证唯一(同源多 URL 可归并为同 key,tier/priority/name 全同而正文不同),item.id 是上游自增主键,输入行序变化不改变选出的正文与 hash;选择依据写日志;判重合并不等于提高可信度(data-source)。**同轮同键行的 discovered_utc 初值取该组最早 fetched_utc,与胜出行选择相互独立**——不让来源胜出规则隐含决定候选寿命(双层窗口见 [units/data-ingestion.md](units/data-ingestion.md) §3 规则 5)。
 - 上游 source.name 为空或未登记:按 unknown_source_tier(默认 T2),记 warning。
 
 来源边界:2026-10-04审查读取[AIHOT url.ts](https://github.com/KKKKhazix/AIHOT/blob/main/packages/backend/src/lib/url.ts),上游在序列化后的字符串尾部处理斜杠,且端口80/443均移除;本项目采用上表的原始默认端口与pathname规则。main链接是可变来源,不能当冻结实现。本表与下列本项目样例作为M1验收基准,计划实现前记录所引用源码的commit,不继续照抄上游最新行为。

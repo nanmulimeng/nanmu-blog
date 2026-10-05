@@ -13,13 +13,13 @@
 | 预筛 | 未发布且未被其他待发布期占用的条目(含可恢复的scored/selected) | 剔除:标题关键词黑名单 / 死源 / 正文空值 / 已上过日报;按预算限制候选 | 本地零成本 |
 | 双次评分 | 预筛后条目 | analysis(score_1/score_2) | 额度不足停止新调用,已有合格条目可继续组装;单条失败跳过 |
 | 摘要写作 | 入选条目 | 中文标题(答案先行)/一句话/推荐理由/标签 | 单条失败 → 该条剔除,不挂整期 |
-| 组装 | 入选 + 摘要 | digest markdown(frontmatter:date/generated/ai_model/entry_count/cost_cny) | — |
+| 组装 | 入选 + 摘要 | digest markdown(frontmatter:date/generated/ai_model/entry_count/cost_cny/cost_pending) | — |
 | 发布 | 已验证markdown | 专用工作副本commit + push → submitted → 线上确认 → published | push冲突/构建失败保留产物,不重新付费生成 |
 | 记账 | 每次receipt_attempt | 调用前预占、响应后结算;期末汇总报表 | 失败期也记账,unknown保留额度 |
 
 ## 数据落点
 
-- `engine.db`(WAL):entry / receipt / receipt_attempt / budget / analysis / override / digest_issue / api_usage(8 表 DDL 见 spec §5.3)
+- `engine.db`(WAL):entry / receipt / receipt_attempt / budget / analysis / override / digest_issue / issue_freeze / api_usage(9 表 DDL 见 spec §5.3;issue_freeze=期冻结确认,2026-10-05 增)
 - `rag.db`(M2):向量,独立库,可随时删除全量重建
 - `site/src/content/digest/YYYY-MM-DD.md`:唯一公开内容源;经过push、构建和线上确认才算发布
 
