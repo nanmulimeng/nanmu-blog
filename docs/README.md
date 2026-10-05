@@ -57,10 +57,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-05-unit1-revision.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-05-unit1-review2.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已产出并收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计进行中,单元一 [data-ingestion.md](engine/units/data-ingestion.md) 已按评审修订四组问题待复核)→ 编写M1计划。
+- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已产出并收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计进行中,单元一 [data-ingestion.md](engine/units/data-ingestion.md) 部分通过复核——复用/付费容量交接待单元二、占用写入协议待单元三联合定稿)→ 编写M1计划。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令
