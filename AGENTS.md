@@ -6,9 +6,9 @@
 
 - M0:Task1-9已实施——site/(Astro5.18.2)、部署工件与服务器链路已验收(线上 `https://nanmu.xyz`,常态发布计时13s、韧性实测5项、Caddy接管apex域名),证据见[部署交接](docs/sessions/2026-10-04-m0-deploy.md)。Task10(首篇文章+tag m0)未做
 - **当前阶段(2026-10-04用户指示):模块详细设计与设计评审阶段**——M1 不进入编码;Task10/服务器/推送等实施类操作仍暂停。工作主线:按[设计评审规范](docs/development/design-review.md)先产出 M1 完整日报样例与一期生命周期设计,再逐单元设计评审。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
-- 顺序:M1 设计五单元评审通过→M1 plan→实施;进入条件以spec §9为准。现有 spec/engine 文档是总体设计基线,单独不构成编码许可
+- 顺序:M1 设计五单元评审通过→M1 plan经评审→**用户明确恢复实施**→编码;进入条件以spec §9为准。现有 spec/engine 文档是总体设计基线,单独不构成编码许可;评审通过不自动解除实施暂停
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-04 文档复审第二轮交接](docs/sessions/2026-10-04-doc-review-round2.md);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-05 M1 日报功能详细设计交接](docs/sessions/2026-10-05-m1-digest-function-design.md);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 
