@@ -19,7 +19,8 @@
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
 | [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 总体设计基线(模块级编码许可以设计评审为准) |
-| [engine/digest-design.md](engine/digest-design.md) | M1 日报功能详细设计与一期生命周期:功能范围、完整样例、期状态机与窗口冻结、人工维护六场景 | **v3,待用户确认收口(2026-10-05 三处定点修正完成)** |
+| [engine/digest-design.md](engine/digest-design.md) | M1 日报功能详细设计与一期生命周期:功能范围、完整样例、期状态机与窗口冻结、人工维护六场景 | **v3 已收口(2026-10-05 用户确认,第 3 步功能输入基线)** |
+| [engine/units/](engine/units/) | M1 五设计单元详细设计(第 3 步;含 [data-ingestion.md](engine/units/data-ingestion.md):判重/冻结 issue_freeze/预筛的实现层设计) | 单元一设计稿待评审;其余四单元未开始 |
 | [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 总体设计基线(期生命周期等设计缺口见design-review) |
 | [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 总体设计基线(权重表样例待设计阶段落盘) |
 | [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 总体设计基线(成本标注文案选择待设计阶段定) |
@@ -47,6 +48,7 @@
 | 运营策略/成本 | engine/selection、budget、pipeline | 与 spec契约同步;计价只在budget维护,实现读取配置 |
 | 引擎实现契约(模块边界/配置格式/判重/错误分类/日志) | engine/design.md | spec §5 保持产品契约,engine 三文档保持运营口径;M1 plan 引用而不复制 |
 | 日报功能层设计(范围/样例/期生命周期/人工维护) | engine/digest-design.md | 技术细节引用 engine 其余文档;功能语义变更先改本文再动技术设计 |
+| 数据接入与候选管理的实现层设计(判重落库/冻结存储/预筛截断/恢复) | engine/units/data-ingestion.md | DDL 真相源仍在 spec §5.3;判重/上限公式引用 engine/design.md;功能语义引用 digest-design |
 | 写作与内容维护 | writing.md | 字段以spec为准,不复制部署命令 |
 | 部署操作/日常巡检 | ops/deploy.md / ops/runbook.md | plan保留实施与验收步骤,工件落盘后实现以deploy/为准 |
 | 调研证据与缺口 | reviews/ | 保存出处与待核查事项,不复制完整设计 |
@@ -55,10 +57,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-05-digest-design-v3.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-05-unit1-data-ingestion.md),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前处于模块详细设计与设计评审阶段(2026-10-04用户指示),M1 不编码,实施类操作暂停;评审通过不自动解除暂停**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已产出 [digest-design.md](engine/digest-design.md) v3,**待用户确认收口**)→ 编写M1计划。
+- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已产出并收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计进行中,单元一 [data-ingestion.md](engine/units/data-ingestion.md) 待评审)→ 编写M1计划。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令

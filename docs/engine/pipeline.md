@@ -34,6 +34,7 @@ generated: true
 ai_model: example-model-id
 entry_count: N
 cost_cny: 0.xx
+cost_pending: false
 ---
 
 > AI 生成与精选 · 模型 example-model-id · 成本 ¥0.xx
@@ -53,7 +54,7 @@ cost_cny: 0.xx
 - [标题](url)——一句话点评(源名 · 展示分 65)
 ```
 
-要点:标题答案先行;每条必带原文链接与展示分;frontmatter 六字段是 site 构建契约(schema 不合构建即失败);页面标题与AI标注由site模板保证,markdown正文不重复h1;示例model ID必须替换为实际调用模型(铁律 7)。
+要点:标题答案先行;每条必带原文链接与展示分;frontmatter 六字段是 site 构建契约(schema 不合构建即失败);`cost_pending` 由 assemble **显式写出**布尔值(`false`=无未决预占;`true` 时正文标注行同步"(含未决预占,为保守上界)",见 digest-design §3.4),`default(false)` 仅为旧文件兼容——字段契约三约束见 [digest-design.md](digest-design.md) §2 与 spec §4.1(当前 site 消费代码待 M1 实施许可);页面标题与AI标注由site模板保证,markdown正文不重复h1;示例model ID必须替换为实际调用模型(铁律 7)。
 
 ## 失败隔离不变量
 
@@ -101,7 +102,7 @@ Git和SQLite不是同一事务:必须覆盖“commit成功但状态未写入”�
 
 ## 公开成本口径
 
-`cost_cny`是该期在发布时的费用快照,包含失败候选、评分、摘要与重试;不能只算最终入选条目。按每个attempt的实际费用或尚未结算的保守预占求和,不重复计同一次预占和结算。若仍有unknown,正文与页面说明“成本含未决预占,为保守上界”;不得标成已结算实付或写0。账本始终是最新结算依据;后续核清需要纠正公开数字时,通过正常内容提交更新,不另发模型请求。
+`cost_cny`是该期在发布时的费用快照,包含失败候选、评分、摘要与重试;不能只算最终入选条目。按每个attempt的实际费用或尚未结算的保守预占求和,不重复计同一次预占和结算。若仍有未决(所有 actual 未核清的 attempt,不限于 status=unknown),frontmatter 写 `cost_pending: true`,正文与页面说明“成本含未决预占,为保守上界”;不得标成已结算实付或写0。`cost_pending` 与 `cost_cny` 出自**同一时点、同一期费用快照**;新生成日报显式写出布尔值,`default(false)` 仅为旧文件兼容。账本始终是最新结算依据;后续核清需要纠正公开数字时,**数字、标志与正文标注一起**通过正常内容提交更新,不另发模型请求(三约束全文见 [digest-design.md](digest-design.md) §2)。
 
 ## M1实现前必须映射的恢复信息
 

@@ -19,7 +19,7 @@
 - 页面 UI 中文;站名 `nanmu blog`(常量放 `site/src/consts.ts`)
 - 站点 URL `https://nanmu.xyz`(astro.config `site`,RSS 依赖它生成绝对链接;2026-10-04 由 `blog.nanmu.xyz` 改为 apex)
 - posts schema:`title: 非空string`、`pubDate: coerce.date`、`tags: string[] default []`、`draft: boolean default false`
-- digest schema:`date: 有效YYYY-MM-DD`、`generated: literal true`、`ai_model: 非空string`、`entry_count: 非负整数`、`cost_cny: 非负有限数值`
+- digest schema:`date: 有效YYYY-MM-DD`、`generated: literal true`、`ai_model: 非空string`、`entry_count: 非负整数`、`cost_cny: 非负有限数值`;`cost_pending: boolean default(false)` 为 **M1 待实施契约**(2026-10-05 随 digest-design v3 收口同步)——M0 实际实施的 site schema 无此键,`default(false)` 兼容旧文件,消费代码与 engine 写入在 M1 实施许可后落码;本计划与 spec §4.1 的 schema 示例必须保持一致(check_docs contracts)
 - **digest 栏目从 M0 起就带 AI 生成标注**(spec 铁律 7):digest 列表页显式说明本栏目内容由 AI 生成
 - **服务器凭据不落盘**:123.56.223.97 的密码只允许出现在交互式命令行输入,禁止写入任何文件/脚本/配置(历史约定)
 - 生产main保持可部署:Task 2-6提交前build绿,Task 7起verify绿;纯文档按文档门禁。故障注入只在独立验收仓库/目录
@@ -161,6 +161,7 @@ const digest = defineCollection({
     ai_model: z.string().trim().min(1),
     entry_count: z.number().int().nonnegative(),
     cost_cny: z.number().finite().nonnegative(),
+    cost_pending: z.boolean().default(false),
   }),
 });
 

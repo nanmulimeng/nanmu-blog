@@ -59,7 +59,7 @@
 - **Astro 5**,零客户端 JS,明暗主题跟随系统(topic-digest 同款审美)
 - 内容模型(content collections):
   - `posts/`——个人文章,手写,frontmatter: title/pubDate/tags/draft
-  - `digest/`——AI 日报,程序生成,frontmatter 额外带 `generated: true`、`ai_model`、`cost_cny` 等溯源字段
+  - `digest/`——AI 日报,程序生成,frontmatter 额外带 `generated: true`、`ai_model`、`cost_cny`、`cost_pending` 等溯源字段
   - `about`——关于页,`src/pages/about.astro` 普通页面,不进 collection
 - 页面:首页(文章+日报双栏或单列)、`/posts/*`、`/digest/*`、`/about`、RSS(个人文章一条、日报一条)
 - 无管理后台:git 即 CMS
@@ -83,12 +83,13 @@
     loader: glob({ pattern: '**/*.md', base: './src/content/digest' }),
     schema: z.object({
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, '日期必须是有效的YYYY-MM-DD'), generated: z.literal(true),
-      ai_model: z.string().trim().min(1), entry_count: z.number().int().nonnegative(), cost_cny: z.number().finite().nonnegative(),
+      ai_model: z.string().trim().min(1), entry_count: z.number().int().nonnegative(), cost_cny: z.number().finite().nonnegative(), cost_pending: z.boolean().default(false),
     }),
   });
 
   export const collections = { posts, digest };
   ```
+- **cost_pending 字段契约(2026-10-05 M1 设计同步;区分两层)**:**待实施契约**=如上 schema——该期存在未决预占时为 `true`;新生成日报显式写出布尔值,`default(false)` 仅为旧文件兼容;核清时数字、标志与正文标注一起经正常内容提交更新(三约束见 [digest-design.md](../../engine/digest-design.md) §2)。**当前 site 实现**尚未包含此键与消费代码(列表/详情现仅显示 `cost_cny`),M1 实施许可后随 engine 写入一起落码;本文与 M0 plan 的 schema 示例保持一致(check_docs contracts),不代表 M0 已实施该字段。
 - 生成内容由 engine落盘 + commit/push触发构建(build 开始时文件已存在)——构建确定性、可回滚、离线可复现;**绝不在 build 内调 LLM**(铁律 6);`.astro/` 数据存储目录 gitignore;M0 临时工作目录构建不承诺跨构建持久化
 - 分页分开:`/posts/[...page]` 与 `/digest/[...page]` 各自 `paginate(getCollection(...))`;RSS 分开:`/rss.xml`(个人文章)与 `/digest.xml`(日报)两个 endpoint
 - 路径与展示约定:posts单层英文短横线文件名,不能纯数字;digest文件名必须与date一致。日期显示固定Asia/Shanghai,同日期按id稳定排序。详细写作操作见 [写作指南](../../writing.md)。
@@ -132,7 +133,7 @@ collect   读 topic-digest SQLite 只读(item JOIN source,fetched_utc近48h;字�
 记账      每次调用立即落回执/尝试/费用;即使整期失败也入账,期末只做汇总
 ```
 
-### 5.3 数据模型(engine SQLite,8 表 DDL 要点)
+### 5.3 数据模型(engine SQLite,9 表 DDL 要点;2026-10-05 增 issue_freeze)
 
 ```sql
 -- 候选条目(topic-digest 条目的快照,判重后)
@@ -221,6 +222,16 @@ CREATE TABLE digest_issue (
   CHECK(status = 'failed' OR markdown_path IS NOT NULL)
 );
 
+-- 期候选冻结确认(2026-10-05 数据接入单元设计定稿,见 engine/units/data-ingestion.md)
+-- collect 结束单事务写入;行存在且完整=冻结确认事件;半途中断=行不存在=未冻结
+CREATE TABLE issue_freeze (
+  issue_date TEXT PRIMARY KEY,            -- YYYY-MM-DD;一期恰好一条,已存在则续跑不覆盖
+  frozen_utc TEXT NOT NULL,               -- 确认写入时间(=事件发生时间)
+  entry_count INTEGER NOT NULL CHECK(entry_count >= 0),  -- 允许 0(空集合是合法冻结结果)
+  manifest_json TEXT NOT NULL             -- 成员清单 JSON:identity_key/entry_id/url/title/source_name/
+                                          -- source_tier/published_utc/discovered_utc/content_text/content_hash
+);
+
 -- 月度成本聚合(报表投影,从 receipt_attempt 聚合;不作调用授权依据)
 CREATE TABLE api_usage (
   month TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
@@ -235,11 +246,11 @@ CREATE TABLE api_usage (
 
 ### 5.3.1 恢复数据的实施约束
 
-上述8表DDL为核心模型,不是M1最终迁移工件。无Markdown可记failed,其他期状态必须有路径。期状态以生成/远端接收/线上确认分层;entry仅在确认published后标used。人工撤回需要可持久化的暂停重试标志,不能靠一次性口头操作防重发。
+上述DDL为核心模型,不是M1最终迁移工件。无Markdown可记failed,其他期状态必须有路径。期状态以生成/远端接收/线上确认分层;entry仅在确认published后标used。人工撤回需要可持久化的暂停重试标志,不能靠一次性口头操作防重发。**期冻结存储已定位**(2026-10-05,数据接入与候选管理单元):issue_freeze 行存在=冻结确认,manifest 含每成员输入版本快照,旧期续跑读 manifest 而不读 entry 现值;"生成中(已冻结)"由该行承载,digest_issue 行仅在产出产物或记失败时创建——详见 [units/data-ingestion.md](../../engine/units/data-ingestion.md)。
 
 M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、普通/unknown重试计数、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账单恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。
 
-公开cost_cny聚合该期全部attempt(含失败候选/重试),每次取实付或未决预占;含未决时页面/正文明确标保守上界。跨期复用与跨月预占计算以budget.md为准。
+公开cost_cny聚合该期全部attempt(含失败候选/重试),每次取实付或未决预占;含未决时页面/正文明确标保守上界。**cost_pending 布尔与 cost_cny 出自同一时点、同一期费用快照;未决判定覆盖所有 actual 未核清 attempt(不限于 status=unknown);新生成日报显式写出布尔值;核清时数字、标志与正文标注一起更新**(三约束全文见 [digest-design.md](../../engine/digest-design.md) §2,site 消费代码待 M1 实施许可)。跨期复用与跨月预占计算以budget.md为准。
 
 ### 5.4 回执状态机与预算熔断(借鉴AIHOT,按本项目契约实现)
 
@@ -384,6 +395,8 @@ nanmu-blog/
 │   ├── engine/design.md             # 模块/配置/请求/判重/错误与成本计算契约
 │   ├── engine/selection.md          # 精选标准/门槛/调整记录(编辑策略文档)
 │   ├── engine/budget.md             # 成本治理与月度成本记录
+│   ├── engine/digest-design.md      # M1 日报功能详细设计(v3 已收口,第 3 步输入基线)
+│   ├── engine/units/               # M1 五设计单元详细设计(第 3 步逐单元产出与评审)
 │   ├── ops/deploy.md                # 部署准备手册已建立,Task8核对工件/Task9实测
 │   ├── ops/runbook.md               # 巡检/回滚/故障处理
 │   ├── sessions/                    # 开发会话交接记录(§8.1)
@@ -471,6 +484,8 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 ---
 
 ## 附:变更记录
+
+- 2026-10-05 M1 第 3 步启动(用户确认 digest-design v3 收口为功能输入基线):§4.1/§5.3.1 同步 cost_pending 字段契约(显式布尔/default 仅旧文件兼容/三处一致更新;"待实施契约"与"当前 site 实现"分层标注,site 代码待实施许可);§5.3 增 issue_freeze 表(9 表)承载期冻结确认事件——manifest 含每成员输入版本快照,"生成中已冻结"由该行承载、digest_issue 枚举不动;§8 文档树补 engine/digest-design.md 与 engine/units/。单元一设计见 engine/units/data-ingestion.md(设计稿待评审)。
 
 - 2026-10-04 用户拍板博客直接用apex域名`nanmu.xyz`(替代`blog.nanmu.xyz`):§1.3决策表、§7 Caddy示例、astro.config `site`、部署手册与计划同步;apex A记录实测已指向服务器,接管既有指向127.0.0.1:3000的死转发Caddy块。
 
