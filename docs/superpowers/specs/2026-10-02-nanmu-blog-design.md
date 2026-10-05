@@ -133,7 +133,7 @@ collect   读 topic-digest SQLite 只读(item JOIN source,fetched_utc近48h;字�
 记账      每次调用立即落回执/尝试/费用;即使整期失败也入账,期末只做汇总
 ```
 
-### 5.3 数据模型(engine SQLite,9 表 DDL 要点;2026-10-05 增 issue_freeze)
+### 5.3 数据模型(engine SQLite,11 表 DDL 要点;2026-10-05 单元设计定稿:issue_freeze/summary/notify_sent 与各表扩展列)
 
 ```sql
 -- 候选条目(topic-digest 条目的快照,判重后)
@@ -145,7 +145,9 @@ CREATE TABLE entry (
   published_utc TEXT, discovered_utc TEXT NOT NULL, -- discovered来自上游fetched_utc
   content_text TEXT,                       -- 提取正文(来自 topic-digest)
   status TEXT NOT NULL DEFAULT 'pending'   -- pending/scored/selected/rejected/used
-    CHECK(status IN ('pending','scored','selected','rejected','used'))
+    CHECK(status IN ('pending','scored','selected','rejected','used')),
+  claim_issue TEXT                         -- 占用归属:选中该条的未完成期issue_date;置selected同事务写,
+                                           -- 确认published置used时清空,放弃失败期人工释放时清空(单元三定稿)
 );
 CREATE INDEX idx_entry_discovered ON entry(discovered_utc DESC);
 
@@ -180,6 +182,8 @@ CREATE TABLE receipt_attempt (
   reserved_micro_cny INTEGER NOT NULL CHECK(reserved_micro_cny >= 0),
   actual_micro_cny INTEGER CHECK(actual_micro_cny >= 0),
   usage_json TEXT, pricing_version TEXT NOT NULL,
+  reconcile_json TEXT,                     -- 核清证据:证据类型/账单关联标识/核查时间/依据说明;
+                                           -- 与actual_micro_cny同一UPDATE事务写入(单元二定稿,不留给plan)
   UNIQUE(receipt_id, attempt_no)
 );
 CREATE INDEX idx_attempt_started ON receipt_attempt(started_utc);
@@ -219,17 +223,28 @@ CREATE TABLE digest_issue (
   cost_cny REAL NOT NULL DEFAULT 0,        -- 仅展示/汇总;授权用receipt_attempt整数微元
   status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','submitted','published','failed')),
   created_utc TEXT NOT NULL,
+  fail_reason TEXT,                        -- 生成路径失败原因(E2/E6子类/no_candidates/zero_qualified;单元五)
+  updated_utc TEXT,                        -- 状态最近变更时间(恢复窗口判定)
+  last_exit INTEGER,                       -- 最近一次运行退出码(status命令/通知判定)
+  last_run_utc TEXT,                       -- 最近一次运行结束时间
+  withdrawn_utc TEXT,                      -- 撤回事实:status保持published,本字段非空=已撤回(单元四)
+  withdraw_commit TEXT,                    -- 撤回删除提交SHA(线上核验锚点)
   CHECK(status = 'failed' OR markdown_path IS NOT NULL)
 );
 
 -- 期候选冻结确认(2026-10-05 数据接入单元设计定稿,见 engine/units/data-ingestion.md)
 -- collect 结束单事务写入;行存在且完整=冻结确认事件;半途中断=行不存在=未冻结
+-- paused 三列由单元五定稿:冻结后全生命周期的期级暂停标志(生成中/draft/submitted/published均可叠加;
+-- 冻结前无期概念无暂停需求;failed不自动重跑无需暂停)。置位/解除=独立UPDATE,留痕于paused_reason/paused_utc
 CREATE TABLE issue_freeze (
   issue_date TEXT PRIMARY KEY,            -- YYYY-MM-DD;一期恰好一条,已存在则续跑不覆盖
   frozen_utc TEXT NOT NULL,               -- 确认写入时间(=事件发生时间)
   entry_count INTEGER NOT NULL CHECK(entry_count >= 0),  -- 允许 0(空集合是合法冻结结果)
-  manifest_json TEXT NOT NULL             -- 成员清单 JSON:identity_key/entry_id/url/title/source_name/
+  manifest_json TEXT NOT NULL,            -- 成员清单 JSON:identity_key/entry_id/url/title/source_name/
                                           -- source_tier/published_utc/discovered_utc/content_text/content_hash
+  paused INTEGER NOT NULL DEFAULT 0 CHECK(paused IN (0,1)),
+  paused_reason TEXT,
+  paused_utc TEXT
 );
 
 -- 月度成本聚合(报表投影,从 receipt_attempt 聚合;不作调用授权依据)
@@ -240,6 +255,29 @@ CREATE TABLE api_usage (
   PRIMARY KEY (month, provider, model)
 );
 
+-- 摘要记录(2026-10-05 单元三定稿;与analysis对称的append-only,换prompt/模型只增不改)
+-- 组装取该entry当前请求身份的最新行;同身份跨期复用,身份变化(正文/prompt/模型)后需新调用
+CREATE TABLE summary (
+  id INTEGER PRIMARY KEY,
+  entry_id INTEGER NOT NULL REFERENCES entry(id),
+  prompt_version TEXT NOT NULL,            -- understand prompt 内容哈希
+  model TEXT NOT NULL,
+  title_zh TEXT NOT NULL, summary TEXT NOT NULL, reason TEXT NOT NULL,
+  tags_json TEXT,                          -- ≤3;M1 系统内部不展示(digest-design §2)
+  receipt_ids TEXT NOT NULL,               -- JSON [id,...] 成本溯源
+  created_utc TEXT NOT NULL
+);
+CREATE INDEX idx_summary_entry ON summary(entry_id, id DESC);
+
+-- 通知发送记录(2026-10-05 单元五定稿;spec §5.3.1 去重键/发送结果的存储映射)
+-- dedup_key=错误子类+issue_date / 月预警"warn-monthly:"+YYYY-MM / 配置错误类;失败有界重试不重写本行
+CREATE TABLE notify_sent (
+  dedup_key TEXT PRIMARY KEY,
+  channel TEXT NOT NULL,
+  sent_utc TEXT NOT NULL,
+  result TEXT NOT NULL                     -- ok | fail:原因(重试成功后另起一行)
+);
+
 -- (M2 追加)向量数据不入本库:独立 rag.db(vec0 虚拟表 float[1024] + 溯源列),
 -- 与 engine.db 解耦,可从已发布 Markdown 重建(见 §6)
 ```
@@ -248,7 +286,7 @@ CREATE TABLE api_usage (
 
 上述DDL为核心模型,不是M1最终迁移工件。无Markdown可记failed,其他期状态必须有路径。期状态以生成/远端接收/线上确认分层;entry仅在确认published后标used。人工撤回需要可持久化的暂停重试标志,不能靠一次性口头操作防重发。**期冻结存储已定位**(2026-10-05,数据接入与候选管理单元):issue_freeze 行存在=冻结确认,manifest 含每成员输入版本快照,旧期续跑读 manifest 而不读 entry 现值;"生成中(已冻结)"由该行承载,digest_issue 行仅在产出产物或记失败时创建——详见 [units/data-ingestion.md](../../engine/units/data-ingestion.md)。
 
-M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、普通/unknown重试计数、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账单恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。
+M1计划必须给出失败阶段/原因、状态更新时间、产物内容身份、重试暂停、普通/unknown重试计数、通知去重、对账证据的字段或本项目状态文件映射,并同步DDL后才写代码。可复用现有表/JSON字段,不预设新增服务。参照[管线恢复](../../engine/pipeline.md)与[账本恢复](../../engine/budget.md),覆盖Git成功与DB落状态之间的中断窗口。**上述映射已于 2026-10-05 五单元详细设计定稿**:失败原因/更新时间/退出码/撤回事实→digest_issue 扩列;重试暂停→issue_freeze.paused;普通重试计数=receipt_attempt 行数(attempt_no)、unknown 标志=receipt.unknown_retry_used(既有);通知去重/发送结果→notify_sent 表;对账证据→receipt_attempt.reconcile_json(与 actual 同事务);摘要业务结果→summary 表;占用归属→entry.claim_issue。详见 engine/units/ 各单元文档。
 
 公开cost_cny聚合该期全部attempt(含失败候选/重试),每次取实付或未决预占;含未决时页面/正文明确标保守上界。**cost_pending 布尔与 cost_cny 出自同一时点、同一期费用快照;未决判定覆盖所有 actual 未核清 attempt(不限于 status=unknown);新生成日报显式写出布尔值;核清时数字、标志与正文标注一起更新**(三约束全文见 [digest-design.md](../../engine/digest-design.md) §2,site 消费代码待 M1 实施许可)。跨期复用与跨月预占计算以budget.md为准。
 
@@ -484,6 +522,8 @@ nanmuli-blog 复盘的死因之一是跨会话上下文断层(9 月观测真空�
 ---
 
 ## 附:变更记录
+
+- 2026-10-05 五单元批量闭环轮(用户指令:一次完成整批设计与自审):§5.3 扩为**11 表**——entry.`claim_issue`(占用归属,置 selected 同事务写/published 清/放弃失败期人工清)、receipt_attempt.`reconcile_json`(核清证据四要素与 actual 同一 UPDATE 事务)、digest_issue 扩 6 列(fail_reason/updated_utc/last_exit/last_run_utc/withdrawn_utc/withdraw_commit)、issue_freeze.paused 三列(冻结后全生命周期暂停)、**summary 表**(第 10,摘要结果与 analysis 对称 append-only)、**notify_sent 表**(第 11,通知去重 dedup_key 主键);§5.3.1 恢复字段映射全部定稿(不留 M1 plan)。新增单元三 engine/units/content-editing.md(占用协议/事务交界/prompt 权重初版/截断策略/组装就绪五判据/安全输出)、单元四 engine/units/publish-withdraw.md(三窗口恢复/隔离检查/撤回四步/重新上线两条/核清后提示)、单元五 engine/units/scheduling-ops.md(运行序/"1 个后续调度日"精确截止=运行时计算不加列/通知去重/status 事实清单/备份边界);model-calls.md v2 落实用户三组修正(请求身份覆盖实际输入/双次评分三分/N 三分);data-ingestion.md 回填微调;design.md(score.py/summarize.py 契约行)、pipeline.md(11 表)、digest-design.md §7(未决项批量闭环)同步。交付物含 8 组跨单元端到端场景推演(见 sessions/2026-10-05-m1-units-batch.md,文档推演非运行测试)。待用户跨单元联合核验。
 
 - 2026-10-05 单元一复核+单元二联合定稿:单元一采集/冻结/窗口/去重/预筛排除规则通过用户复核(②③④组关闭,占用区分通过);复用识别与新增付费容量(N_new)的交接由 engine/units/model-calls.md 定稿——`reusable_scores` 只读接口传入预筛(预筛保持纯函数、不查 receipt)、N_new 仅限确需新增付费评分、先复用后截断、recoverable 单义化为"评分网络零新增"——并回填 data-ingestion.md(规则 7.6/8、输出③、验收 9 四子场景)与 engine/design.md 候选上限节;占用写入与释放协议仍留单元三联合定稿。
 

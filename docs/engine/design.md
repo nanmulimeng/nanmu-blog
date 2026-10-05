@@ -14,8 +14,8 @@ coding-standards 目录结构的 I/O 展开;函数签名与任务顺序属 M1 pl
 | collect.py | TD_DB_PATH | CandidateRow 列表:url / title / published_utc / fetched_utc / content_text / source_name | 只读查询(mode=ro;近48h JOIN 契约见 data-source) | 不写上游、不加索引;读取失败属 E2;上游**无 fetched_utc 索引**(data-source 实测),48h 窗口为全表扫描——每次运行记录 item 总数与查询耗时,总数 >50k 或耗时 >1s 记 warning 并通知建议上游维护 |
 | normalize.py | url 字符串 | identity_key(`url:` + 归一URL) | 无 | 纯函数;规则见下节;禁止网络/DB |
 | prescreen.py | 候选 + 配置 + entry 历史 | 入围候选(≤候选上限,确定性排序) | 只读 DB | 零付费调用;黑名单/死源/空正文/已用排除口径见 pipeline 阶段表 |
-| score.py | 入围条目 | analysis 行(score_1 / score_2 / selected / receipt_ids);entry.status→scored | 经 ledger 预占/复用;写 entry、analysis | 只经 llm.py 出网;两次调用 attemptTag=score-1 / score-2;仅一次成功时按预算有界重试,仍缺则跳过该条 |
-| summarize.py | 入选条目 | 摘要 JSON(title_zh / summary / reason / tags) | 经 ledger;解析失败按 E4 处理 | 输出必须过 JSON 契约校验;防幻觉约束在 prompt 层 |
+| score.py | 入围条目 | analysis 行(score_1 / score_2 / selected / receipt_ids);entry.status→scored;**置 selected 同事务写 entry.claim_issue**(占用协议见 units/content-editing.md §3 规则 7) | 经 ledger 预占/复用;写 entry、analysis | 只经 llm.py 出网;两次调用 attemptTag=score-1 / score-2;仅一次成功时按预算有界重试,仍缺则跳过该条 |
+| summarize.py | 入选条目 | **summary 表行**(title_zh / summary / reason / tags + receipt_ids;spec §5.3 第 10 表,与 analysis 对称 append-only) | 经 ledger;解析失败按 E4 处理 | 输出必须过 JSON 契约校验;防幻觉约束在 prompt 层 |
 | assemble.py | 入选 + 摘要 + 配置 | digest markdown(模板与 frontmatter 契约见 pipeline.md) | 写 engine 专用工作副本文件 | 禁止网络;过 site schema/verify 才算产物 |
 | publish.py | 产物路径 | digest_issue 状态推进(draft→submitted→published) | 专用工作副本 git commit/push;读线上 release.txt | 失败复用产物不重新付费;冲突/超时不 force push(契约见 pipeline.md 发布节) |
 | ledger.py | 请求身份 + 预算配置 | reserve / settle / reuse 结果 | 写 receipt、receipt_attempt;同步 budget 表 | 一切付费调用唯一闸门;短事务内查额度+写预占,提交后才出网;业务模块禁止绕过 |

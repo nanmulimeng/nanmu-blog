@@ -191,7 +191,7 @@ def main():
             db.execute('PRAGMA foreign_keys=ON')
             db.executescript(sql)
             tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        expected = {'entry', 'receipt', 'receipt_attempt', 'budget', 'analysis', 'override', 'digest_issue', 'issue_freeze', 'api_usage'}
+        expected = {'entry', 'receipt', 'receipt_attempt', 'budget', 'analysis', 'override', 'digest_issue', 'issue_freeze', 'api_usage', 'summary', 'notify_sent'}
         if tables != expected:
             raise ValueError(f'unexpected engine tables: {sorted(tables)}')
         report['contracts']['ddl_tables'] = len(tables)

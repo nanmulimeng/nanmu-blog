@@ -19,7 +19,7 @@
 
 ## 数据落点
 
-- `engine.db`(WAL):entry / receipt / receipt_attempt / budget / analysis / override / digest_issue / issue_freeze / api_usage(9 表 DDL 见 spec §5.3;issue_freeze=期冻结确认,2026-10-05 增)
+- `engine.db`(WAL):entry / receipt / receipt_attempt / budget / analysis / override / digest_issue / issue_freeze / api_usage / summary / notify_sent(**11 表** DDL 见 spec §5.3;2026-10-05 五单元批量定稿:issue_freeze=期冻结确认+paused 三列,summary=摘要结果第 10 表,notify_sent=通知去重第 11 表,entry.claim_issue=占用归属)
 - `rag.db`(M2):向量,独立库,可随时删除全量重建
 - `site/src/content/digest/YYYY-MM-DD.md`:唯一公开内容源;经过push、构建和线上确认才算发布
 
