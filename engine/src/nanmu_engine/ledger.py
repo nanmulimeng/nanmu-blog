@@ -75,12 +75,16 @@ CALIBRATION_COUNTING = "full_request_messages_v1"
 
 def calibration_fingerprint(config: Config) -> dict:
     """校准记录绑定的配置指纹(model/tokenizer 资源与版本/计数方式;
-    model-calls §3 规则 11:任一项变化即失效须重校准,不得跨配置沿用)。"""
+    model-calls §3 规则 11:任一项变化即失效须重校准,不得跨配置沿用)。
+    R3:tokenizer 字段取**实际加载源**(token_count.TOKENIZER_MAP)而非
+    config 声明——计数行为由实际加载决定,声明改动而加载未变不构成
+    计数语义变化;资源/版本真变(加载源变)即指纹变。"""
+    from nanmu_engine.token_count import TOKENIZER_MAP
     model = config.budget.default_model
-    tok = config.budget.tokenizers.get(model)
+    tok = TOKENIZER_MAP.get(model)
     return {"model": model,
-            "tokenizer_resource": tok.resource if tok else None,
-            "tokenizer_version": tok.version if tok else None,
+            "tokenizer_resource": tok["resource"] if tok else None,
+            "tokenizer_version": tok["version"] if tok else None,
             "counting": CALIBRATION_COUNTING}
 
 
@@ -698,23 +702,39 @@ def reusable_scores(conn: sqlite3.Connection, members: list[dict],
     for member in members:
         entry = {"score_1": None, "score_2": None, "needs": [],
                  "analysis_ref": None}
+        member_hashes: set[str] = set()
         for tag, key in tags:
             ctx = dict(identity_ctx, identity_key=member["identity_key"],
                        content_hash=member["content_hash"],
                        user_text=member["user_text"], attemptTag=tag)
+            rh = request_hash(ctx)
+            member_hashes.add(rh)
             row = conn.execute(
                 "SELECT status, response_json FROM receipt WHERE logical_key=?",
-                (_logical_key(purpose, model, request_hash(ctx)),)).fetchone()
+                (_logical_key(purpose, model, rh),)).fetchone()
             if row is not None and row[0] in ("received", "completed"):
                 entry[key] = _passes_e4(purpose, row[1])
         entry["needs"] = [t for t, k in tags if entry[k] is not True]
-        analysis = conn.execute(
-            "SELECT id FROM analysis WHERE entry_id=? AND prompt_version=?"
-            " AND model=?", (member["entry_id"],
-                             identity_ctx["prompt_version"], model)
-        ).fetchone()
-        if analysis is not None:
-            entry["analysis_ref"] = analysis[0]
+        # analysis_ref 只认关联回执=当前请求身份的行(R2:同 entry 换正文
+        # 的旧 analysis 行不属于当前输入,不得作为有效进度)
+        for aid, rids_json in conn.execute(
+                "SELECT id, receipt_ids FROM analysis WHERE entry_id=?"
+                " AND prompt_version=? AND model=?",
+                (member["entry_id"], identity_ctx["prompt_version"],
+                 model)).fetchall():
+            try:
+                rid_list = json.loads(rids_json or "[]")
+            except ValueError:
+                continue
+            if not rid_list:
+                continue
+            qmarks = ",".join("?" * len(rid_list))
+            got = {r[0] for r in conn.execute(
+                f"SELECT request_hash FROM receipt WHERE id IN ({qmarks})",
+                rid_list)}
+            if got == member_hashes:
+                entry["analysis_ref"] = aid
+                break
         out[member["identity_key"]] = entry
     return out
 

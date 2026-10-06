@@ -194,8 +194,10 @@ def test_state_invalidates_on_any_binding_change(env):
         config.budget, tokenizers={
             **config.budget.tokenizers,
             config.budget.default_model: dataclasses.replace(
-                tok, version="f" * 64)}))                # 换资源版本
-    assert calibration_effective(conn, tok_cfg) is False
+                tok, version="f" * 64)}))                # 只改 config 声明
+    # R3:指纹绑实际加载源(TOKENIZER_MAP)——声明改动而加载未变,计数
+    # 行为未变,校准不失效(失效条件=实际加载的资源/版本变化)
+    assert calibration_effective(conn, tok_cfg) is True
 
     rec = json.loads(_meta(conn, "calibration"))
     rec["fingerprint"]["counting"] = "legacy_chars_v0"   # 改计数方式
@@ -208,3 +210,76 @@ def test_state_invalidates_on_any_binding_change(env):
     _set_meta(conn, "calibration_coefficient", "1.5")    # 人工上调系数
     assert calibration_effective(conn, config) is False
     assert _authorize(conn, config).reject_reason == "not_calibrated"
+
+
+# ---------- R3(P1-3):计量证据/同身份复用/指纹绑实际加载资源 ----------
+
+def test_missing_usage_is_not_pass_evidence(env):
+    """R3:响应无 usage.prompt_tokens=未取得计量证据——"没有观察到超量"
+    不等于"已取得通过证据",不得 passed(校准是付费链路的前置闸)。"""
+    conn, config = env
+    seq = itertools.count(1)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "id": f"r{next(seq)}",
+            "choices": [{"finish_reason": "stop", "message": {
+                "content": json.dumps({"attentionScore": 50})}}],
+            "usage": {"completion_tokens": 5}})      # 无 prompt_tokens/分项
+    out = calibrate(conn, config, transport=httpx.MockTransport(handler),
+                    now=NOW)
+    assert out["passed"] is False
+    assert out["status"] == "missing_usage"
+    assert calibration_effective(conn, config) is False
+    assert json.loads(_meta(conn, "calibration"))["passed"] is False
+
+
+def test_repeat_calibration_reuses_settled_receipts(env):
+    """R3:同身份(样本+系数+配置)重校准复用已结算回执的账本结果,
+    零网络零新增付费 attempt(logical_key 须与账本写入格式一致)。"""
+    conn, config = env
+    out1 = calibrate(conn, config, transport=_transport(10), now=NOW)
+    assert out1["passed"] is True and _cal_attempts(conn) == 4
+
+    calls = []
+    counting = httpx.MockTransport(
+        lambda req: (calls.append(1), httpx.Response(200, json={
+            "id": "x", "choices": [{"finish_reason": "stop", "message": {
+                "content": json.dumps({"attentionScore": 50})}}],
+            "usage": {"prompt_tokens": 999_999, "completion_tokens": 5,
+                      "prompt_cache_hit_tokens": 0,
+                      "prompt_cache_miss_tokens": 999_999}}))[1])
+    out2 = calibrate(conn, config, transport=counting, now=NOW)
+    assert out2["passed"] is True
+    assert _cal_attempts(conn) == 4                  # 零新增 attempt
+    assert all(r["reused"] for r in out2["results"])
+    assert calls == []                               # 零网络(replay 命中)
+
+
+def test_fingerprint_binds_loaded_resource_not_config_claim(env):
+    """R3:指纹描述实际加载的 tokenizer(TOKENIZER_MAP),不是 config
+    声明——声明改动而实际加载未变,计数行为未变,校准不失效。"""
+    conn, config = env
+    tok = config.budget.tokenizers[config.budget.default_model]
+    claimed = dataclasses.replace(config, budget=dataclasses.replace(
+        config.budget, tokenizers={
+            **config.budget.tokenizers,
+            config.budget.default_model: dataclasses.replace(
+                tok, version="f" * 64)}))
+    assert calibration_fingerprint(claimed) == calibration_fingerprint(config)
+
+
+def test_calibration_budget_counts_pending_reservations(env):
+    """R3(锁定):校准预算按已批准预占口径核算——未结算的校准预占
+    (actual NULL)按 reserved 保守计入,不得因"已结算=0"放行新样本。"""
+    conn, config = env
+    probe = _authorize(conn, config, purpose="calibration",
+                       identity_key="calibration:probe",
+                       request_hash="p" * 64, issue_date=None)
+    assert probe.status == "reserved"
+    tiny = dataclasses.replace(
+        config, budget=dataclasses.replace(
+            config.budget, calibration_budget_micro_cny=probe.reserved_micro_cny + 1))
+    out = calibrate(conn, tiny, transport=_transport(10), now=NOW)
+    assert out["status"] == "budget_exhausted"       # 首样本即按预占计被拒
+    assert _cal_attempts(conn) == 1                  # 只有 probe,零追加
