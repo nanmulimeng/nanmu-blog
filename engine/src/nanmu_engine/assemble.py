@@ -208,7 +208,7 @@ def write_draft(conn: sqlite3.Connection, draft: DigestDraft,
             " ON CONFLICT(issue_date) DO UPDATE SET"
             " entry_ids=excluded.entry_ids, markdown_path=excluded.markdown_path,"
             " content_sha256=excluded.content_sha256, cost_cny=excluded.cost_cny,"
-            " updated_utc=excluded.updated_utc",
+            " status='draft', updated_utc=excluded.updated_utc",
             (draft.issue_date, entry_ids, str(path), sha, draft.cost_cny,
              now, now))
     return sha
