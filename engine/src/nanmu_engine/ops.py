@@ -368,7 +368,8 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
     """
     from nanmu_engine.llm import LLMRequest, call_llm, classify_failure
     from nanmu_engine.ledger import (_logical_key, _reserved_micro,
-                                     authorize, current_coefficient,
+                                     authorize, can_retry,
+                                     current_coefficient, recover_stale_pending,
                                      request_hash, write_calibration_record)
     from nanmu_engine.score import (_system_messages, _truncate_user)
     from nanmu_engine.token_count import count_request_tokens
@@ -409,10 +410,14 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
         rh = request_hash(ctx)
         logical_key = _logical_key("calibration", model, rh)   # 与账本写入同构
 
+        # 交界 A1:replay 取最新已结算(usage_json 非空)attempt——首发
+        # 传输 unknown 后过窗补发结算的是 attempt_no=2,只认 attempt_no=1
+        # 会判"未复用"对已付费样本重复出网
         replay = conn.execute(
             "SELECT a.usage_json FROM receipt r JOIN receipt_attempt a"
-            " ON a.receipt_id=r.id AND a.attempt_no=1"
-            " WHERE r.logical_key=?", (logical_key,)).fetchone()
+            " ON a.receipt_id=r.id"
+            " WHERE r.logical_key=? AND a.usage_json IS NOT NULL"
+            " ORDER BY a.attempt_no DESC LIMIT 1", (logical_key,)).fetchone()
         if replay and replay[0]:
             prompt_tokens = json.loads(replay[0]).get("prompt_tokens")
             results.append({"sample": i, "prompt_tokens": prompt_tokens,
@@ -429,10 +434,30 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
             stopped = "budget_exhausted"
             break
 
+        # 交界 A2:校准再发送同构 can_retry 三条件(§3 规则 3,与
+        # score._attempt_side 同构)——unknown 30min 窗内等待而非重复
+        # 出网;过窗走 unknown_retry 通道,attempt_origin 如实记录
+        origin = "initial"
+        prior = conn.execute(
+            "SELECT id FROM receipt WHERE logical_key=?",
+            (logical_key,)).fetchone()
+        if prior is not None:
+            recover_stale_pending(conn, config, logical_key, now)
+            verdict = can_retry(conn, config, logical_key, now)
+            if not verdict.allowed:
+                stopped = (verdict.reason if verdict.reason in
+                           ("unknown_wait", "attempt_in_flight")
+                           else f"resend_{verdict.reason}")
+                logger.info("stage=calibrate event=resend_blocked sample=%d"
+                            " reason=%s", i, stopped)
+                break
+            origin = "retry" if verdict.channel == "normal" \
+                else (verdict.channel or "initial")
+
         ref = authorize(conn, config, purpose="calibration", model=model,
                         request_hash=rh, identity_key=ctx["identity_key"],
                         token_count=token_count, issue_date=None,
-                        origin="initial", now=now)
+                        origin=origin, now=now)
         if ref.status != "reserved":
             stopped = ref.reject_reason or "gate"
             logger.warning("stage=calibrate event=gate_rejected sample=%d"
@@ -476,7 +501,9 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
         logger.error("stage=calibrate event=ratio_over counts=%s", results)
         return {"status": "failed", "passed": False, "results": results}
     if stopped:
-        status = stopped if stopped == "budget_exhausted" \
+        # unknown_wait 单列(交界 A2):等待语义非闸门拒——过窗后自动按
+        # unknown_retry 通道续,调用方不据此升级为配置/预算故障
+        status = stopped if stopped in ("budget_exhausted", "unknown_wait") \
             else f"gate_rejected:{stopped}"
         return {"status": status, "passed": False, "results": results}
     if any(r["prompt_tokens"] is None for r in results):

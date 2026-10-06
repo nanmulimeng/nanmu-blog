@@ -283,3 +283,70 @@ def test_calibration_budget_counts_pending_reservations(env):
     out = calibrate(conn, tiny, transport=_transport(10), now=NOW)
     assert out["status"] == "budget_exhausted"       # 首样本即按预占计被拒
     assert _cal_attempts(conn) == 1                  # 只有 probe,零追加
+
+
+# ==================== 交界核验轮(A1/A2:校准通道×账本复用) ====================
+
+def _net_down():
+    def handler(request):
+        raise httpx.ConnectError("net down", request=request)
+    return httpx.MockTransport(handler)
+
+
+def test_calibration_replay_uses_latest_settled_attempt(env):
+    """交界 A1:首发传输 unknown(attempt_no=1 无计量)→过窗补发结算
+    (attempt_no=2)→再次重跑:replay 须命中最新已结算 attempt——只认
+    attempt_no=1 会判"未复用"重复付费。"""
+    from datetime import timedelta
+    conn, config = env
+    t0 = datetime.now(timezone.utc)
+    out1 = calibrate(conn, config, transport=_net_down(), now=t0)
+    assert out1["status"].startswith("gate_rejected:sample_failed")
+    assert _cal_attempts(conn) == 1
+
+    out2 = calibrate(conn, config, transport=_transport(10),
+                     now=t0 + timedelta(minutes=31))
+    assert out2["passed"] is True
+    assert _cal_attempts(conn) == 5              # 样本0补发+样本1-3首发
+
+    calls = []
+    counting = httpx.MockTransport(
+        lambda req: (calls.append(1), httpx.Response(200, json={
+            "id": "x", "choices": [{"finish_reason": "stop", "message": {
+                "content": json.dumps({"attentionScore": 50})}}],
+            "usage": {"prompt_tokens": 999_999, "completion_tokens": 5,
+                      "prompt_cache_hit_tokens": 0,
+                      "prompt_cache_miss_tokens": 999_999}}))[1])
+    out3 = calibrate(conn, config, transport=counting,
+                     now=t0 + timedelta(minutes=32))
+    assert out3["passed"] is True
+    assert calls == []                           # 全样本 replay 命中零网络
+    assert _cal_attempts(conn) == 5              # 零新增(含样本0 的 no=2)
+    assert all(r["reused"] for r in out3["results"])
+
+
+def test_calibration_resend_goes_through_can_retry(env):
+    """交界 A2:校准再发送同过 can_retry 三条件(§3 规则 3,与
+    score._attempt_side 同构):unknown 30min 窗内不补发(等待),过窗按
+    unknown_retry 通道补发且 attempt_origin 如实记录(不再恒 initial)。"""
+    from datetime import timedelta
+    conn, config = env
+    t0 = datetime.now(timezone.utc)
+    out1 = calibrate(conn, config, transport=_net_down(), now=t0)
+    assert out1["status"].startswith("gate_rejected:sample_failed")
+
+    # 窗内(<30min)重跑:不补发、零新增、返回等待语义
+    out2 = calibrate(conn, config, transport=_transport(10),
+                     now=t0 + timedelta(minutes=1))
+    assert out2["status"] == "unknown_wait"
+    assert out2["passed"] is False
+    assert _cal_attempts(conn) == 1
+
+    out3 = calibrate(conn, config, transport=_transport(10),
+                     now=t0 + timedelta(minutes=31))
+    assert out3["passed"] is True
+    origin = conn.execute(
+        "SELECT a.attempt_origin FROM receipt_attempt a JOIN receipt r"
+        " ON r.id=a.receipt_id WHERE r.purpose='calibration'"
+        " AND a.attempt_no=2 ORDER BY a.id LIMIT 1").fetchone()[0]
+    assert origin == "unknown_retry"            # 通道如实记录
