@@ -32,7 +32,7 @@ engine/
 ├── src/nanmu_engine/       # 主包
 │   ├── __init__.py
 │   ├── config.py           # 只读 config/,暴露类型化配置对象(含限额/价目版本)
-│   ├── db.py               # engine.db 连接与 8 表 schema(单一入口)
+│   ├── db.py               # engine.db 连接与 12 表迁移(spec §5.3,单一入口)
 │   ├── collect.py          # 读 topic-digest(mode=ro)
 │   ├── normalize.py        # identity_key URL 归一
 │   ├── prescreen.py        # 零成本预筛
