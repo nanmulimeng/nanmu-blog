@@ -18,7 +18,7 @@
 - 线上验收③明暗主题:Playwright `emulateMedia colorScheme` light/dark 切换,计算样式 light=rgb(255,255,255)/rgb(26,26,26),dark=rgb(15,23,42)/rgb(226,232,240),纯 CSS media query(`site/src/styles/global.css:6`)无 JS [verified: 截图 [light](../evidence/2026-10-06-m0/m0-theme-light.png)/[dark](../evidence/2026-10-06-m0/m0-theme-dark.png) + evaluate 输出]
 - 附属核验:文章页 200(3627B)+正文命中;随机不存在 URL `/posts/definitely-not-exist-2026/` 真实 404 [verified: curl 状态码]
 - 回滚演练:无部署进程/等锁任务(`ps` 精确路径 grep 零匹配);4 个 releases 全部 `.complete` 且内容匹配;持锁(`flock -E 75 -w 900` 同一 build.lock)校验 `.complete`+`dist/release.txt` 后原子切到 c8a4567,旧版复核 release.txt=c8a4567/首页 200/RSS 200 且 0 item/文章页 404(内容随版本回退,语义正确);同锁同校验切回 03015b1,复核 release.txt=03015b1/文章页 200/RSS 1 item;两次切换 exit 0,未删任何版本/锁文件,未改部署配置 [verified: 服务器命令输出逐条记录于本 session 验证表]
-- tag `m0`:docs commit 推送并确认部署后创建,指向该已确认部署的提交 [verified: 见下方 verification 表末行;创建后不再移动]
+- tag `m0`:docs commit 推送并确认部署后创建,指向该已确认部署的提交 [verified: tag 对象 5205dc5→commit cb6898a(`git rev-parse m0^{commit}`),`git push server m0` 输出 `* [new tag] m0 -> m0`;创建后不再移动]
 
 ## verification
 
@@ -29,6 +29,7 @@
 | 本机 | `curl https://nanmu.xyz/...`(release.txt/rss.xml/digest.xml/文章页/随机 URL) | 全部符合预期,状态码与解析结果见 state |
 | 本机 Playwright | CommaFeed demo 订阅 + emulateMedia 主题切换 | 成功;截图三张入 evidence/;console 仅 1 个 favicon.ico 404(见 omissions) |
 | server(SSH alias checkmate) | `ps` 进程核查;`ls releases/`+`.complete` 核验;两次 `flock -E 75 -w 900 ... ln -sfn ... mv -T` | 回滚演练通过;两次 exit 0,切换秒级,首页全程 200 |
+| 本机→server | `git push server main`(cb6898a)→轮询 release.txt→`git tag -a m0`+`git push server m0` | 部署确认通过(release.txt=cb6898a,5s 命中;首页/文章页 200、RSS 1 item);tag m0→cb6898a 推送成功;随后一次 session 引用补正小提交推送后结束 |
 | 仓库根 | `python scripts/check_docs.py --snippets --bash ... --node ...` | 通过;71+ md/247 local_links/12 表 DDL 一致/snippets 6 组,errors 与 warnings 均为空(本 session+三指针+evidence 提交前复跑) |
 
 ## 验收结论
