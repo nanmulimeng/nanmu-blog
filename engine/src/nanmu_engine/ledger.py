@@ -283,9 +283,11 @@ def _billable_micro_cny(config: Config, model: str,
 
 
 def _breach_reason(conn: sqlite3.Connection, ref: AuthorizeResult,
-                   usage: dict, actual_micro: int) -> str | None:
-    """可结算路径对账(双上界,审计 P1-2):输入计量超预占计数 或
-    实际结算金额超预占金额 = 上界失效。返回原因串(先持久化后判定,
+                   usage: dict, actual_micro: int | None) -> str | None:
+    """对账(双上界,审计 P1-2):输入计量超预占计数 或 实际结算金额超
+    预占金额 = 上界失效。计量上界与计费证据无关(自审计 L1:prompt_tokens
+    本身即计量证据,缺计费分项不结算但计量违例仍停);金额上界仅在可
+    结算(actual_micro 非 None)时判定。返回原因串(先持久化后判定,
     由调用方在同事务内置 pay_paused);无违例返回 None。"""
     digest = conn.execute(
         "SELECT request_digest FROM receipt WHERE id=?",
@@ -299,7 +301,7 @@ def _breach_reason(conn: sqlite3.Connection, ref: AuthorizeResult,
     reserved = conn.execute(
         "SELECT reserved_micro_cny FROM receipt_attempt WHERE id=?",
         (ref.attempt_id,)).fetchone()[0]
-    if actual_micro > reserved:
+    if actual_micro is not None and actual_micro > reserved:
         return (f"实际结算({actual_micro})>预占({reserved})"
                 f" receipt={ref.receipt_id} attempt={ref.attempt_id}")
     return None
@@ -326,8 +328,9 @@ def record_failure(conn: sqlite3.Connection, config: Config,
                    fail_detail: dict, usage: dict | None = None) -> None:
     """单事务失败落库:attempt→failed/unknown + error_class + fail_detail_json
     同事务写,**receipt.status 同步迁移**(model-calls §5 写入协议)。
-    计费证据不足同样保留 actual=NULL(P1-1);可结算时同事务对账双上界
-    并置 pay_paused(P1-2/P1-3)。**不触碰 attempt_origin**。"""
+    计费证据不足同样保留 actual=NULL(P1-1);对账在收到 usage 时始终
+    执行——计量上界与计费证据无关(L1),金额上界仅可结算时判(P1-2),
+    违例置 pay_paused 与结算同一事务(P1-3)。**不触碰 attempt_origin**。"""
     status = "unknown" if error_class == "unknown" else "failed"
     detail_json = json.dumps(fail_detail, ensure_ascii=False, sort_keys=True)
     with conn:
@@ -339,10 +342,9 @@ def record_failure(conn: sqlite3.Connection, config: Config,
                 " WHERE id=?",
                 (status, error_class, detail_json, json.dumps(usage),
                  micro, ref.attempt_id))
-            if micro is not None:
-                breach = _breach_reason(conn, ref, usage, micro)
-                if breach:
-                    _pause_pay_sql(conn, breach)
+            breach = _breach_reason(conn, ref, usage, micro)
+            if breach:
+                _pause_pay_sql(conn, breach)
         else:
             conn.execute(
                 "UPDATE receipt_attempt SET status=?, error_class=?,"
@@ -474,9 +476,9 @@ def record_response(conn: sqlite3.Connection, config: Config,
                     " usage_json=?, cost_cny=?, completed_utc=? WHERE id=?",
                     (response_json, json.dumps(usage),
                      micro / _MICRO_PER_MILLION, _utc_now(), ref.receipt_id))
-                breach = _breach_reason(conn, ref, usage, micro)
-                if breach:
-                    _pause_pay_sql(conn, breach)
+            breach = _breach_reason(conn, ref, usage, micro)
+            if breach:
+                _pause_pay_sql(conn, breach)
         else:
             conn.execute(
                 "UPDATE receipt_attempt SET status='received' WHERE id=?",

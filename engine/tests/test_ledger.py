@@ -1023,3 +1023,32 @@ def test_p1_shanghai_month_in_api_usage_projection(env):
     record_response(conn, config, ref, _ok_result(prompt_tokens=1000))
     months = {r[0] for r in conn.execute("SELECT month FROM api_usage")}
     assert "2026-11" in months              # 跨界行按上海月归 11 月
+
+
+# ---------- 自审计 L1:计量上界与计费证据无关 ----------
+
+def test_l1_prompt_overrun_pauses_without_billing_evidence(env):
+    # 计费证据不足→不结算(actual NULL 未决);但 usage.prompt_tokens
+    # 超预占计数是计量违例,与计费分项齐否无关——仍须置 pay_paused
+    conn, config = env
+    ref = _authorize(conn, config, token_count=500)
+    record_response(conn, config, ref, _raw_result({"prompt_tokens": 2_000}))
+    row = conn.execute(
+        "SELECT status, actual_micro_cny FROM receipt_attempt WHERE id=?",
+        (ref.attempt_id,)).fetchone()
+    assert row == ("received", None)        # 证据不足不结算(不释放预占)
+    assert _pay_paused(conn) == "1"         # 计量上界失效即停新增
+
+
+def test_l1_prompt_overrun_pauses_without_billing_evidence_on_failure(env):
+    conn, config = env
+    ref = _authorize(conn, config, token_count=500)
+    record_failure(conn, config, ref, "no_retry",
+                   {"http_status": 400, "matrix_code": "E1.request",
+                    "message": "bad"}, usage={"prompt_tokens": 2_000})
+    row = conn.execute(
+        "SELECT status, actual_micro_cny FROM receipt_attempt WHERE id=?",
+        (ref.attempt_id,)).fetchone()
+    assert row == ("failed", None)
+    assert _pay_paused(conn) == "1"
+
