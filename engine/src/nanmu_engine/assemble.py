@@ -26,6 +26,18 @@ from nanmu_engine.config import Config
 _MD_PUNCT = set(r"\`*_{}[]()#+-.!<>|~")      # CommonMark 行内语法 ASCII 标点
 _CTRL = re.compile(r"[\x00-\x1f\x7f]")
 _URL_UNSAFE = {" ": "%20", "(": "%28", ")": "%29", "\\": "%5C"}
+# GFM autolink literal 断链(审计 P2-7):反斜杠转义与字符引用都挡不住
+# autolink——micromark 在文本内容上匹配,转义/实体先归一为字面字符
+# (实测 @astrojs/markdown-remark:`https://evil\.example\.com` 与
+# `https&#58;//evil&#46;com` 均仍产 <a>)。在触发前缀的连接点插入零宽
+# 字符 U+200B(不可见,渲染与字号不受影响):"www"+ZWSP+"\." 不匹配
+# www. 字面前缀;scheme+ZWSP+"://" 同理;本地部分+ZWSP+"@" 断邮箱。
+_AUTOLINK_BREAKS = (
+    re.compile(r"(?<=[Ww][Ww][Ww])(?=\\.)"),        # www. 前缀
+    re.compile(r"(?<=[0-9A-Za-z])(?=://)"),          # scheme:// 前缀
+    re.compile(r"(?<=[0-9A-Za-z_+\-])(?=@)"),        # 邮箱 user@ 前缀
+)
+_ZWSP = "​"
 
 
 class AssemblyPaused(Exception):
@@ -34,10 +46,15 @@ class AssemblyPaused(Exception):
 
 def escape_markdown_text(text: str) -> str:
     """Markdown 文本上下文转义:strip 控制字符(含换行——模型不可构造
-    新块)后,行内语法字符集逐字符反斜杠转义。仅转义 `<>&` 挡不住
-    `[伪装链接](url)` 语法(实测),故取全标点集。"""
+    新块)后,行内语法字符集逐字符反斜杠转义(仅转义 `<>&` 挡不住
+    `[伪装链接](url)` 语法,实测,故取全标点集);再在 GFM autolink
+    触发前缀连接点插入零宽字符断自动链接(见 _AUTOLINK_BREAKS)。"""
     cleaned = _CTRL.sub("", text or "")
-    return "".join("\\" + ch if ch in _MD_PUNCT else ch for ch in cleaned)
+    escaped = "".join("\\" + ch if ch in _MD_PUNCT else ch
+                      for ch in cleaned)
+    for pattern in _AUTOLINK_BREAKS:
+        escaped = pattern.sub(_ZWSP, escaped)
+    return escaped
 
 
 def safe_source_url(url: str | None) -> str | None:

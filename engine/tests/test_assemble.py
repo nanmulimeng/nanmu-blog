@@ -36,9 +36,9 @@ _MD_PUNCT = set(r"\`*_{}[]()#+-.!<>|~")
 
 
 def render_inline(text: str) -> str:
-    """行内渲染子集:反斜杠转义(\\X→字面 X)+ [text](url)→<a>。
-    自由文本经 HTML 实体输出(字面 `<` 呈 `&lt;`,不构成标签)。
-    阳性对照见 test_renderer_detects_unescaped_link。"""
+    """行内渲染子集:反斜杠转义(\\X→字面 X)+ [text](url)→<a>。自由
+    文本经 HTML 实体输出(字面 `<` 呈 `&lt;`,不构成标签)。阳性对照见
+    test_renderer_detects_unescaped_link。"""
     import html as _html
     out, i = [], 0
     while i < len(text):
@@ -73,7 +73,8 @@ def test_escape_markdown_text_neutralizes_link_and_script():
     esc = escape_markdown_text(evil)
     html = render_inline(esc)
     assert "<a" not in html                      # DOM 无对应 <a>
-    assert "[伪装链接](https://evil.com)" in html   # 页面呈字面文本
+    # 页面呈字面文本(零宽断链字符不可见,剥除后比对可见内容)
+    assert "[伪装链接](https://evil.com)" in html.replace("​", "")
     assert "<script>" not in html                # 字面转义
     assert "alert(1)" in html
 
@@ -83,6 +84,46 @@ def test_escape_strips_control_chars_and_escapes_backslash():
     assert render_inline(escape_markdown_text("a\\b")) == "a\\b"
     for ch in "[]()#*_.!`<>{}|~+-":
         assert "\\" + ch in escape_markdown_text(f"x{ch}y")
+    # GFM autolink 触发前缀连接点插入零宽字符断自动链接(反斜杠/实体
+    # 转义均挡不住,见真实渲染链测试);零宽字符不可见,可见文本不变
+    esc = escape_markdown_text("see www.evil.com https://evil.com a@evil.com")
+    assert "www​\\.evil\\.com" in esc
+    assert "https​://evil\\.com" in esc
+    assert "a​@evil\\.com" in esc
+
+
+def test_escaped_text_blocks_gfm_autolink_in_real_astro_renderer():
+    """审计 P2-7:escape 后的裸 URL/www 域名经项目实际安装的 Astro
+    Markdown 处理器(@astrojs/markdown-remark,GFM 开)不得产生 <a>,
+    且可见文本不变(零宽断链字符不可见,剥除后比对)。不再以自制子集
+    渲染器作为该项通过证据。"""
+    import json as _json
+    import subprocess as _sp
+
+    site = ENGINE_ROOT.parent / "site"
+    if not (site / "node_modules" / "@astrojs" / "markdown-remark").exists():
+        pytest.skip("site 依赖未安装(site/node_modules)")
+    probe = site / ".escape-probe.mjs"
+    script = (
+        "import {createMarkdownProcessor} from"
+        " '@astrojs/markdown-remark';\n"
+        "const p = await createMarkdownProcessor({gfm: true});\n"
+        "const r = await p.render(JSON.parse(process.argv[2]));\n"
+        "console.log(r.code);\n"
+    )
+    text = "visit https://evil.example.com and www.evil.com"
+    try:
+        probe.write_text(script, encoding="utf-8")
+        r = _sp.run(
+            ["node", str(probe), _json.dumps(escape_markdown_text(text))],
+            capture_output=True, text=True, encoding="utf-8", cwd=str(site))
+        assert r.returncode == 0, r.stderr
+        assert "<a" not in r.stdout           # 无任何自动/伪装链接
+        visible = r.stdout.replace("​", "")  # 剥不可见零宽字符后可见文本
+        assert "evil.example.com" in visible
+        assert "www.evil.com" in visible
+    finally:
+        probe.unlink(missing_ok=True)
 
 
 def test_safe_source_url_scheme_whitelist_and_encoding():
