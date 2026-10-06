@@ -30,6 +30,23 @@ function checkHtml(dir) {
 }
 if (existsSync(dist)) checkHtml(dist);
 
+// 夹具泄漏检查(审计 P1-8):tests/fixtures 中的同名 .md 出现在生产源
+// 目录 = 正常构建会把夹具公开为正式日报页+RSS;夹具只允许经
+// verify-fixture.mjs 的临时构建副本验证(临时副本注入夹具是预期行为,
+// 该上下文置 NANMU_FIXTURE_BUILD=1 跳过本检查)
+if (!process.env.NANMU_FIXTURE_BUILD) {
+  const fixtures = new URL('../tests/fixtures/', import.meta.url);
+  if (existsSync(fixtures)) {
+    const names = new Set(readdirSync(fixtures).filter((f) => f.endsWith('.md')));
+    const digestSrc = new URL('../src/content/digest/', import.meta.url);
+    if (existsSync(digestSrc)) {
+      for (const f of readdirSync(digestSrc)) {
+        if (names.has(f)) problems.push(`夹具泄漏进生产源目录: ${f}`);
+      }
+    }
+  }
+}
+
 // cost_pending 期的成本标注(digest-design §3.4:列表/详情/正文三处口径
 // 一致;正文标注由 engine assemble 保证,此处验渲染侧两处)
 {
@@ -40,7 +57,12 @@ if (existsSync(dist)) checkHtml(dist);
       const src = readFileSync(new URL(f, digestSrc), 'utf8');
       if (!/^cost_pending:\s*true\s*$/m.test(src)) continue;
       const id = f.replace(/\.md$/, '');
-      const detail = readFileSync(new URL(`digest/${id}/index.html`, dist), 'utf8');
+      const detailUrl = new URL(`digest/${id}/index.html`, dist);
+      if (!existsSync(detailUrl)) {
+        problems.push(`cost_pending 期 ${id} 无详情页(dist 与源目录不一致)`);
+        continue;
+      }
+      const detail = readFileSync(detailUrl, 'utf8');
       if (!detail.includes('含未决预占')) problems.push(`cost_pending 期 ${id} 详情页缺成本标注`);
       const list = readFileSync(new URL('digest/index.html', dist), 'utf8');
       if (!list.includes('含未决预占')) problems.push(`cost_pending 期 ${id} 列表页缺成本标注`);
