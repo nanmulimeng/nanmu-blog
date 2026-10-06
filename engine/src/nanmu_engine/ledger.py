@@ -562,13 +562,14 @@ def _candidate_cmp(a: dict, b: dict) -> int:
 
 
 def apply_n_new(members: list[dict], reuse_snapshot: dict, *, n_new: int) -> dict:
-    """N_new 作用顺序(model-calls 验收 2):可复用成员不占 N、不被截断;
-    确需新增付费评分的成员按确定性排序截断前 n_new;其余 capped(不丢弃,
-    留待下期或摘要外流程)。"""
+    """N_new 作用顺序(model-calls 验收 2;data-ingestion 规则 8 单义):
+    recoverable=至少一条当前请求身份有效的评分响应(评分网络零新增,
+    部分完成 needs 只补缺失)——不占 N、不被截断;确需新增付费评分的
+    成员按确定性排序截断前 n_new;其余 capped(不丢弃,留待下期)。"""
     recoverable, to_score = [], []
     for member in members:
         snap = reuse_snapshot.get(member["identity_key"], {})
-        if snap.get("score_1") is True and snap.get("score_2") is True:
+        if snap.get("score_1") is True or snap.get("score_2") is True:
             recoverable.append(member)
         else:
             to_score.append(member)
