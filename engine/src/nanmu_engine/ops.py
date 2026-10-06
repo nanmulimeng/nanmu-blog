@@ -135,7 +135,17 @@ def restore_backup(backup_path: str | Path, live_path: str | Path, *,
             "(预期 1),中止切换,活动库未动")
     hook("verify")
 
-    # ④ 原子切换(Windows os.replace=MoveFileEx REPLACE_EXISTING)
+    # ④ 原子切换(Windows os.replace=MoveFileEx REPLACE_EXISTING)。
+    # 先清活动库残留 -wal/-shm:硬杀现场(恰是需恢复的典型场景)的
+    # 未 checkpoint 帧会在重开时回放到恢复库上,得到新旧混合态(极端
+    # 情形旧库 pay_paused=0 页面复活,击穿五步不变量);副本侧经
+    # wal_checkpoint(FULL)+close,不带边车
+    for sidecar in (f"{live}-wal", f"{live}-shm",
+                    f"{pending}-wal", f"{pending}-shm"):
+        try:
+            os.remove(sidecar)
+        except FileNotFoundError:
+            pass
     os.replace(pending, live)
     hook("switch")
 

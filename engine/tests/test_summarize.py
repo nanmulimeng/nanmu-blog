@@ -234,3 +234,35 @@ def test_understand_retry_goes_through_can_retry_gate(env):
                             now=t0 + timedelta(minutes=31))
     assert out3.status == "completed"          # 过窗:unknown_retry 补发
     assert len(calls) == 1
+
+
+def test_understand_e4_business_invalid_retries_within_quota(env):
+    """修复轮 I1(understand 同构):200+stop+合法 JSON 但三字段契约不过
+    → E4.parse 落 failed(retryable),同身份重跑按 retry 通道补发。"""
+    from datetime import datetime, timezone
+    conn, config = env
+    member = _seed_entry(conn)
+    calls = []
+    seq = itertools.count(1)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        n = next(seq)
+        calls.append(n)
+        content = (json.dumps({"title_zh": "只有标题"}) if n == 1
+                   else _ok_payload())
+        return httpx.Response(200, json={
+            "choices": [{"finish_reason": "stop",
+                         "message": {"content": content}}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 20,
+                      "prompt_cache_hit_tokens": 0,
+                      "prompt_cache_miss_tokens": 50}})
+
+    t = datetime(2026, 10, 6, 8, 0, tzinfo=timezone.utc)
+    tr = httpx.MockTransport(handler)
+    out1 = understand_entry(conn, config, member, issue_date="2026-10-06",
+                            transport=tr, now=t)
+    assert out1.status == "retryable"
+    out2 = understand_entry(conn, config, member, issue_date="2026-10-06",
+                            transport=tr, now=t)
+    assert out2.status == "completed"
+    assert len(calls) == 2

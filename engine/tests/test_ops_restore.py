@@ -389,3 +389,19 @@ def test_pause_unpause_issue(tmp_path):
     with pytest.raises(OpsCommandError):          # 参数错→拒绝并列可用期
         pause_issue(conn, "1999-01-01", reason="x")
     conn.close()
+
+
+def test_restore_clears_stale_wal_sidecars(tmp_path):
+    """修复轮 I6:活动库硬杀残留 -wal/-shm 边车——切换后旧 WAL 帧不得
+    回放到恢复库(五步不变量:恢复库内容=备份内容)。伪造边车文件,
+    断言恢复后被清理且库可读、内容为备份侧。"""
+    backup = _make_db(tmp_path / "backup.db", marker=True, calibrated=True)
+    live = _make_db(tmp_path / "engine.db")
+    (tmp_path / "engine.db-wal").write_bytes(b"stale wal frames")
+    (tmp_path / "engine.db-shm").write_bytes(b"stale shm")
+
+    out = restore_backup(backup, live)
+
+    assert not (tmp_path / "engine.db-wal").exists()
+    assert not (tmp_path / "engine.db-shm").exists()
+    assert _marker_in(out["live"])                 # 活动库=备份内容

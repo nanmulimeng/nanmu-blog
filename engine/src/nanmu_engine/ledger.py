@@ -439,6 +439,41 @@ def _attempt_model(conn: sqlite3.Connection, ref: AuthorizeResult) -> str:
         "SELECT model FROM receipt WHERE id=?", (ref.receipt_id,)).fetchone()[0]
 
 
+def recover_stale_pending(conn: sqlite3.Connection, config: Config,
+                          logical_key: str, now_utc: datetime) -> None:
+    """kill 窗口清扫(design 场景 A):授权后出网前/响应落库前被杀的
+    attempt 停留 pending——单进程引擎重启后不存在真实在途,距 started
+    超过 unknown_retry_after_min 的 pending 单事务转 unknown(error_class
+    同步),预占保留走既有 unknown 通道;窗内保持 pending(在途语义,
+    调用方映射为等待而非终态)。"""
+    receipt = conn.execute(
+        "SELECT id FROM receipt WHERE logical_key=?", (logical_key,)).fetchone()
+    if receipt is None:
+        return
+    row = conn.execute(
+        "SELECT id, status, started_utc FROM receipt_attempt"
+        " WHERE receipt_id=? ORDER BY attempt_no DESC LIMIT 1",
+        (receipt[0],)).fetchone()
+    if row is None or row[1] != "pending":
+        return
+    started = datetime.strptime(row[2], "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=timezone.utc)
+    if now_utc - started < timedelta(
+            minutes=config.budget.unknown_retry_after_min):
+        return
+    detail = json.dumps({"http_status": None, "matrix_code": "E3.unknown",
+                         "message": "pending 超时转 unknown(进程中断清扫)"},
+                        ensure_ascii=False)
+    with conn:
+        conn.execute(
+            "UPDATE receipt_attempt SET status='unknown', error_class="
+            "'unknown', fail_detail_json=? WHERE id=? AND status='pending'",
+            (detail, row[0]))
+        conn.execute(
+            "UPDATE receipt SET status='unknown' WHERE id=?"
+            " AND status='pending'", (receipt[0],))
+
+
 def can_retry(conn: sqlite3.Connection, config: Config, logical_key: str,
               now_utc: datetime) -> RetryVerdict:
     """再发送三条件判定,输入全部来自持久化列(落库重放,无内存依赖)。

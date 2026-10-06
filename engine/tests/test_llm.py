@@ -168,8 +168,11 @@ def test_classify_http200_bad_json_retryable(monkeypatch):
     assert detail["matrix_code"] == "E4.parse"
 
 
-def test_classify_finish_length_with_parsable_json_is_terminal(monkeypatch):
-    # finish_reason=length 且 JSON 恰好可解析 → E4.terminal 语义(非正常终止不可消费)
+def test_classify_finish_length_is_e4_parse_retryable(monkeypatch):
+    # 修复轮 I2:design.md L211 把 length 划入 E4.parse(可修复类,普通
+    # 有界重试);plan Task 4 种子的 terminal 语义与其冲突,按冲突规则以
+    # 单元文档为准——截断输出不消费,但重试(新响应/调 max_output_tokens)
+    # 在名额内允许
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key-only")
 
     def handler(request):
@@ -179,8 +182,8 @@ def test_classify_finish_length_with_parsable_json_is_terminal(monkeypatch):
     result = call_llm(_request(), transport=_transport(handler))
     assert result.finish_reason == "length"
     cls, detail = classify_failure(result)
-    assert cls == "no_retry"
-    assert detail["matrix_code"] == "E4.terminal"
+    assert cls == "retryable"
+    assert detail["matrix_code"] == "E4.parse"
 
 
 def test_classify_other_nonstop_finish_reason_terminal():

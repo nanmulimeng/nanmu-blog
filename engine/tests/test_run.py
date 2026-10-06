@@ -375,6 +375,7 @@ def test_paused_today_issue_skips_generation(env):
     assert conn.execute("SELECT COUNT(*) FROM digest_issue WHERE"
                         " issue_date='2026-10-06'").fetchone()[0] == 0
     assert "phase:new:2026-10-06" not in events
+    assert [k for k, _ in env["sent"]] == ["W1:2026-10-06"]  # 立即类通知
 
 
 # ---------- 验收 4:failed 重跑=续跑(冻结/回执复用);放弃=释放占用 ----------
@@ -490,6 +491,7 @@ def test_exit_priority_isolation_over_new_issue_success(env):
     st = _statuses(conn)
     assert st == {"2026-10-05": "draft", "2026-10-06": "draft"}  # 两期均转人工(E8)
     assert conn.execute("SELECT COUNT(*) FROM summary").fetchone()[0] >= 1
+    assert [k for k, _ in env["sent"]] == ["E8:2026-10-05", "E8:2026-10-06"]
     assert code == 4                                 # 4 优先于 0
 
 
@@ -539,3 +541,44 @@ def test_failed_issue_with_freeze_not_in_recovery(env):
     assert _attempts_for(conn, "2026-10-05") == 0        # 零新增 attempt
     assert conn.execute("SELECT status FROM digest_issue WHERE"
                         " issue_date='2026-10-05'").fetchone()[0] == "failed"
+
+
+def test_e1_config_error_notifies_immediately(env):
+    # 修复轮 I5:配置错误(E1)=立即通知类(scheduling-ops 规则 7);
+    # 零出网零 attempt
+    bad = dataclasses.replace(env["config"], prompts=dataclasses.replace(
+        env["config"].prompts,
+        score=dataclasses.replace(env["config"].prompts.score,
+                                  text="x" * 2_000_000)))
+    code = run_once(env["conn"], bad,
+                    upstream_path=env["upstream_path"], publish_ctx=env["ctx"],
+                    transport=_transport(env["config"]), now=NOW,
+                    today="2026-10-06", notify_send=env["sender"])
+    assert code == 2
+    assert _attempts_for(env["conn"], "2026-10-06") == 0
+    assert [k for k, _ in env["sent"]] == ["E1.config:2026-10-06"]
+
+
+def test_monthly_warning_fires_once_when_over_threshold(env):
+    # 修复轮 I5:¥40 月度预警(warn_monthly)同月一封;阈值降低后当月
+    # 已用(有成功期费用)即触发
+    conn = env["conn"]
+    _add_item(env["up_conn"], env["up_sid"], "https://e.com/w1", "预警条目",
+              fetched=datetime(2026, 10, 6, 7, 0, tzinfo=timezone.utc),
+              content="预警正文。")
+    assert _run_once(env, transport=_transport(env["config"])) == 0
+    assert env["sent"] == []                       # 成功期零通知
+    low = dataclasses.replace(env["config"], budget=dataclasses.replace(
+        env["config"].budget, warn_monthly_micro_cny=1))
+    code = _run_once(env, transport=_transport(env["config"]),
+                     config_override=None) if False else run_once(
+        conn, low, upstream_path=env["upstream_path"], publish_ctx=env["ctx"],
+        transport=_transport(env["config"]), now=NOW, today="2026-10-06",
+        notify_send=env["sender"])
+    assert code == 0
+    assert [k for k, _ in env["sent"]] == ["warn-monthly:2026-10"]
+    # 同月再跑:去重一封
+    run_once(conn, low, upstream_path=env["upstream_path"],
+             publish_ctx=env["ctx"], transport=_transport(env["config"]),
+             now=NOW, today="2026-10-06", notify_send=env["sender"])
+    assert len(env["sent"]) == 1

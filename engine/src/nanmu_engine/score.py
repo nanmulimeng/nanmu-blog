@@ -24,6 +24,7 @@ from nanmu_engine.ledger import (
     _logical_key,
     authorize,
     can_retry,
+    recover_stale_pending,
     record_failure,
     record_response,
     request_hash,
@@ -193,12 +194,14 @@ def _attempt_side(conn: sqlite3.Connection, config: Config, member: dict,
 
     # 重发门(model-calls §3 规则 3):此前发过(同 logical_key 有回执)
     # 的再发送一律过 can_retry 三条件——错误类别/硬上限/unknown 专属等待
-    # (≥30min)与名额;首发无回执不经此门。
+    # (≥30min)与名额;首发无回执不经此门。kill 窗口残留的 pending 先
+    # 清扫(超窗转 unknown);窗内 pending=在途,等待而非终态。
     origin = "initial"
     if row is not None:
+        recover_stale_pending(conn, config, logical_key, now)
         verdict = can_retry(conn, config, logical_key, now)
         if not verdict.allowed:
-            if verdict.reason == "unknown_wait":
+            if verdict.reason in ("unknown_wait", "attempt_in_flight"):
                 return _Side(error="unknown_wait", receipt_id=row[0])
             return _Side(error="no_retry", receipt_id=row[0])
         origin = "retry" if verdict.channel == "normal" else verdict.channel
@@ -232,7 +235,13 @@ def _attempt_side(conn: sqlite3.Connection, config: Config, member: dict,
         (ref.receipt_id,)).fetchone()[0]
     if not validate_score_response(response_json):
         # HTTP 200+stop+合法 JSON 但业务契约不过(越界/类型/缺字段)→
-        # E4.parse 处置(retryable);attempt 已 received,重试走新 attempt
+        # E4.parse(design L211:received→failed,普通有界重试)。usage
+        # 已随 record_response 结算;此处单事务把 attempt/receipt 落
+        # failed(error_class=retryable——CHECK 三值域,matrix_code 在
+        # detail 标 E4.parse),can_retry 普通通道名额内可补发
+        record_failure(conn, config, ref, "retryable", {
+            "http_status": 200, "matrix_code": "E4.parse",
+            "message": (response_json or "")[:200]})
         return _Side(error="E4.parse", receipt_id=ref.receipt_id)
     return _Side(score=_score_from_response(response_json),
                  receipt_id=ref.receipt_id)

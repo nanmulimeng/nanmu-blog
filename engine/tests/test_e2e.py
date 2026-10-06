@@ -226,3 +226,38 @@ def test_replay_draft_publish_recovery_zero_llm_calls(env):
     assert _attempts_for(conn, "2026-10-04") == 0  # 零模型调用
     assert conn.execute("SELECT status FROM entry WHERE"
                         " identity_key='k-draft4'").fetchone()[0] == "used"
+
+
+# ---------- 修复轮 C1:上期已发布成员不得借旧 analysis 重复入选 ----------
+
+def test_published_member_not_reselected_next_issue(env):
+    """上期 published(used)的成员次日仍在采集窗内:预筛按 used 排除,
+    入选查询不得绕过预筛四去向把旧 analysis 行重新入选(重复发布 +
+    used 状态翻转,违反 spec §5.2 与占用协议)。"""
+    conn = env["conn"]
+    _add(env, "https://e.com/dup", "重复条目", "重复正文。")
+    assert _run_once(env, today="2026-10-05",
+                     transport=_transport(env["config"])) == 0
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='url:https://e.com/dup'"
+                        ).fetchone()[0] == "used"
+
+    # 次日:上游重抓同条(仍在窗,fetched 刷新)+一条新条目
+    with env["up_conn"]:
+        env["up_conn"].execute(
+            "UPDATE item SET fetched_utc=? WHERE url=?",
+            ("2026-10-06T07:30:00Z", "https://e.com/dup"))
+    _add(env, "https://e.com/fresh", "新条目", "新正文。")
+    code = _run_once(env, today="2026-10-06",
+                     transport=_transport(env["config"]))
+
+    assert code == 0
+    assert _status(env, "2026-10-06") == "published"
+    # 旧成员:状态保持 used(不被改写),产物不含其链接
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='url:https://e.com/dup'"
+                        ).fetchone()[0] == "used"
+    from test_publish import DIGEST_DIR
+    day2 = (env["work"] / DIGEST_DIR / "2026-10-06.md").read_text(
+        encoding="utf-8")
+    assert "https://e.com/dup" not in day2

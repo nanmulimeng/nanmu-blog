@@ -238,7 +238,8 @@ def test_partial_side_keeps_valid_side(env):
     calls = []
     out = score_entry(conn, config, member, issue_date="2026-10-06",
                       transport=_transport((60, '{"attentionScore": 6}'),
-                                           calls, finish=("stop", "length")))
+                                           calls,
+                                           finish=("stop", "content_filter")))
     assert out.status == "failed"
     assert out.score_1 == 60
     assert conn.execute("SELECT COUNT(*) FROM analysis").fetchone()[0] == 0
@@ -340,3 +341,71 @@ def test_usage_overrun_pauses_and_halts_second_call(env):
     assert len(calls) == 1                       # 第二次调用被闸门挡下
     assert _pay_paused(conn) == "1"              # 持久化暂停(非内存态)
     assert out.status == "rejected"
+
+
+def test_pending_attempt_after_kill_waits_then_recovers(env, monkeypatch):
+    """修复轮 C2:授权后出网前被杀(attempt 停 pending,预占在)——
+    等待窗内重跑不终态不重发(在途);过窗后 pending 转 unknown 并走
+    unknown_retry 通道补发(design 场景 A/E3.unknown),不得永久 failed。
+    SystemExit 是 BaseException,穿透 except Exception,等价进程被杀。"""
+    from datetime import datetime, timedelta, timezone
+    import nanmu_engine.score as score_mod
+    conn, config = env
+    member = _seed_entry(conn, title="杀窗", body="杀窗正文。")
+    t0 = datetime.now(timezone.utc)
+
+    def killed(request, **kw):
+        raise SystemExit(9)
+
+    monkeypatch.setattr(score_mod, "call_llm", killed)
+    with pytest.raises(SystemExit):
+        score_entry(conn, config, member, issue_date="2026-10-06", now=t0)
+    assert conn.execute(
+        "SELECT status FROM receipt_attempt"
+        " WHERE status='pending'").fetchone() is not None   # kill 现场
+
+    monkeypatch.undo()
+    calls = []
+    out2 = score_entry(conn, config, member, issue_date="2026-10-06",
+                       transport=_transport([71, 72], calls),
+                       now=t0 + timedelta(minutes=5))
+    assert out2.status == "unknown"          # side1 在途:不终态不重发
+    assert len(calls) == 1                   # 仅 side2 首发(独立身份)
+
+    out3 = score_entry(conn, config, member, issue_date="2026-10-06",
+                       transport=_transport([71, 72], calls),
+                       now=t0 + timedelta(minutes=31))
+    assert out3.status == "completed"        # side1 过窗:转 unknown 后补发
+    assert len(calls) == 2
+
+
+def test_e4_business_invalid_retries_within_quota(env):
+    """修复轮 I1:200+stop+合法 JSON 但业务契约不过(缺字段/越界)=
+    E4.parse(design L211:received→failed,普通有界重试)——同身份重跑
+    走 retry 通道补发,不得 already_received 永拒(一次付费永久弃条)。"""
+    from datetime import datetime, timezone
+    conn, config = env
+    member = _seed_entry(conn, title="E4重试", body="E4正文。")
+    usage = {"prompt_tokens": 50, "completion_tokens": 20,
+             "prompt_cache_hit_tokens": 0, "prompt_cache_miss_tokens": 50}
+    calls = []
+    seq = itertools.count(1)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        n = next(seq)
+        calls.append(n)
+        content = (json.dumps({"score": 71}) if n == 1 else       # 缺字段
+                   json.dumps({"attentionScore": 73}))
+        return httpx.Response(200, json={
+            "choices": [{"finish_reason": "stop",
+                         "message": {"content": content}}],
+            "usage": usage})
+
+    t = datetime(2026, 10, 6, 8, 0, tzinfo=timezone.utc)
+    out1 = score_entry(conn, config, member, issue_date="2026-10-06",
+                       transport=httpx.MockTransport(handler), now=t)
+    assert out1.status == "retryable"        # E4.parse,单侧失败隔离
+    out2 = score_entry(conn, config, member, issue_date="2026-10-06",
+                       transport=httpx.MockTransport(handler), now=t)
+    assert out2.status == "completed"        # retry 通道补发过验证
+    assert len(calls) == 3                   # 坏1+好1+补发1

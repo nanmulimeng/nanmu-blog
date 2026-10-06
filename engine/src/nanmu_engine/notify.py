@@ -33,11 +33,14 @@ def _utc_now() -> str:
 def notify(conn: sqlite3.Connection, dedup_key: str, message: str, *,
            send: Sender, retries: int = 3, channel: str = "log") -> str:
     """单事件通知:已落库且成功→零重发;否则发送(有界重试)→同 key
-    UPSERT 落库(首现 INSERT/重试 UPDATE 原行)。返回 sent/deduped/failed。"""
+    UPSERT 落库(首现 INSERT/重试 UPDATE 原行)。成功判定与发送体返回串
+    解耦:send 未抛异常即送达,返回串原样落 result(如默认通道
+    "logged");仅内置失败标记 "failed"(有界重试全败)允许下次重发。
+    返回发送体返回串/deduped/failed。"""
     row = conn.execute(
         "SELECT result FROM notify_sent WHERE dedup_key=?",
         (dedup_key,)).fetchone()
-    if row is not None and row[0] == "sent":
+    if row is not None and row[0] != "failed":
         return "deduped"
 
     result = "failed"

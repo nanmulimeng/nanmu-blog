@@ -163,3 +163,20 @@ def test_config_error_key_carries_hash_suffix(conn):
     assert state["calls"] == 2
     assert [r[0] for r in _rows(conn)] == [
         "E1.config:2026-10-06:hash-a", "E1.config:2026-10-06:hash-b"]
+
+
+def test_dedup_decoupled_from_sender_return_string(conn):
+    """修复轮 I4:去重成功判定与发送体返回串解耦——send 未抛异常即
+    送达(result 原样落表,如默认 _log_sender 的 "logged");判定只认
+    内置失败标记。默认发送体下二次通知必须 deduped(真实生产通道)。"""
+    sent = []
+
+    def logger_sender(dedup_key, message):
+        sent.append((dedup_key, message))
+        return "logged"                     # 默认 _log_sender 的返回值
+
+    r1 = notify(conn, "W1:2026-10-06", "m", send=logger_sender)
+    assert r1 == "logged"
+    r2 = notify(conn, "W1:2026-10-06", "m", send=logger_sender)
+    assert r2 == "deduped"                  # 已成功落表 → 零重发
+    assert len(sent) == 1

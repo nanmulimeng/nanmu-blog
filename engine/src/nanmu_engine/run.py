@@ -25,9 +25,10 @@ from typing import Callable
 from nanmu_engine.assemble import AssemblyPaused, assemble_issue, write_draft
 from nanmu_engine.collect import CollectError, collect_once
 from nanmu_engine.config import Config, ConfigError
-from nanmu_engine.ledger import (compute_n_new, issue_cost_snapshot,
+from nanmu_engine.ledger import (_money_used, _month_window,
+                                 compute_n_new, issue_cost_snapshot,
                                  reusable_scores)
-from nanmu_engine.notify import notify_event
+from nanmu_engine.notify import notify_event, notify_monthly
 from nanmu_engine.prescreen import prescreen
 from nanmu_engine.publish import (ManualIntervention, PublishContext,
                                   publish_issue, recover_issue,
@@ -192,16 +193,24 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
             conn, config, m, issue_date=issue_date,
             transport=transport, now=now).status)
 
-    entry_ids = [m["entry_id"] for m in manifest]
+    # 入选候选=通过预筛四去向的成员(to_score+recoverable)且评分身份
+    # 与当前 identity_ctx 一致——已发布/被排除/被他期占用/被截断的成员
+    # 不得借旧 analysis 行绕过预筛重新入选(重复发布,spec §5.2)
+    entry_ids = [m["entry_id"] for m in [*pre.to_score, *pre.recoverable]]
     ph = ",".join("?" * len(entry_ids))
     analysis_rows = [
         {"identity_key": k, "entry_id": eid, "score_1": s1,
          "score_2": s2, "source_tier": tier}
-        for k, eid, s1, s2, tier in conn.execute(
-            f"SELECT e.identity_key, a.entry_id, a.score_1, a.score_2,"
-            f" e.source_tier FROM analysis a JOIN entry e ON e.id=a.entry_id"
-            f" WHERE a.entry_id IN ({ph})"
-            " AND a.score_1 IS NOT NULL AND a.score_2 IS NOT NULL", entry_ids)]
+        for k, eid, s1, s2, tier in (
+            conn.execute(
+                f"SELECT e.identity_key, a.entry_id, a.score_1, a.score_2,"
+                f" e.source_tier FROM analysis a JOIN entry e"
+                f" ON e.id=a.entry_id WHERE a.entry_id IN ({ph})"
+                " AND a.prompt_version=? AND a.model=?"
+                " AND a.score_1 IS NOT NULL AND a.score_2 IS NOT NULL",
+                [*entry_ids, config.prompts.score.version,
+                 config.budget.default_model]).fetchall()
+            if entry_ids else [])]
     if not analysis_rows:
         if skipped_pay:
             return 4                       # 留待解除后继续(不落 failed)
@@ -272,8 +281,15 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
     except (AssemblyPaused, ManualIntervention) as exc:
         logger.error("stage=run event=manual_intervention issue=%s"
                      " message=%s", issue_date, exc)
+        notify_event(conn, "E8", issue_date, f"{issue_date} 转人工:{exc}",
+                     send=notify_send or _log_sender)
         return 4
-    return 0 if res.status == "published" else 4
+    if res.status != "published":
+        notify_event(conn, "E8", issue_date,
+                     f"{issue_date} 发布未确认({res.status}),转人工",
+                     send=notify_send or _log_sender)
+        return 4
+    return 0
 
 
 # ---------- 恢复与主流程 ----------
@@ -323,6 +339,8 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         check_prompt_fits(config)                    # E1:拒启动不出网
     except (ConfigError, TokenizerUnavailable) as exc:
         logger.error("stage=run event=E1.config message=%s", exc)
+        notify_event(conn, "E1.config", today, f"E1 配置错误:{exc}",
+                     send=notify_send or _log_sender)
         return 2
     paid_allowed = _read_pay_paused(conn) == "0"    # 键缺失同拒新增
     if not paid_allowed:
@@ -365,6 +383,8 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         except ManualIntervention as exc:
             logger.error("stage=run event=manual_intervention issue=%s"
                          " message=%s", issue_date, exc)
+            notify_event(conn, "E8", issue_date, f"{issue_date} 转人工:{exc}",
+                         send=notify_send or _log_sender)
             codes.append(4)
 
     # 当天新期(已冻结/已 failed 的期号不重复处理;failed 不自动重跑)
@@ -374,6 +394,9 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         "SELECT 1 FROM digest_issue WHERE issue_date=?", (today,)).fetchone()
     if freeze_row and freeze_row[0]:
         logger.warning("stage=run event=W1 当天期已暂停,不生成:%s", today)
+        notify_event(conn, "W1", today,
+                     f"{today} 当天期已被暂停,跳过生成(人工处理)",
+                     send=notify_send or _log_sender)
         codes.append(4)
     elif freeze_row or has_row:
         logger.info("stage=run event=new_issue_skipped issue=%s"
@@ -387,12 +410,31 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
                                          paid_allowed=paid_allowed,
                                          transport=transport, now=now,
                                          notify_send=notify_send))
+        except ManualIntervention as exc:
+            logger.error("stage=run event=manual_intervention issue=%s"
+                         " message=%s", today, exc)
+            notify_event(conn, "E8", today, f"{today} 转人工:{exc}",
+                         send=notify_send or _log_sender)
+            codes.append(4)
         except CollectError as exc:
             logger.error("stage=run event=E2 issue=%s message=%s",
                          today, exc)
             _fail_issue(conn, today, "E2.upstream",
                         send=notify_send or _log_sender)
             codes.append(3)
+
+    # 月度预警(¥40 阈值,同月一封;规则 7):未决保守口径
+    warn_at = getattr(config.budget, "warn_monthly_micro_cny", 0) or 0
+    if warn_at > 0:
+        _label, month_start, month_end = _month_window(now)
+        month_used, _issue = _money_used(
+            conn, start_utc=month_start, end_utc=month_end, issue_date=None)
+        if month_used >= warn_at:
+            notify_monthly(
+                conn, _label,
+                f"本月模型花费已达 ¥{month_used / 1e6:.2f}"
+                f"(阈值 ¥{warn_at / 1e6:.2f}),请核对用量",
+                send=notify_send or _log_sender)
 
     # 汇总记账:核清后过期期巡检(提示不自动更新)
     for s in stale_cost_issues(conn):
@@ -451,11 +493,24 @@ def abandon_issue(conn: sqlite3.Connection, issue_date: str, *,
 
 def main(argv: list[str] | None = None) -> int:
     """CLI 装配薄层(锁→config→DB→PublishContext→run_once);单实例
-    flock 由本层持有(Windows msvcrt/POSIX fcntl 各取其一)。"""
+    flock 由本层持有(Windows msvcrt/POSIX fcntl 各取其一)。
+    PublishContext 的真实远端/工作副本装配属 Task 25(部署);M1 骨架
+    remote_url 留空,发布前须由部署配置补齐。"""
     import argparse
-    import msvcrt
 
-    from nanmu_engine.db import connect_db
+    from nanmu_engine.config import load_config
+    from nanmu_engine.db import connect_db, migrate
+
+    try:
+        import msvcrt
+
+        def _acquire(lock_file):
+            msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+    except ImportError:                      # POSIX 部署目标(Task 25)
+        import fcntl
+
+        def _acquire(lock_file):
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 
     parser = argparse.ArgumentParser(prog="nanmu-run")
     parser.add_argument("--root", default=".", help="engine 根目录")
@@ -466,14 +521,19 @@ def main(argv: list[str] | None = None) -> int:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock = open(lock_path, "a")
     try:
-        msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        _acquire(lock)
     except OSError:
         logger.error("stage=run event=lock_busy 另一实例运行中,退出")
         return 1
 
     try:
-        config = load_config(root)
+        try:
+            config = load_config(root)
+        except ConfigError as exc:
+            logger.error("stage=run event=E1.config message=%s", exc)
+            return 2
         conn = connect_db(str(root / "engine.db"))
+        migrate(conn)
         ctx = PublishContext(workdir=root / "site-work", remote_url="",
                              branch="main")
         return run_once(conn, config,
@@ -481,3 +541,7 @@ def main(argv: list[str] | None = None) -> int:
                         publish_ctx=ctx)
     finally:
         lock.close()
+
+
+if __name__ == "__main__":                   # systemd timer 挂载点
+    raise SystemExit(main())

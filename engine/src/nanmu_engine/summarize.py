@@ -24,6 +24,7 @@ from nanmu_engine.ledger import (
     _logical_key,
     authorize,
     can_retry,
+    recover_stale_pending,
     record_failure,
     record_response,
     request_hash,
@@ -135,9 +136,10 @@ def understand_entry(conn: sqlite3.Connection, config: Config, member: dict,
     # 同 logical_key 已有回执的再发送过 can_retry 三条件;首发不经此门
     origin = "initial"
     if row is not None:
+        recover_stale_pending(conn, config, logical_key, now)
         verdict = can_retry(conn, config, logical_key, now)
         if not verdict.allowed:
-            if verdict.reason == "unknown_wait":
+            if verdict.reason in ("unknown_wait", "attempt_in_flight"):
                 return SummaryOutcome("unknown", fail_reason="unknown_wait")
             return SummaryOutcome("failed", fail_reason=verdict.reason)
         origin = "retry" if verdict.channel == "normal" else verdict.channel
@@ -172,6 +174,11 @@ def understand_entry(conn: sqlite3.Connection, config: Config, member: dict,
         "SELECT response_json FROM receipt WHERE id=?",
         (ref.receipt_id,)).fetchone()[0]
     if not validate_understand_response(response_json):
+        # E4.parse(design L211:received→failed,普通有界重试;与 score
+        # 同构——error_class=retryable,matrix_code 在 detail 标 E4.parse)
+        record_failure(conn, config, ref, "retryable", {
+            "http_status": 200, "matrix_code": "E4.parse",
+            "message": (response_json or "")[:200]})
         return SummaryOutcome("retryable", fail_reason="E4.parse")
     payload = _payload_of(response_json)
     summary_id = _complete_summary(conn, config, member, ref.receipt_id, payload)

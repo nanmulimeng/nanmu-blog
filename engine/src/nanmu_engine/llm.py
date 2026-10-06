@@ -146,7 +146,14 @@ def classify_failure(result_or_exc) -> tuple[str | None, dict]:
         # 未列出的 HTTP 状态:保留响应,按不可自动重试的 E1.request 处理
         return "no_retry", _detail(status, "E1.request", result.error_message)
 
-    # HTTP 200:非正常终止优先于解析判定(截断输出即使 JSON 恰好可解析也不可消费)
+    # HTTP 200:非正常终止优先于解析判定(不可消费)。length 截断按
+    # design.md L211 归 E4.parse(可修复类,普通有界重试——新 attempt
+    # 拿新响应/调 max_output_tokens);其余非 stop(content_filter/
+    # tool_calls/缺失)仍为 E4.terminal
+    if result.finish_reason == "length":
+        return "retryable", _detail(
+            status, "E4.parse",
+            result.error_message or "finish_reason=length 输出被截断")
     if result.finish_reason != "stop":
         return "no_retry", _detail(
             status, "E4.terminal",
