@@ -94,18 +94,37 @@ def _window_counts(conn: sqlite3.Connection, now: datetime) -> dict[str, int]:
     }
 
 
-def _money_used(conn: sqlite3.Connection, *, month: str,
-                issue_date: str | None) -> tuple[int, int]:
-    """返回 (当月已用微元, 当期已用微元)。
+_SH_TZ = timezone(timedelta(hours=8))   # Asia/Shanghai 固定 +8(无夏令时)
 
-    月口径(budget.md):本月已结算(actual)合计 + **所有月份**尚未核清
-    预占(reserved,actual IS NULL)——跨月未决保留直至核清,不因换月释放。
+
+def _month_window(now: datetime) -> tuple[str, str, str]:
+    """上海自然月 → UTC 查询边界(审计 P1-4:spec 月口径=Asia/Shanghai
+    自然月,非 UTC 月)。返回 (月标签, 起 UTC, 止 UTC),左闭右开。"""
+    local = now.astimezone(_SH_TZ)
+    year, month = local.year, local.month
+    first = datetime(year, month, 1, tzinfo=_SH_TZ)
+    nxt = (datetime(year + 1, 1, 1, tzinfo=_SH_TZ) if month == 12
+           else datetime(year, month + 1, 1, tzinfo=_SH_TZ))
+    fmt = "%Y-%m-%dT%H:%M:%SZ"
+    return (f"{year:04d}-{month:02d}",
+            first.astimezone(timezone.utc).strftime(fmt),
+            nxt.astimezone(timezone.utc).strftime(fmt))
+
+
+def _money_used(conn: sqlite3.Connection, *, start_utc: str, end_utc: str,
+                issue_date: str | None) -> tuple[int, int]:
+    """返回 (上海当月已用微元, 当期已用微元)。
+
+    月口径(budget.md + spec Asia/Shanghai 自然月):上海自然月内已结算
+    (actual)合计 + **所有月份**尚未核清预占(reserved,actual IS NULL)
+    ——跨月未决保留直至核清,不因换月释放;月窗口按上海月转 UTC
+    左闭右开区间([start_utc, end_utc))判定 started_utc。
     期口径:issue_date 匹配行 Σ COALESCE(actual, reserved)。
     """
     month_settled = conn.execute(
         "SELECT COALESCE(SUM(actual_micro_cny), 0) FROM receipt_attempt"
-        " WHERE started_utc LIKE ? || '%'"
-        " AND actual_micro_cny IS NOT NULL", (month,)).fetchone()[0]
+        " WHERE started_utc >= ? AND started_utc < ?"
+        " AND actual_micro_cny IS NOT NULL", (start_utc, end_utc)).fetchone()[0]
     all_pending = conn.execute(
         "SELECT COALESCE(SUM(reserved_micro_cny), 0) FROM receipt_attempt"
         " WHERE actual_micro_cny IS NULL").fetchone()[0]
@@ -121,19 +140,20 @@ def _money_used(conn: sqlite3.Connection, *, month: str,
 def authorize(conn: sqlite3.Connection, config: Config, *, purpose: str,
               model: str, request_hash: str, identity_key: str,
               token_count: int | None, issue_date: str | None,
-              origin: Origin) -> AuthorizeResult:
+              origin: Origin, now: datetime | None = None) -> AuthorizeResult:
     """授权检查与预占写入(短事务;COMMIT 后才允许出网)。
 
     检查序:pay_paused(仅显式 '0' 放行,'1' 或键缺失拒绝)→ budget 行
     缺失(key_missing)→ 计数可得性 → 合法停用(任一档/金额 ≤0 =
     停止新增付费,reason='disabled')→ 窗口次数 → 金额(存量已结算+
-    全部未决预占 + 本次最坏成本,同守月/期红线)。
+    全部未决预占 + 本次最坏成本,同守月/期红线;月口径=上海自然月)。
+    now 可注入(默认当前 UTC),月窗口由上海月换算。
     """
     if token_count is None or token_count < 0:
         return AuthorizeResult("rejected", "token_count_unavailable")
 
-    now = datetime.now(timezone.utc)
-    month = now.strftime("%Y-%m")
+    now = now or datetime.now(timezone.utc)
+    _label, month_start, month_end = _month_window(now)
     logical_key = _logical_key(purpose, model, request_hash)
     reserved = _reserved_micro(config, model, token_count)
     digest = json.dumps(
@@ -176,7 +196,8 @@ def authorize(conn: sqlite3.Connection, config: Config, *, purpose: str,
             return AuthorizeResult("rejected", "window")
         # 5) 金额:存量(已结算+全部未决预占)+ **本次最坏成本**同守月/期红线
         month_used, issue_used = _money_used(
-            conn, month=month, issue_date=issue_date)
+            conn, start_utc=month_start, end_utc=month_end,
+            issue_date=issue_date)
         if (month_used + reserved > money.monthly_micro_cny
                 or issue_date and issue_used + reserved > money.per_issue_micro_cny):
             conn.execute("ROLLBACK")
@@ -240,25 +261,32 @@ def _pricing_for(config: Config, model: str):
     raise KeyError(f"价目缺失:{model}")
 
 
-def _settle_micro_cny(config: Config, model: str, usage: dict) -> int:
-    """按价目结算整数微元:命中×缓存价+未命中×输入价+补全×输出价,向上取整。"""
+def _billable_micro_cny(config: Config, model: str,
+                        usage: dict) -> int | None:
+    """计费证据判定+结算(整数微元,向上取整)。
+
+    "收到 usage"≠"具备计费证据"(审计 P1-1):prompt_cache_hit_tokens、
+    prompt_cache_miss_tokens、completion_tokens 三键均为非负 int 才可
+    结算(DeepSeek usage 契约必含 hit/miss 分项);缺任一分项=证据不足
+    →返回 None,actual 保持 NULL 未决(不释放预占),缺项不得按零计。"""
+    hit = usage.get("prompt_cache_hit_tokens")
+    miss = usage.get("prompt_cache_miss_tokens")
+    completion = usage.get("completion_tokens")
+    for v in (hit, miss, completion):
+        if v is None or type(v) is not int or v < 0:
+            return None
     price = _pricing_for(config, model)
-    hit = usage.get("prompt_cache_hit_tokens", 0) or 0
-    miss = usage.get("prompt_cache_miss_tokens", 0) or 0
-    if not hit and not miss:
-        miss = usage.get("prompt_tokens", 0) or 0  # 缺分项保守按未缓存全量
-    completion = usage.get("completion_tokens", 0) or 0
     micro = (hit * price.cached_input_per_mtok_micro_cny
              + miss * price.input_per_mtok_micro_cny
              + completion * price.output_per_mtok_micro_cny)
     return math.ceil(micro / _MICRO_PER_MILLION)
 
 
-def _check_usage_vs_reserved(conn: sqlite3.Connection, ref: AuthorizeResult,
-                             usage: dict) -> None:
-    """对账:usage.prompt_tokens 超预占计数(请求身份 digest 内)=上界
-    失效 → 置 pay_paused=1 持久化停新增(model-calls 规则 2)。
-    结算路径(record_response/record_failure)共用,不得单点挂靠。"""
+def _breach_reason(conn: sqlite3.Connection, ref: AuthorizeResult,
+                   usage: dict, actual_micro: int) -> str | None:
+    """可结算路径对账(双上界,审计 P1-2):输入计量超预占计数 或
+    实际结算金额超预占金额 = 上界失效。返回原因串(先持久化后判定,
+    由调用方在同事务内置 pay_paused);无违例返回 None。"""
     digest = conn.execute(
         "SELECT request_digest FROM receipt WHERE id=?",
         (ref.receipt_id,)).fetchone()[0]
@@ -266,29 +294,55 @@ def _check_usage_vs_reserved(conn: sqlite3.Connection, ref: AuthorizeResult,
     prompt_tokens = usage.get("prompt_tokens")
     if token_count is not None and prompt_tokens is not None \
             and prompt_tokens > token_count:
-        _pause_pay(
-            conn,
-            f"usage.prompt_tokens({prompt_tokens})>预占计数({token_count})"
-            f" receipt={ref.receipt_id} attempt={ref.attempt_id}")
+        return (f"usage.prompt_tokens({prompt_tokens})>预占计数({token_count})"
+                f" receipt={ref.receipt_id} attempt={ref.attempt_id}")
+    reserved = conn.execute(
+        "SELECT reserved_micro_cny FROM receipt_attempt WHERE id=?",
+        (ref.attempt_id,)).fetchone()[0]
+    if actual_micro > reserved:
+        return (f"实际结算({actual_micro})>预占({reserved})"
+                f" receipt={ref.receipt_id} attempt={ref.attempt_id}")
+    return None
+
+
+def _pause_pay_sql(conn: sqlite3.Connection, reason: str) -> None:
+    """置 pay_paused=1 的 SQL 体(在调用方事务内执行——结算与暂停必须
+    同一事务,审计 P1-3;异常费用已提交而暂停丢失的窗口不可存在)。"""
+    now = _utc_now()
+    conn.execute(
+        "INSERT INTO engine_meta (key, value, updated_utc)"
+        " VALUES ('pay_paused', '1', ?)"
+        " ON CONFLICT(key) DO UPDATE SET value='1', updated_utc=excluded.updated_utc",
+        (now,))
+    conn.execute(
+        "INSERT INTO engine_meta (key, value, updated_utc)"
+        " VALUES ('pay_paused_reason', ?, ?)"
+        " ON CONFLICT(key) DO UPDATE SET value=excluded.value,"
+        " updated_utc=excluded.updated_utc", (reason, now))
 
 
 def record_failure(conn: sqlite3.Connection, config: Config,
                    ref: AuthorizeResult, error_class: str,
                    fail_detail: dict, usage: dict | None = None) -> None:
     """单事务失败落库:attempt→failed/unknown + error_class + fail_detail_json
-    同事务写,**receipt.status 同步迁移**(model-calls §5 写入协议);
-    有 usage 先结算并对账。**不触碰 attempt_origin(预占后不可改写)**。"""
+    同事务写,**receipt.status 同步迁移**(model-calls §5 写入协议)。
+    计费证据不足同样保留 actual=NULL(P1-1);可结算时同事务对账双上界
+    并置 pay_paused(P1-2/P1-3)。**不触碰 attempt_origin**。"""
     status = "unknown" if error_class == "unknown" else "failed"
     detail_json = json.dumps(fail_detail, ensure_ascii=False, sort_keys=True)
     with conn:
         if usage:
-            micro = _settle_micro_cny(config, _attempt_model(conn, ref), usage)
+            micro = _billable_micro_cny(config, _attempt_model(conn, ref), usage)
             conn.execute(
                 "UPDATE receipt_attempt SET status=?, error_class=?,"
                 " fail_detail_json=?, usage_json=?, actual_micro_cny=?"
                 " WHERE id=?",
                 (status, error_class, detail_json, json.dumps(usage),
                  micro, ref.attempt_id))
+            if micro is not None:
+                breach = _breach_reason(conn, ref, usage, micro)
+                if breach:
+                    _pause_pay_sql(conn, breach)
         else:
             conn.execute(
                 "UPDATE receipt_attempt SET status=?, error_class=?,"
@@ -297,7 +351,6 @@ def record_failure(conn: sqlite3.Connection, config: Config,
         conn.execute("UPDATE receipt SET status=? WHERE id=?",
                      (status, ref.receipt_id))
     if usage:
-        _check_usage_vs_reserved(conn, ref, usage)
         _refresh_api_usage(conn)
 
 
@@ -362,52 +415,39 @@ def can_retry(conn: sqlite3.Connection, config: Config, logical_key: str,
 _EVIDENCE_KEYS = ("evidence_type", "ref", "checked_utc", "note")
 
 
-def _pause_pay(conn: sqlite3.Connection, reason: str) -> None:
-    """置 pay_paused=1 持久化停新增并记录原因(对账硬失败;同解除协议)。"""
-    now = _utc_now()
-    with conn:
-        conn.execute(
-            "INSERT INTO engine_meta (key, value, updated_utc)"
-            " VALUES ('pay_paused', '1', ?)"
-            " ON CONFLICT(key) DO UPDATE SET value='1', updated_utc=excluded.updated_utc",
-            (now,))
-        conn.execute(
-            "INSERT INTO engine_meta (key, value, updated_utc)"
-            " VALUES ('pay_paused_reason', ?, ?)"
-            " ON CONFLICT(key) DO UPDATE SET value=excluded.value,"
-            " updated_utc=excluded.updated_utc", (reason, now))
-
-
 def _refresh_api_usage(conn: sqlite3.Connection) -> None:
     """月度成本聚合投影(报表;不作调用授权依据)。
 
     幂等重算:按 receipt_attempt 全量聚合重建 api_usage——重复调用、
     结算后核清改 actual 均不双计(record_response 与 reconcile 共用)。
-    成本=已核清/已结算 actual,未决保守取 reserved(与期快照同口径)。"""
+    成本=已核清/已结算 actual,未决保守取 reserved(与期快照同口径)。
+    月分组=上海自然月(started_utc+8h 后取年月,与授权口径一致)。"""
     with conn:
         conn.execute("DELETE FROM api_usage")
         conn.execute(
             "INSERT INTO api_usage (month, provider, model, tokens_in,"
             " tokens_out, cost_cny)"
-            " SELECT substr(a.started_utc, 1, 7), ?, r.model,"
+            " SELECT substr(datetime(a.started_utc, '+8 hours'), 1, 7),"
+            " ?, r.model,"
             " SUM(COALESCE(json_extract(a.usage_json, '$.prompt_tokens'), 0)),"
             " SUM(COALESCE(json_extract(a.usage_json, '$.completion_tokens'), 0)),"
             " SUM(COALESCE(a.actual_micro_cny, a.reserved_micro_cny)) / ?"
             " FROM receipt_attempt a JOIN receipt r ON r.id = a.receipt_id"
-            " GROUP BY substr(a.started_utc, 1, 7), r.model",
+            " GROUP BY substr(datetime(a.started_utc, '+8 hours'), 1, 7),"
+            " r.model",
             (PROVIDER, float(_MICRO_PER_MILLION)))
 
 
 def record_response(conn: sqlite3.Connection, config: Config,
                     ref: AuthorizeResult, result) -> None:
-    """收到响应:先持久化 received+usage_json+结算,再谈解析与对账。
+    """收到响应:先持久化 received+usage 原文,再谈解析与对账。
 
     response_json 存三要素对象 {content, finish_reason,
     provider_request_id}(design.md"显式保存 finish_reason、usage 与请求
     ID";列注释"供业务复用"——复用判定的 E4 验证器读它)。
-    usage 缺失→actual 保持 NULL(未决,不 COALESCE 释放预算)。
-    usage.prompt_tokens 超预占计数(请求身份 digest 内)→置 pay_paused=1
-    持久化停新增(上界失效;规则 2),attempt 已先落 received。
+    usage 缺失或计费证据不足(P1-1)→actual 保持 NULL(未决,不
+    COALESCE 释放预算),usage 原文照存;可结算时结算与对账、
+    pay_paused 置位在同一事务内(P1-2/P1-3),attempt 已先落 received。
     """
     model = _attempt_model(conn, ref)
     usage = getattr(result, "usage", None)
@@ -418,16 +458,25 @@ def record_response(conn: sqlite3.Connection, config: Config,
         ensure_ascii=False, sort_keys=True)
     with conn:
         if usage:
-            micro = _settle_micro_cny(config, model, usage)
+            micro = _billable_micro_cny(config, model, usage)
             conn.execute(
                 "UPDATE receipt_attempt SET status='received', usage_json=?,"
                 " actual_micro_cny=? WHERE id=?",
                 (json.dumps(usage), micro, ref.attempt_id))
-            conn.execute(
-                "UPDATE receipt SET status='received', response_json=?,"
-                " usage_json=?, cost_cny=?, completed_utc=? WHERE id=?",
-                (response_json, json.dumps(usage), micro / _MICRO_PER_MILLION,
-                 _utc_now(), ref.receipt_id))
+            if micro is None:
+                conn.execute(
+                    "UPDATE receipt SET status='received', response_json=?,"
+                    " completed_utc=? WHERE id=?",
+                    (response_json, _utc_now(), ref.receipt_id))
+            else:
+                conn.execute(
+                    "UPDATE receipt SET status='received', response_json=?,"
+                    " usage_json=?, cost_cny=?, completed_utc=? WHERE id=?",
+                    (response_json, json.dumps(usage),
+                     micro / _MICRO_PER_MILLION, _utc_now(), ref.receipt_id))
+                breach = _breach_reason(conn, ref, usage, micro)
+                if breach:
+                    _pause_pay_sql(conn, breach)
         else:
             conn.execute(
                 "UPDATE receipt_attempt SET status='received' WHERE id=?",
@@ -437,8 +486,6 @@ def record_response(conn: sqlite3.Connection, config: Config,
                 " completed_utc=? WHERE id=?",
                 (response_json, _utc_now(), ref.receipt_id))
     if usage:
-        # 对账:超预占计数=上界失效(先持久化,后判定;与 record_failure 共用)
-        _check_usage_vs_reserved(conn, ref, usage)
         _refresh_api_usage(conn)
 
 
@@ -471,9 +518,10 @@ def reconcile(conn: sqlite3.Connection, config: Config, attempt_id: int,
         conn.execute(
             "UPDATE receipt SET cost_cny=? WHERE id=?",
             (total / _MICRO_PER_MILLION, receipt_id))
-    if actual_micro_cny > reserved:
-        _pause_pay(conn, f"供应商实付({actual_micro_cny})>预占({reserved})"
-                         f" attempt={attempt_id}")
+        # 核清与暂停同一事务(P1-3):实付超预占=上界失效
+        if actual_micro_cny > reserved:
+            _pause_pay_sql(conn, f"供应商实付({actual_micro_cny})>预占({reserved})"
+                           f" attempt={attempt_id}")
     _refresh_api_usage(conn)
     return True
 
@@ -603,10 +651,11 @@ def apply_n_new(members: list[dict], reuse_snapshot: dict, *, n_new: int) -> dic
 
 
 def compute_n_new(conn: sqlite3.Connection, config: Config,
-                  issue_date: str) -> int:
+                  issue_date: str, *, now: datetime | None = None) -> int:
     """候选上限公式本体(design.md"候选上限与额度预留"节,不复制口径
     之外的行为):先扣摘要与重试预留,再算评分容量;禁止除零;合法停用
-    直接 N=0(允许零网络复用)。"""
+    直接 N=0(允许零网络复用)。now 可注入,月口径=上海自然月(与
+    authorize 一致)。"""
     budget = config.budget
     rate = budget.rate_limits
     # 合法停用:金额(monthly/per_issue 任一 ≤0)或次数(任一档 ≤0,
@@ -616,9 +665,10 @@ def compute_n_new(conn: sqlite3.Connection, config: Config,
             or rate.per_day <= 0):
         return 0
 
-    now = datetime.now(timezone.utc)
-    month = now.strftime("%Y-%m")
-    month_used, issue_used = _money_used(conn, month=month, issue_date=issue_date)
+    now = now or datetime.now(timezone.utc)
+    _label, month_start, month_end = _month_window(now)
+    month_used, issue_used = _money_used(
+        conn, start_utc=month_start, end_utc=month_end, issue_date=issue_date)
     month_available = budget.monthly_micro_cny - month_used
     issue_available = min(budget.per_issue_micro_cny - issue_used,
                           month_available)

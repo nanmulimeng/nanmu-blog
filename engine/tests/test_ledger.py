@@ -43,12 +43,13 @@ def _set_meta(conn, key, value):
 _seed_seq = itertools.count()
 
 
-def _seed_attempt(conn, *, minutes_ago=0.0, reserved=0, actual=None,
-                  issue_date="2026-10-06", status="pending"):
-    """预填一条 attempt 行(窗口/金额聚合测试用)。"""
+def _seed_attempt(conn, *, minutes_ago=0.0, started_utc=None, reserved=0,
+                  actual=None, issue_date="2026-10-06", status="pending"):
+    """预填一条 attempt 行(窗口/金额聚合测试用;started_utc=绝对时间)。"""
     import datetime as dt
-    started = (dt.datetime.now(dt.timezone.utc)
-               - dt.timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started = started_utc or (dt.datetime.now(dt.timezone.utc)
+                              - dt.timedelta(minutes=minutes_ago)
+                              ).strftime("%Y-%m-%dT%H:%M:%SZ")
     cur = conn.execute(
         "INSERT INTO receipt (logical_key, provider, endpoint, request_hash,"
         " service, purpose, model, status, created_utc)"
@@ -837,3 +838,188 @@ def test_i4_record_failure_usage_over_count_pauses(env):
     row = conn.execute("SELECT status FROM receipt_attempt WHERE id=?",
                        (ref.attempt_id,)).fetchone()
     assert row[0] == "failed"                  # 先落库后判定
+
+
+# ---------- 审计修复轮(P1-1..P1-4):计费证据/金额上界/同事务暂停/上海自然月 ----------
+
+def _raw_result(usage):
+    return LLMResult(
+        http_status=200, finish_reason="stop",
+        content='{"attentionScore": 60}', json_parsed=True,
+        usage=usage, provider_request_id="resp-x", error_message=None)
+
+
+def _pay_paused(conn):
+    return conn.execute(
+        "SELECT value FROM engine_meta WHERE key='pay_paused'").fetchone()[0]
+
+
+def test_p1_usage_without_billing_keys_not_settled(env):
+    # P1-1:仅 total_tokens——输入输出计费证据均缺,不得核清为 0
+    conn, config = env
+    import json as _json
+    ref = _authorize(conn, config, token_count=1200)
+    record_response(conn, config, ref, _raw_result({"total_tokens": 1200}))
+    row = conn.execute(
+        "SELECT status, usage_json, actual_micro_cny FROM receipt_attempt"
+        " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row[0] == "received"
+    assert _json.loads(row[1]) == {"total_tokens": 1200}   # 原文保存
+    assert row[2] is None                                 # 未决不核清
+    cost, pending = issue_cost_snapshot(conn, "2026-10-06")
+    assert pending is True and cost > 0                   # 保守取 reserved
+
+
+def test_p1_usage_without_completion_not_settled(env):
+    # P1-1:缺 completion_tokens——输出费用未知,不释放其预占
+    conn, config = env
+    ref = _authorize(conn, config, token_count=1000)
+    record_response(conn, config, ref,
+                    _raw_result({"prompt_tokens": 1000}))
+    row = conn.execute("SELECT actual_micro_cny FROM receipt_attempt"
+                       " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row[0] is None
+
+
+def test_p1_usage_partial_cache_breakdown_not_settled(env):
+    # P1-1:hit 有而 miss 缺——剩余输入 token 不可当零
+    conn, config = env
+    ref = _authorize(conn, config, token_count=1000)
+    record_response(conn, config, ref, _raw_result(
+        {"prompt_tokens": 1000, "prompt_cache_hit_tokens": 100,
+         "completion_tokens": 10}))
+    row = conn.execute("SELECT actual_micro_cny FROM receipt_attempt"
+                       " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row[0] is None
+
+
+def test_p1_incomplete_usage_not_settled_on_failure(env):
+    # P1-1:失败路径同一套计费有效性判定
+    conn, config = env
+    import json as _json
+    ref = _authorize(conn, config, token_count=1200)
+    record_failure(conn, config, ref, "no_retry",
+                   {"http_status": 400, "matrix_code": "E1.request",
+                    "message": "bad"}, usage={"total_tokens": 1200})
+    row = conn.execute(
+        "SELECT status, usage_json, actual_micro_cny FROM receipt_attempt"
+        " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row[0] == "failed"
+    assert _json.loads(row[1]) == {"total_tokens": 1200}
+    assert row[2] is None
+    assert _pay_paused(conn) == "0"          # 无计费证据→无金额上界可对
+
+
+def test_p1_actual_over_reserved_pauses_on_response(env):
+    # P1-2:输入计量未超但实际金额超预占 → 同事务停新增
+    conn, config = env
+    ref = _authorize(conn, config, token_count=10)   # reserved=10×2+200×8=1620
+    usage = {"prompt_tokens": 10, "prompt_cache_hit_tokens": 0,
+             "prompt_cache_miss_tokens": 10, "completion_tokens": 201}
+    record_response(conn, config, ref, _raw_result(usage))
+    row = conn.execute("SELECT status, actual_micro_cny FROM receipt_attempt"
+                       " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row == ("received", 1628)         # 10×2+201×8=1628,真实费用保留
+    assert _pay_paused(conn) == "1"
+
+
+def test_p1_actual_over_reserved_pauses_on_failure(env):
+    # P1-2:失败结算路径同样受金额上界约束
+    conn, config = env
+    ref = _authorize(conn, config, token_count=10)
+    usage = {"prompt_tokens": 10, "prompt_cache_hit_tokens": 0,
+             "prompt_cache_miss_tokens": 10, "completion_tokens": 201}
+    record_failure(conn, config, ref, "retryable",
+                   {"http_status": 503, "matrix_code": "E3.http",
+                    "message": "x"}, usage=usage)
+    row = conn.execute("SELECT status, actual_micro_cny FROM receipt_attempt"
+                       " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row == ("failed", 1628)
+    assert _pay_paused(conn) == "1"
+
+
+def test_p1_settle_and_pause_atomic_on_response(env, monkeypatch):
+    # P1-3:结算、对账、暂停同一事务——中途崩溃全回滚,无部分状态
+    import nanmu_engine.ledger as ledger_mod
+    conn, config = env
+    ref = _authorize(conn, config, token_count=10)
+
+    def boom(c, reason):
+        raise RuntimeError("crash before pause")
+    monkeypatch.setattr(ledger_mod, "_pause_pay_sql", boom)
+    usage = {"prompt_tokens": 10, "prompt_cache_hit_tokens": 0,
+             "prompt_cache_miss_tokens": 10, "completion_tokens": 201}
+    with pytest.raises(RuntimeError):
+        record_response(conn, config, ref, _raw_result(usage))
+    row = conn.execute("SELECT status, actual_micro_cny FROM receipt_attempt"
+                       " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert row == ("pending", None)          # 已结算状态不落库
+    assert _pay_paused(conn) == "0"
+
+
+def test_p1_settle_and_pause_atomic_on_reconcile(env, monkeypatch):
+    # P1-3:人工核清同样单事务——核清与暂停同生同灭
+    import nanmu_engine.ledger as ledger_mod
+    conn, config = env
+    _seed_attempt(conn, reserved=1000, actual=None, status="unknown")
+    attempt_id = conn.execute(
+        "SELECT id FROM receipt_attempt WHERE actual_micro_cny IS NULL"
+    ).fetchone()[0]
+
+    def boom(c, reason):
+        raise RuntimeError("crash before pause")
+    monkeypatch.setattr(ledger_mod, "_pause_pay_sql", boom)
+    with pytest.raises(RuntimeError):
+        reconcile(conn, config, attempt_id, dict(EVIDENCE_FULL),
+                  actual_micro_cny=2000)
+    row = conn.execute("SELECT actual_micro_cny, reconcile_json"
+                       " FROM receipt_attempt WHERE id=?",
+                       (attempt_id,)).fetchone()
+    assert row == (None, None)
+    assert _pay_paused(conn) == "0"
+
+
+def test_p1_shanghai_natural_month_boundary(env):
+    # P1-4:月口径=Asia/Shanghai 自然月(非 UTC 月)。
+    # 上海 2026-11-01 08:30(=UTC 11-01 00:30)调度;上海 11-01 00:10
+    # 的消费存为 UTC 10-31T16:10Z——属上海 11 月,须占本月额度。
+    conn, config = env
+    now = dt.datetime(2026, 11, 1, 0, 30, tzinfo=dt.timezone.utc)
+    odd = _dc.replace(config.budget, monthly_micro_cny=3000)
+    odd_cfg = _dc.replace(config, budget=odd)
+    # 上海 10-31 23:59(=UTC 15:59)属 10 月 → 不占 11 月 → 放行
+    _seed_attempt(conn, started_utc="2026-10-31T15:59:00Z",
+                  reserved=2000, actual=2000, issue_date="2026-10-30")
+    ok = _authorize(conn, odd_cfg, now=now, token_count=10)
+    assert ok.status == "reserved"
+    # 上海 11-01 00:10(=UTC 16:10)属 11 月:2000+1620>3000 → 拒
+    _seed_attempt(conn, started_utc="2026-10-31T16:10:00Z",
+                  reserved=2000, actual=2000, issue_date="2026-10-31")
+    rejected = _authorize(conn, odd_cfg, now=now, token_count=10,
+                          request_hash="g" * 64)
+    assert rejected.status == "rejected"
+    assert rejected.reject_reason == "money"
+
+
+def test_p1_shanghai_month_in_compute_n_new(env):
+    conn, config = env
+    # now=上海 11-02 08:30(距跨界行 >24h,不进 day 窗口)
+    now = dt.datetime(2026, 11, 2, 0, 30, tzinfo=dt.timezone.utc)
+    _seed_attempt(conn, started_utc="2026-10-31T16:10:00Z",
+                  reserved=200_000, actual=200_000, issue_date="2026-10-31")
+    odd = _dc.replace(config.budget, monthly_micro_cny=1_000_000)
+    odd_cfg = _dc.replace(config, budget=odd)
+    # 月可用=1M−200_000=800_000 → N_money=(800_000−344_000)//19_200=23
+    # (若按 UTC 月归 10 月则得固定算例 34——本测试钉死两种口径差异)
+    assert compute_n_new(conn, odd_cfg, "2026-11-02", now=now) == 23
+
+
+def test_p1_shanghai_month_in_api_usage_projection(env):
+    # P1-4:月投影与授权同口径(上海自然月)
+    conn, config = env
+    _seed_attempt(conn, started_utc="2026-10-31T16:10:00Z",
+                  reserved=2000, actual=2000, issue_date="2026-10-31")
+    ref = _authorize(conn, config, token_count=1000)
+    record_response(conn, config, ref, _ok_result(prompt_tokens=1000))
+    months = {r[0] for r in conn.execute("SELECT month FROM api_usage")}
+    assert "2026-11" in months              # 跨界行按上海月归 11 月
