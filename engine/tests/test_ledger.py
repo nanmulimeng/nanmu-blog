@@ -525,3 +525,207 @@ def test_reuse_cost_attribution_across_issues(env):
     assert cost_new == 0.0 and pending_new is False   # 复用不把旧费用计入新期
     cost_old, _ = issue_cost_snapshot(conn, "2026-10-05")
     assert cost_old == pytest.approx(0.01)            # 上期快照不变
+
+
+# ---------- Task 8:request_hash / reusable_scores / compute_n_new(验收 1/2/3) ----------
+
+import dataclasses
+
+from nanmu_engine.config import PricingRow, RateLimits
+from nanmu_engine.llm import LLMResult
+from nanmu_engine.ledger import (
+    apply_n_new,
+    compute_n_new,
+    request_hash,
+    reusable_scores,
+)
+
+BASE_CTX = {
+    "provider": "deepseek", "endpoint": "/chat/completions",
+    "purpose": "score", "model": "deepseek-flash",
+    "prompt_version": "pv-abc123",
+    "system_text": "SYS-TEXT(模板实例化后)",
+    "max_tokens": 200, "thinking": "disabled", "response_format": "json_object",
+}
+
+
+def _member(i, tier="T1"):
+    return {"identity_key": f"url:https://example.com/{i}",
+            "content_hash": f"chash-{i}", "entry_id": i,
+            "user_text": f"标题:t{i}\n\n正文:\nbody-{i}",
+            "source_tier": tier,
+            "discovered_utc": f"2026-10-06T00:00:{i:02d}Z"}
+
+
+def _ctx_for(member, ctx, tag):
+    return dict(ctx, identity_key=member["identity_key"],
+                content_hash=member["content_hash"],
+                user_text=member["user_text"], attemptTag=tag)
+
+
+def _seed_score_response(conn, config, member, ctx, tag="score-1",
+                         content='{"attentionScore": 71}', finish="stop",
+                         status="received"):
+    ref = _authorize(conn, config,
+                     request_hash=request_hash(_ctx_for(member, ctx, tag)),
+                     identity_key=member["identity_key"], token_count=100)
+    result = LLMResult(
+        http_status=200, finish_reason=finish, content=content,
+        json_parsed=False,
+        usage={"prompt_tokens": 100, "prompt_cache_hit_tokens": 0,
+               "prompt_cache_miss_tokens": 100, "completion_tokens": 10},
+        provider_request_id="rid-1", error_message=None)
+    record_response(conn, config, ref, result)
+    if status == "completed":
+        conn.execute("UPDATE receipt SET status='completed' WHERE id=?",
+                     (ref.receipt_id,))
+        conn.commit()
+    return ref
+
+
+def test_request_hash_changes_on_any_identity_field():
+    base = dict(BASE_CTX, identity_key="url:x", content_hash="c1",
+                user_text="u1", attemptTag="score-1")
+    h1 = request_hash(base)
+    assert h1 == request_hash(dict(base))       # 确定性
+    for field, value in [("prompt_version", "pv-new"),
+                         ("user_text", "u1 "),           # 截断后实际输入变
+                         ("identity_key", "url:y"),
+                         ("content_hash", "c2"),
+                         ("attemptTag", "score-2"),
+                         ("model", "deepseek-prod")]:
+        assert request_hash(dict(base, **{field: value})) != h1, field
+
+
+def test_reuse_matrix_acceptance_1(env):
+    conn, config = env
+    m = _member(1)
+    # 同身份 completed → 可复用
+    _seed_score_response(conn, config, m, BASE_CTX, "score-1", status="completed")
+    snap = reusable_scores(conn, [m], BASE_CTX)
+    assert snap["url:https://example.com/1"]["score_1"] is True
+
+    # prompt 版本变 → 不可
+    snap2 = reusable_scores(conn, [m], dict(BASE_CTX, prompt_version="pv-changed"))
+    assert snap2["url:https://example.com/1"]["score_1"] is not True
+
+    # 截断标记差异(实际输入变)→ 不可
+    m_trunc = dict(m, user_text=m["user_text"] + "…[截断]")
+    snap3 = reusable_scores(conn, [m_trunc], BASE_CTX)
+    assert snap3["url:https://example.com/1"]["score_1"] is not True
+
+
+def test_reuse_received_validation_acceptance_1(env):
+    conn, config = env
+    # received 过完整 E4 验证器 → 可
+    m2 = _member(2)
+    _seed_score_response(conn, config, m2, BASE_CTX, "score-1", status="received")
+    snap = reusable_scores(conn, [m2], BASE_CTX)
+    assert snap["url:https://example.com/2"]["score_1"] is True
+
+    # received 不可解析 → 不可(走 E4)
+    m3 = _member(3)
+    _seed_score_response(conn, config, m3, BASE_CTX, "score-1",
+                         content="not-json", status="received")
+    snap = reusable_scores(conn, [m3], BASE_CTX)
+    assert snap["url:https://example.com/3"]["score_1"] is not True
+
+    # received 且 finish_reason=length 而 JSON 恰好可解析 → 不可
+    m4 = _member(4)
+    _seed_score_response(conn, config, m4, BASE_CTX, "score-1",
+                         content='{"attentionScore": 6', finish="length",
+                         status="received")
+    snap = reusable_scores(conn, [m4], BASE_CTX)
+    assert snap["url:https://example.com/4"]["score_1"] is not True
+
+
+def test_partial_completion_needs_acceptance_3(env):
+    conn, config = env
+    m = _member(5)
+    _seed_score_response(conn, config, m, BASE_CTX, "score-1", status="received")
+    snap = reusable_scores(conn, [m], BASE_CTX)
+    entry = snap["url:https://example.com/5"]
+    assert entry["score_1"] is True and entry["score_2"] is not True
+    assert entry["needs"] == ["score-2"]     # 只补缺失那条,不重发有效侧
+    # score-2 已有 2 次失败 → 补发 attempt_no=3(顺延,重启不重置)
+    rh2 = request_hash(_ctx_for(m, BASE_CTX, "score-2"))
+    for origin in ("initial", "retry"):
+        r = _authorize(conn, config, request_hash=rh2,
+                       identity_key=m["identity_key"], origin=origin)
+        record_failure(conn, config, r, "retryable",
+                       {"http_status": 503, "matrix_code": "E3.http",
+                        "message": "x"})
+    r3 = _authorize(conn, config, request_hash=rh2,
+                    identity_key=m["identity_key"], origin="retry")
+    assert r3.attempt_no == 3
+
+
+def test_apply_n_new_order_acceptance_2():
+    members = [_member(i) for i in range(10)]
+    snapshot = {m["identity_key"]: {
+        "score_1": True if i < 4 else None,
+        "score_2": True if i < 4 else None,
+        "needs": [] if i < 4 else ["score-1", "score-2"]}
+        for i, m in enumerate(members)}
+    # 4 可复用 + 6 需新增;N_new=4 → 4 recoverable + 4 to_score + 2 capped
+    out = apply_n_new(members, snapshot, n_new=4)
+    assert len(out["recoverable"]) == 4
+    assert len(out["to_score"]) == 4
+    assert len(out["capped"]) == 2
+    # 截断排序:T1 优先 → discovered_utc 降序 → identity_key 升序(确定性)
+    assert out["to_score"][0]["identity_key"] == "url:https://example.com/9"
+    # N_new=0 → 4 recoverable + 6 capped,无成员丢失
+    out0 = apply_n_new(members, snapshot, n_new=0)
+    assert len(out0["recoverable"]) == 4 and len(out0["to_score"]) == 0
+    assert len(out0["capped"]) == 6
+    total = {m["identity_key"] for m in
+             out0["recoverable"] + out0["to_score"] + out0["capped"]}
+    assert len(total) == 10
+
+
+def test_compute_n_new_fixed_example(env):
+    # 固定算例:期可用 1000000、max_entries 15、重试 200000/5、窗口 0 → N=34
+    # (真配置:输入价 2M/输出 8M 微元/M、max_input 4000、max_output 200 → W=9600)
+    conn, config = env
+    assert compute_n_new(conn, config, issue_date="2026-10-06") == 34
+
+
+def test_compute_n_new_negative_available(env):
+    conn, config = env
+    odd = dataclasses.replace(config.budget, per_issue_micro_cny=1)
+    assert compute_n_new(conn, dataclasses.replace(config, budget=odd),
+                         issue_date="2026-10-06") == 0
+
+
+def test_compute_n_new_zero_price_unbounded_by_money(env):
+    conn, config = env
+    zero = dataclasses.replace(
+        config.budget,
+        pricing=(PricingRow("z", "deepseek-flash", 0, 0, 0),))
+    # W=0 且期可用扣预留 ≥0 → 金额不设限,N 取次数项 40
+    assert compute_n_new(conn, dataclasses.replace(config, budget=zero),
+                         issue_date="2026-10-06") == 40
+
+
+def test_compute_n_new_disabled_limit_is_zero(env):
+    conn, config = env
+    odd = dataclasses.replace(
+        config.budget, rate_limits=RateLimits(10, 0, 400))
+    assert compute_n_new(conn, dataclasses.replace(config, budget=odd),
+                         issue_date="2026-10-06") == 0
+
+
+def test_compute_n_new_retry_reserve_zero(env):
+    conn, config = env
+    odd = dataclasses.replace(config.budget, retry_reserve_micro_cny=0)
+    # N_money=44,仍受 N_hour=40 限制
+    assert compute_n_new(conn, dataclasses.replace(config, budget=odd),
+                         issue_date="2026-10-06") == 40
+
+
+def test_compute_n_new_cross_month_unknown(env):
+    conn, config = env
+    # 上月 unknown 预占行:按 started_utc 归属上月,不占本月/本期容量
+    _seed_attempt(conn, minutes_ago=40 * 24 * 60, reserved=500_000,
+                  actual=None, issue_date="2026-08-27", status="unknown")
+    assert compute_n_new(conn, config, issue_date="2026-10-06") == 34

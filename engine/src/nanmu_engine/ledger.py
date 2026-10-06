@@ -13,6 +13,8 @@ receipt_attempt(pending+reserved+attempt_origin+issue_date+pricing_version,
 
 from __future__ import annotations
 
+import functools
+import hashlib
 import json
 import math
 import sqlite3
@@ -355,13 +357,20 @@ def record_response(conn: sqlite3.Connection, config: Config,
                     ref: AuthorizeResult, result) -> None:
     """收到响应:先持久化 received+usage_json+结算,再谈解析与对账。
 
+    response_json 存三要素对象 {content, finish_reason,
+    provider_request_id}(design.md"显式保存 finish_reason、usage 与请求
+    ID";列注释"供业务复用"——复用判定的 E4 验证器读它)。
     usage 缺失→actual 保持 NULL(未决,不 COALESCE 释放预算)。
     usage.prompt_tokens 超预占计数(请求身份 digest 内)→置 pay_paused=1
     持久化停新增(上界失效;规则 2),attempt 已先落 received。
     """
     model = _attempt_model(conn, ref)
     usage = getattr(result, "usage", None)
-    content = getattr(result, "content", None)
+    response_json = json.dumps(
+        {"content": getattr(result, "content", None),
+         "finish_reason": getattr(result, "finish_reason", None),
+         "provider_request_id": getattr(result, "provider_request_id", None)},
+        ensure_ascii=False, sort_keys=True)
     with conn:
         if usage:
             micro = _settle_micro_cny(config, model, usage)
@@ -372,7 +381,7 @@ def record_response(conn: sqlite3.Connection, config: Config,
             conn.execute(
                 "UPDATE receipt SET status='received', response_json=?,"
                 " usage_json=?, cost_cny=?, completed_utc=? WHERE id=?",
-                (content, json.dumps(usage), micro / _MICRO_PER_MILLION,
+                (response_json, json.dumps(usage), micro / _MICRO_PER_MILLION,
                  _utc_now(), ref.receipt_id))
         else:
             conn.execute(
@@ -381,7 +390,7 @@ def record_response(conn: sqlite3.Connection, config: Config,
             conn.execute(
                 "UPDATE receipt SET status='received', response_json=?,"
                 " completed_utc=? WHERE id=?",
-                (content, _utc_now(), ref.receipt_id))
+                (response_json, _utc_now(), ref.receipt_id))
     if usage:
         _update_api_usage(conn, model,
                           usage.get("prompt_tokens", 0) or 0,
@@ -459,3 +468,152 @@ def issue_cost_snapshot(conn, issue_date: str) -> tuple[float, bool]:
         " FROM receipt_attempt WHERE issue_date=?",
         (issue_date, issue_date)).fetchone()
     return row[0] / _MICRO_PER_MILLION, bool(row[1])
+
+
+# ---------- 请求身份、复用判定与 N_new(Task 8;model-calls 验收 1/2/3) ----------
+
+def request_hash(identity_ctx: dict) -> str:
+    """sha256(确定性序列化)——model-calls §3 规则 2 的完整请求身份:
+    provider/endpoint/purpose/model/prompt_version/模板实例化后完整
+    system+user 文本(截断后实际输入)/max_tokens/thinking/response_format/
+    identity_key/content_hash/attemptTag。任一字段变→哈希变。"""
+    payload = json.dumps(identity_ctx, ensure_ascii=False, sort_keys=True,
+                         separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _passes_e4(purpose: str, response_json: str | None) -> bool:
+    """完整 E4 业务验证器(契约桩;Task 13/14 落地真验证器后回跑本测试)。
+
+    桩契约:finish_reason=stop + content JSON 可解析为对象 + purpose 对应
+    字段齐(score:attentionScore 为 0-100 整数;understand:title_zh/
+    summary/reason 非空字符串)。length 即使 JSON 恰好可解析也不可。
+    """
+    if not response_json:
+        return False
+    try:
+        envelope = json.loads(response_json)
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(envelope, dict) or envelope.get("finish_reason") != "stop":
+        return False
+    try:
+        payload = json.loads(envelope.get("content") or "")
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    if purpose == "score":
+        score = payload.get("attentionScore")
+        return type(score) is int and 0 <= score <= 100
+    return all(isinstance(payload.get(k), str) and payload.get(k)
+               for k in ("title_zh", "summary", "reason"))
+
+
+def reusable_scores(conn: sqlite3.Connection, members: list[dict],
+                    identity_ctx: dict) -> dict:
+    """复用快照(只读零副作用;model-calls §3 规则 3)。
+
+    有效性 = 完整请求身份匹配(identity_ctx+成员字段+attemptTag 哈希出
+    logical_key)+ receipt.status∈{received, completed} + 过完整 E4 业务
+    验证器。输出 = {identity_key → {score_1, score_2, needs(待补
+    attemptTag), analysis_ref}};本期同身份 analysis 行同等视为有效进度。
+    """
+    purpose = identity_ctx["purpose"]
+    model = identity_ctx["model"]
+    tags = (("score-1", "score_1"), ("score-2", "score_2"))
+    out: dict = {}
+    for member in members:
+        entry = {"score_1": None, "score_2": None, "needs": [],
+                 "analysis_ref": None}
+        for tag, key in tags:
+            ctx = dict(identity_ctx, identity_key=member["identity_key"],
+                       content_hash=member["content_hash"],
+                       user_text=member["user_text"], attemptTag=tag)
+            row = conn.execute(
+                "SELECT status, response_json FROM receipt WHERE logical_key=?",
+                (_logical_key(purpose, model, request_hash(ctx)),)).fetchone()
+            if row is not None and row[0] in ("received", "completed"):
+                entry[key] = _passes_e4(purpose, row[1])
+        entry["needs"] = [t for t, k in tags if entry[k] is not True]
+        analysis = conn.execute(
+            "SELECT id FROM analysis WHERE entry_id=? AND prompt_version=?"
+            " AND model=?", (member["entry_id"],
+                             identity_ctx["prompt_version"], model)
+        ).fetchone()
+        if analysis is not None:
+            entry["analysis_ref"] = analysis[0]
+        out[member["identity_key"]] = entry
+    return out
+
+
+def _candidate_cmp(a: dict, b: dict) -> int:
+    """截断排序:T1 优先 → discovered_utc 降序 → identity_key 升序
+    (确定性;与 selection.md 展示排序不同用途,不混用)。"""
+    rank = {"T1": 0, "T2": 1}
+    ra, rb = rank.get(a.get("source_tier"), 1), rank.get(b.get("source_tier"), 1)
+    if ra != rb:
+        return ra - rb
+    da, db = a.get("discovered_utc", ""), b.get("discovered_utc", "")
+    if da != db:
+        return -1 if da > db else 1
+    ka, kb = a["identity_key"], b["identity_key"]
+    return -1 if ka < kb else (1 if ka > kb else 0)
+
+
+def apply_n_new(members: list[dict], reuse_snapshot: dict, *, n_new: int) -> dict:
+    """N_new 作用顺序(model-calls 验收 2):可复用成员不占 N、不被截断;
+    确需新增付费评分的成员按确定性排序截断前 n_new;其余 capped(不丢弃,
+    留待下期或摘要外流程)。"""
+    recoverable, to_score = [], []
+    for member in members:
+        snap = reuse_snapshot.get(member["identity_key"], {})
+        if snap.get("score_1") is True and snap.get("score_2") is True:
+            recoverable.append(member)
+        else:
+            to_score.append(member)
+    ordered = sorted(to_score, key=functools.cmp_to_key(_candidate_cmp))
+    return {"recoverable": recoverable, "to_score": ordered[:n_new],
+            "capped": ordered[n_new:]}
+
+
+def compute_n_new(conn: sqlite3.Connection, config: Config,
+                  issue_date: str) -> int:
+    """候选上限公式本体(design.md"候选上限与额度预留"节,不复制口径
+    之外的行为):先扣摘要与重试预留,再算评分容量;禁止除零;合法停用
+    直接 N=0(允许零网络复用)。"""
+    budget = config.budget
+    rate = budget.rate_limits
+    # 合法停用:金额(monthly/per_issue 任一 ≤0)或次数(hour/day 任一 ≤0)
+    if (budget.monthly_micro_cny <= 0 or budget.per_issue_micro_cny <= 0
+            or rate.per_hour <= 0 or rate.per_day <= 0):
+        return 0
+
+    now = datetime.now(timezone.utc)
+    month = now.strftime("%Y-%m")
+    month_used, issue_used = _money_used(conn, month=month, issue_date=issue_date)
+    month_available = budget.monthly_micro_cny - month_used
+    issue_available = min(budget.per_issue_micro_cny - issue_used,
+                          month_available)
+    counts = _window_counts(conn, now)
+
+    price = _pricing_for(config, budget.default_model)
+    numerator = (budget.max_input_tokens * price.input_per_mtok_micro_cny
+                 + budget.max_output_tokens * price.output_per_mtok_micro_cny)
+    w_score = (numerator + _MICRO_PER_MILLION - 1) // _MICRO_PER_MILLION
+    w_summ = w_score            # M1 评分/摘要共用全局 token 上限
+    reserved_micro = (issue_available
+                      - config.selection.max_entries * w_summ
+                      - budget.retry_reserve_micro_cny)
+
+    if w_score == 0:
+        # 已核实免费价:余量扣预留 ≥0 → 金额不设限,否则 0(禁除零)
+        n_money = None if reserved_micro >= 0 else 0
+    else:
+        n_money = reserved_micro // (2 * w_score)
+    n_hour = ((rate.per_hour - counts["hour"] - config.selection.max_entries
+               - budget.retry_reserve_count) // 2)
+    n_day = ((rate.per_day - counts["day"] - config.selection.max_entries
+              - budget.retry_reserve_count) // 2)
+    candidates = [n for n in (n_money, n_hour, n_day) if n is not None]
+    return max(0, min(candidates))
