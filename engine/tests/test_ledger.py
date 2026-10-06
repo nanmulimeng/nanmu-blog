@@ -7,7 +7,8 @@ import pytest
 
 from nanmu_engine.config import load_config
 from nanmu_engine.db import connect_db, migrate
-from nanmu_engine.ledger import authorize, sync_budget_limits
+from nanmu_engine.ledger import (authorize, sync_budget_limits,
+                                 write_calibration_record)
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,6 +19,8 @@ def env(tmp_path):
     migrate(conn)
     config = load_config(ENGINE_ROOT)
     sync_budget_limits(conn, config)
+    write_calibration_record(conn, config, coefficient=1.0,
+                            results=[], passed=True)
     return conn, config
 
 

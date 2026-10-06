@@ -18,7 +18,8 @@ import pytest
 from nanmu_engine.config import (ExcludeEntry, SourceEntry, SourcesConfig,
                                  load_config)
 from nanmu_engine.db import connect_db, migrate
-from nanmu_engine.ledger import sync_budget_limits
+from nanmu_engine.ledger import (sync_budget_limits,
+                                 write_calibration_record)
 from nanmu_engine.publish import PublishContext
 from nanmu_engine.run import abandon_issue, rerun_issue, run_once
 
@@ -49,6 +50,8 @@ def env(tmp_path):
     migrate(conn)
     config = load_config(ENGINE_ROOT)
     sync_budget_limits(conn, config)
+    write_calibration_record(conn, config, coefficient=1.0,
+                            results=[], passed=True)
     config = dataclasses.replace(
         config, sources=SourcesConfig(
             1, "T2", (SourceEntry(name="src-a", tier="T1", priority=10),), ()))

@@ -16,6 +16,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import logging
 import math
 import sqlite3
 from dataclasses import dataclass
@@ -26,11 +27,14 @@ from nanmu_engine.config import BudgetConfig, Config
 
 PROVIDER = "deepseek"
 ENDPOINT = "/chat/completions"
+logger = logging.getLogger(__name__)
+
 _MICRO_PER_MILLION = 1_000_000
 
 Origin = Literal["initial", "retry", "unknown_retry"]
 RejectReason = Literal["pay_paused", "key_missing", "window", "money",
-                       "token_count_unavailable", "disabled"]
+                       "token_count_unavailable", "disabled",
+                       "not_calibrated"]
 
 
 @dataclass(frozen=True)
@@ -65,8 +69,75 @@ def sync_budget_limits(conn: sqlite3.Connection, config: Config) -> None:
             (rate.per_minute, rate.per_hour, rate.per_day))
 
 
-def _reserved_micro(config: Config, model: str, token_count: int) -> int:
-    """预占金额(整数微元,含输出上限)。"""
+# 消息计数方式标识(校准记录绑定项之一;token_count 计数语义变化时 bump)
+CALIBRATION_COUNTING = "full_request_messages_v1"
+
+
+def calibration_fingerprint(config: Config) -> dict:
+    """校准记录绑定的配置指纹(model/tokenizer 资源与版本/计数方式;
+    model-calls §3 规则 11:任一项变化即失效须重校准,不得跨配置沿用)。"""
+    model = config.budget.default_model
+    tok = config.budget.tokenizers.get(model)
+    return {"model": model,
+            "tokenizer_resource": tok.resource if tok else None,
+            "tokenizer_version": tok.version if tok else None,
+            "counting": CALIBRATION_COUNTING}
+
+
+def current_coefficient(conn: sqlite3.Connection) -> float:
+    """当前生效校准系数(engine_meta 'calibration_coefficient';
+    无键=1.0 官方资源初值——初始系数不进 config 默认值)。"""
+    row = conn.execute(
+        "SELECT value FROM engine_meta WHERE key='calibration_coefficient'"
+    ).fetchone()
+    if row is None:
+        return 1.0
+    try:
+        coef = float(row[0])
+    except ValueError:
+        logger.warning("stage=ledger event=coefficient_dirty value=%s"
+                       " 回退 1.0", row[0])
+        return 1.0
+    return coef
+
+
+def calibration_effective(conn: sqlite3.Connection, config: Config) -> bool:
+    """校准状态对当前配置是否生效:记录存在+passed+指纹全匹配+系数与
+    记录内一致(人工改系数=失效,重校准后新记录再生效)。"""
+    row = conn.execute(
+        "SELECT value FROM engine_meta WHERE key='calibration'").fetchone()
+    if row is None:
+        return False
+    try:
+        rec = json.loads(row[0])
+    except ValueError:
+        return False
+    return (rec.get("passed") is True
+            and rec.get("fingerprint") == calibration_fingerprint(config)
+            and rec.get("coefficient") == current_coefficient(conn))
+
+
+def write_calibration_record(conn: sqlite3.Connection, config: Config, *,
+                             coefficient: float, results: list,
+                             passed: bool) -> None:
+    """校准记录单事务落 engine_meta(规则 11 六要素:指纹/系数/样本对账
+    结果/判定时刻;passed=True 才构成授权前置的生效状态)。"""
+    record = {"fingerprint": calibration_fingerprint(config),
+              "coefficient": coefficient, "results": results,
+              "passed": bool(passed), "decided_at": _utc_now()}
+    with conn:
+        conn.execute(
+            "INSERT INTO engine_meta (key, value, updated_utc)"
+            " VALUES ('calibration', ?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET value=excluded.value,"
+            " updated_utc=excluded.updated_utc",
+            (json.dumps(record, ensure_ascii=False), _utc_now()))
+
+
+def _reserved_micro(conn: sqlite3.Connection, config: Config, model: str,
+                    token_count: int) -> int:
+    """预占金额(整数微元,含输出上限)。输入侧=计数×校准系数向上取整
+    (model-calls §3 规则 5;系数默认 1.0=官方资源初值)。"""
     pricing = None
     for row in config.budget.pricing:
         if row.model == model:
@@ -74,8 +145,7 @@ def _reserved_micro(config: Config, model: str, token_count: int) -> int:
             break
     if pricing is None:
         raise KeyError(f"价目缺失:{model}(config 校验应已排除)")
-    calibration_factor = 1.0   # 官方资源初始系数(model-calls 规则 11)
-    input_tokens = math.ceil(token_count * calibration_factor)
+    input_tokens = math.ceil(token_count * current_coefficient(conn))
     micro = (input_tokens * pricing.input_per_mtok_micro_cny
              + config.budget.max_output_tokens * pricing.output_per_mtok_micro_cny)
     return math.ceil(micro / _MICRO_PER_MILLION)
@@ -155,7 +225,7 @@ def authorize(conn: sqlite3.Connection, config: Config, *, purpose: str,
     now = now or datetime.now(timezone.utc)
     _label, month_start, month_end = _month_window(now)
     logical_key = _logical_key(purpose, model, request_hash)
-    reserved = _reserved_micro(config, model, token_count)
+    reserved = _reserved_micro(conn, config, model, token_count)
     digest = json.dumps(
         {"purpose": purpose, "model": model, "identity_key": identity_key,
          "request_hash": request_hash, "token_count": token_count},
@@ -172,6 +242,12 @@ def authorize(conn: sqlite3.Connection, config: Config, *, purpose: str,
         if row[0] != "0":
             conn.execute("ROLLBACK")
             return AuthorizeResult("rejected", "pay_paused")
+        # 1.5) 校准前置(规则 11 例外唯一):正式管线须校准状态对当前
+        # 配置生效;purpose='calibration' 是唯一豁免(解"未校准不得调用,
+        # 却必须先调用才能校准"循环),其余闸门(窗口/金额)照常适用
+        if purpose != "calibration" and not calibration_effective(conn, config):
+            conn.execute("ROLLBACK")
+            return AuthorizeResult("rejected", "not_calibrated")
         # 2) budget 行(次数限额真相源在表,行缺失=配置错误)
         rate_row = conn.execute(
             "SELECT per_minute, per_hour, per_day FROM budget"
@@ -295,8 +371,10 @@ def _breach_reason(conn: sqlite3.Connection, ref: AuthorizeResult,
     token_count = json.loads(digest).get("token_count")
     prompt_tokens = usage.get("prompt_tokens")
     if token_count is not None and prompt_tokens is not None \
-            and prompt_tokens > token_count:
-        return (f"usage.prompt_tokens({prompt_tokens})>预占计数({token_count})"
+            and prompt_tokens > math.ceil(
+                token_count * current_coefficient(conn)):
+        return (f"usage.prompt_tokens({prompt_tokens})>预占计数({token_count}"
+                f"×系数{current_coefficient(conn)})"
                 f" receipt={ref.receipt_id} attempt={ref.attempt_id}")
     reserved = conn.execute(
         "SELECT reserved_micro_cny FROM receipt_attempt WHERE id=?",

@@ -17,7 +17,8 @@ import pytest
 from nanmu_engine.config import load_config
 from nanmu_engine.db import connect_db, migrate
 from nanmu_engine.ledger import (authorize, reusable_scores,
-                                 sync_budget_limits)
+                                 sync_budget_limits,
+                                 write_calibration_record)
 from nanmu_engine.ops import (OpsCommandError, pause_issue, restore_backup,
                               status, unpause_issue)
 from nanmu_engine.publish import PublishContext, publish_issue
@@ -49,9 +50,12 @@ def _run(args, cwd, check=True):
     return r.stdout.strip()
 
 
-def _make_db(path: Path, *, marker=False, seed=None):
+def _make_db(path: Path, *, marker=False, seed=None, calibrated=False):
     conn = connect_db(str(path))
     migrate(conn)
+    if calibrated:  # 备份快照含校准记录(闸门"解除后恢复授权"依赖)
+        write_calibration_record(conn, load_config(ENGINE_ROOT),
+                                 coefficient=1.0, results=[], passed=True)
     if marker:      # 备份独有标记期(证明活动库已被备份替换)
         with conn:
             conn.execute(
@@ -109,7 +113,8 @@ def _authorize(conn, config):
 def test_restore_sets_flag_gate_blocks_and_release_resumes(tmp_path):
     config = load_config(ENGINE_ROOT)
     live = _make_db(tmp_path / "engine.db")
-    backup = _make_db(tmp_path / "backup.db", marker=True)
+    backup = _make_db(tmp_path / "backup.db", marker=True,
+                       calibrated=True)
 
     out = restore_backup(backup, live)
     assert _meta(live) == "1"                    # pay_paused=1 落活动库

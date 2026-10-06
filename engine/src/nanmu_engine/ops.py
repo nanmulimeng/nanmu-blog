@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import shutil
 import sqlite3
@@ -290,3 +291,162 @@ def status(conn: sqlite3.Connection, issue_date: str | None = None, *,
     return {"open": open_issues,
             "today": {"issue_date": today, "status": today_status},
             "warnings": warnings}
+
+
+# ---------- 规则 11(model-calls §3):校准通道执行体(替身验证) ----------
+
+CALIBRATION_SAMPLES = (
+    {"title": "合成样本·甲", "content_text": "校准用最小合成材料。内容极短,"
+     "仅构造完整请求结构。"},
+    {"title": "合成样本·乙", "content_text": "第二条最小合成材料,与甲不同"
+     "正文,验证同 prompt 下不同输入的计数稳定性。"},
+    {"title": "合成样本·丙", "content_text": "第三条最小合成材料,含少量"
+     "标点与数字 1234567890,覆盖常见字符分布。"},
+    {"title": "真实短文样本", "content_text": "模型上下文窗口内的注意力分配"
+     "机制决定了长文本中段信息容易被忽略;评测显示分词边界与提示词结构对"
+     "实际消耗 token 数的影响不可忽略,校准必须用真实分布的正文验证。"},
+)
+"""阶段 B 固定样本:3 条最小合成材料+1 条真实短文(可复现;阶段 A 的
+离线 90 条计数验证已完成于 token_count 模块)。"""
+
+
+def _calibration_spent_micro(conn: sqlite3.Connection) -> int:
+    """校准通道已耗(已结算 actual,未决按 reserved 保守计)微元合计。"""
+    return conn.execute(
+        "SELECT COALESCE(SUM(COALESCE(a.actual_micro_cny,"
+        " a.reserved_micro_cny)), 0) FROM receipt_attempt a"
+        " JOIN receipt r ON r.id=a.receipt_id"
+        " WHERE r.purpose='calibration'").fetchone()[0]
+
+
+def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
+              samples=None, now: datetime | None = None) -> dict:
+    """校准执行体(规则 11,替身验证;真实调用属 Task 26 授权范围)。
+
+    每次校准调用走完整账本(authorize 预占→attempt→record_response 结算
+    与对账),月预算与窗口限额照常适用,不设免检额度;单列
+    calibration.budget_micro_cny 为预占合计上限,耗尽即中止不追加。
+    判定:全部样本 usage.prompt_tokens ≤ 预占计数(计数×系数向上取整)
+    →写生效记录(绑定配置指纹+系数);任一超出→record_response 对账已
+    持久化置 pay_paused(规则 2 同一闸门),记录写失败态,人工上调系数
+    后重新校准。同身份(calibration purpose+样本+系数)已有结算回执的
+    样本直接复用账本结果,零网络零新增付费。
+    """
+    from nanmu_engine.llm import LLMRequest, call_llm, classify_failure
+    from nanmu_engine.ledger import (_reserved_micro, authorize,
+                                     current_coefficient, request_hash,
+                                     write_calibration_record)
+    from nanmu_engine.score import (_system_messages, _truncate_user)
+    from nanmu_engine.token_count import count_request_tokens
+
+    now = now or datetime.now(timezone.utc)
+    samples = list(samples) if samples is not None \
+        else [dict(s) for s in CALIBRATION_SAMPLES]
+    model = config.budget.default_model
+    coefficient = current_coefficient(conn)
+    budget_micro = config.budget.calibration_budget_micro_cny
+    results: list[dict] = []
+    stopped: str | None = None
+
+    for i, sample in enumerate(samples):
+        try:
+            user_text, token_count = _truncate_user(
+                config, sample["title"], sample["content_text"],
+                config.prompts.score.text)
+        except Exception as exc:        # 计数不可得/标题超界 → 不出网
+            logger.error("stage=calibrate event=count_failed sample=%d"
+                         " message=%s", i, exc)
+            return {"status": "tokenizer_unavailable", "passed": False,
+                    "results": results}
+        messages = _system_messages(config.prompts.score.text, user_text)
+        ctx = {"provider": "deepseek", "endpoint": "/chat/completions",
+               "purpose": "calibration", "model": model,
+               "prompt_version": config.prompts.score.version,
+               "system_text": config.prompts.score.text, "user_text": user_text,
+               "max_tokens": config.budget.max_output_tokens,
+               "thinking": config.budget.thinking,
+               "response_format": "json_object" if config.budget.json_output
+                                  else "text",
+               # 系数入身份:人工上调系数后重校准=新请求身份(同系数重跑
+               # 撞旧回执,复用判定零付费,防重复计费)
+               "identity_key": f"calibration:coef-{coefficient}:sample-{i}",
+               "content_hash": sample.get("content_hash", ""),
+               "attemptTag": f"calibration-{i}"}
+        rh = request_hash(ctx)
+        logical_key = f"calibration|{model}|{rh}"
+
+        replay = conn.execute(
+            "SELECT a.usage_json FROM receipt r JOIN receipt_attempt a"
+            " ON a.receipt_id=r.id AND a.attempt_no=1"
+            " WHERE r.logical_key=?", (logical_key,)).fetchone()
+        if replay and replay[0]:
+            prompt_tokens = json.loads(replay[0]).get("prompt_tokens")
+            results.append({"sample": i, "prompt_tokens": prompt_tokens,
+                            "reserved_count": math.ceil(
+                                token_count * coefficient), "reused": True})
+            continue
+
+        reserved_micro = _reserved_micro(conn, config, model, token_count)
+        spent = _calibration_spent_micro(conn)
+        if spent + reserved_micro > budget_micro:
+            logger.warning("stage=calibrate event=budget_exhausted"
+                           " spent=%d next=%d budget=%d", spent,
+                           reserved_micro, budget_micro)
+            stopped = "budget_exhausted"
+            break
+
+        ref = authorize(conn, config, purpose="calibration", model=model,
+                        request_hash=rh, identity_key=ctx["identity_key"],
+                        token_count=token_count, issue_date=None,
+                        origin="initial", now=now)
+        if ref.status != "reserved":
+            stopped = ref.reject_reason or "gate"
+            logger.warning("stage=calibrate event=gate_rejected sample=%d"
+                           " reason=%s", i, stopped)
+            break
+
+        request = LLMRequest(model=model, messages=messages,
+                             max_tokens=ctx["max_tokens"],
+                             purpose="calibration", request_hash=rh)
+        try:
+            result = call_llm(request, transport=transport)
+            error_class, detail = classify_failure(result)
+        except Exception as exc:
+            from nanmu_engine.ledger import record_failure
+            error_class, detail = classify_failure(exc)
+            record_failure(conn, config, ref, error_class, detail)
+            stopped = f"sample_failed:{error_class or 'unknown'}"
+            break
+        if error_class is not None:
+            from nanmu_engine.ledger import record_failure
+            record_failure(conn, config, ref, error_class, detail,
+                           usage=result.usage)
+            stopped = f"sample_failed:{error_class}"
+            break
+
+        from nanmu_engine.ledger import record_response
+        record_response(conn, config, ref, result)   # 结算+对账(超→pause)
+        prompt_tokens = (result.usage or {}).get("prompt_tokens")
+        results.append({"sample": i, "prompt_tokens": prompt_tokens,
+                        "reserved_count": math.ceil(
+                            token_count * coefficient), "reused": False})
+
+    any_over = any(r["prompt_tokens"] is not None
+                   and r["prompt_tokens"] > r["reserved_count"]
+                   for r in results)
+    if any_over:
+        # 对账已在 record_response 同事务持久化置 pay_paused(规则 2);
+        # 此处写失败态记录,人工核对后上调系数再重新校准
+        write_calibration_record(conn, config, coefficient=coefficient,
+                                 results=results, passed=False)
+        logger.error("stage=calibrate event=ratio_over counts=%s", results)
+        return {"status": "failed", "passed": False, "results": results}
+    if stopped:
+        status = stopped if stopped == "budget_exhausted" \
+            else f"gate_rejected:{stopped}"
+        return {"status": status, "passed": False, "results": results}
+    write_calibration_record(conn, config, coefficient=coefficient,
+                             results=results, passed=True)
+    logger.info("stage=calibrate event=passed coefficient=%s samples=%d",
+                coefficient, len(results))
+    return {"status": "passed", "passed": True, "results": results}
