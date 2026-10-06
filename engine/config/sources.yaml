@@ -1,0 +1,7 @@
+version: 1
+unknown_source_tier: T2        # 上游新源默认档(保守=更高门槛)
+sources:                       # name 必须与上游 source.name 完全一致;清单与 tier 依据见 selection.md 源 tier 表
+  - {name: 'OpenAI Blog', tier: T1, priority: 10}
+  - {name: 'Google DeepMind', tier: T1, priority: 10}
+exclude:
+  - {name: '机器之心', reason: 'feed 连续失败 768 次,修复后再评估'}

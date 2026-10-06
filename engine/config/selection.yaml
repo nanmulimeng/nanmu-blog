@@ -1,0 +1,8 @@
+version: 1
+thresholds: {T1: 60, T2: 75}             # 真相源 selection.md
+max_entries: 15
+sections:                                # 板块阈值是运营参数;模板结构固定(pipeline.md)
+  - {key: headline, min_display: 80}
+  - {key: featured, min_display: 75}
+  - {key: glimpse, min_display: 0}       # 其余入选条目(T1 源 60-74 段)
+title_blacklist: ['赞助', '广告']         # 格式示例;初值 M1 上线前定稿

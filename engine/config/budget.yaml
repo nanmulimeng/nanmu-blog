@@ -1,0 +1,36 @@
+version: 1
+default_model: 'deepseek-flash'
+rate_limits: {per_minute: 10, per_hour: 100, per_day: 400}
+money_micro_cny:
+  monthly: 50000000                      # ¥50
+  per_issue: 1000000                     # ¥1
+  warn_monthly: 40000000                 # ¥40 预警
+reserve:                                 # 候选上限公式参数(design.md 候选上限节)
+  retry_reserve_count: 5                 # 仅重试次数;摘要次数另按 max_entries 预留
+  retry_reserve_micro_cny: 200000
+retry:
+  max_attempts: 2                        # 普通失败总尝试上限(含首次)
+  unknown_retry_after_min: 30
+  backoff_s: [30, 120]
+calibration:                             # 校准通道契约=units/model-calls.md 规则 11;走完整闸门,耗尽即中止
+  budget_micro_cny: 50000                # 校准调用预占合计上限(¥0.05)
+timeouts:
+  http_timeout_s: 60
+  issue_timeout_s: 1800
+limits:
+  max_input_tokens: 4000                 # 最坏成本估算用;按实际 prompt 校准
+  max_output_tokens: 200
+llm:
+  thinking: disabled                     # M1 全部关闭(llm.py 调用契约)
+  json_output: true                      # score/understand 用 response_format json_object
+tokenizers:                              # Task 1 选定资源;version=tokenizer.json 的 git blob 哈希(内容寻址锚定)
+  deepseek-flash:
+    resource: 'deepseek-ai/DeepSeek-V4-Flash'
+    path: 'resources/tokenizers/deepseek-v4-flash/tokenizer.json'
+    version: '628e3364caad11bdf9e67cea06eae7878122811d'
+pricing:                                 # 价目快照版本;来源与时点见 budget.md,不含密钥
+  - pricing_version: 'deepseek-2026-10-02'
+    model: 'deepseek-flash'
+    input_per_mtok_micro_cny: 2000000    # 峰时未缓存保守价 ¥2/M
+    cached_input_per_mtok_micro_cny: 40000
+    output_per_mtok_micro_cny: 8000000   # 峰时 ¥8/M
