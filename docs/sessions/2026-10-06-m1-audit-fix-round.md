@@ -1,4 +1,4 @@
-# 2026-10-06 M1 审计修复轮(8 项)交接
+# 2026-10-06 M1 审计修复轮(8 项)+ 跨模块核验与交界缝修复轮 交接
 
 ## 背景与授权
 
@@ -36,7 +36,31 @@
 
 ## 接手事项
 
-1. **跨模块核验**(用户既定要求):修复完成后做一次跨模块核验——四组修复的交界处(账本↔身份↔发布↔站点)是否仍有缝。
+1. ~~跨模块核验~~ **已完成(2026-10-06,见下节)**:三路并行只读核验发现 7 处 P2+1 低危边缘交界缝,已按"继续开发修复"授权全部修复(TDD,四提交)。
 2. Task 25(部署环境核查)/Task 26(真实付费启用):**须用户当次显式授权**,不自动进入。
-3. 台账:`.superpowers/sdd/2026-10-05-m1-engine-implementation/progress.md` 保留(用户指示不删),本轮记录在 "Audit round:" 各行。
+3. 台账:`.superpowers/sdd/2026-10-05-m1-engine-implementation/progress.md` 保留(用户指示不删),本轮记录在 "Audit round:" 与 "Cross-module round:" 各行。
 4. 上轮 Deferred 清单更新:M7(UTC 月切)已被用户指出过时移除;W1 entry_ids='[]' minor 已随 P1-4 关闭;其余 Final minor 维持在案。
+
+---
+
+## 跨模块核验与交界缝修复轮(同日接续)
+
+三路并行只读核验(A 账本×校准 / B 发布×恢复 / C 安全×构建):核心安全命题(ZWSP×git 身份链恒等、Windows junction 穿越、探针×构建)无缝;交界处发现 7 处 P2+1 低危边缘,按模块本地修复(每项 RED→GREEN):
+
+| 交界缝 | 一句话 | 提交 |
+|---|---|---|
+| A1 校准 replay | 只认 attempt_no=1——首发 unknown 过窗补发结算在 no=2,重跑判"未复用"重复付费 | 9075620 |
+| A2 校准再发送 | 绕过 can_retry 三条件,origin 恒 initial;窗内应等待 | 9075620 |
+| B-缝A W1 回填 | claim 全集≠产物成员,被剔除成员借 W4 清算置 used | 3808295 |
+| B-缝C 线上自洽 | restore 回退 ops_json 后 correct 基于回退认知重建已撤回文件 | 3808295 |
+| B-缝D 部署 SHA | 不可解析时 None==None 把"无法验证"误判"已删除",撤回误确认 | 3808295 |
+| B-边缘 ff merge | 重叠暂存致 merge rc=1→RuntimeError 逃逸异常协议(无 fail 行/无 E8) | 3808295 |
+| B-缝B 清算口径 | 发布主链 final_keys=fsr.final 全员 vs 恢复路径 entry_ids(ready)双口径 | b1155c4 |
+| C1 Linux 清理 | symlinkSync junction 在 Linux 退化为普通 symlink,rmdir 恒 ENOTDIR→每次部署残留 /tmp 副本 | a68cae2 |
+
+机制要点:A1 replay 取最新 `usage_json IS NOT NULL` attempt;A2 同构 `score._attempt_side`(recover_stale_pending+can_retry,unknown_wait 单列状态);缝A 以产物 markdown 内容反解成员(成员 `safe_source_url` 出现在产物文本=进产物);缝C `_assert_remote_consistent`(withdraw/correct 期望在线、relist 期望已消失,不一致转人工);缝D `git cat-file -e deployed^{commit}` 前置;缝B `final_keys` 排除 `draft.safety_excluded`;C1 摘链接两步制(rmdir→rmSync 非递归),链接未摘除绝不 `rmSync(recursive)`。
+
+- **B-缝B 可达性说明**:采集侧 normalize R0 scheme 白名单本就把 javascript URL 挡在 entry 表外(正常链路 safety_excluded 几乎不可达);该修复属防御性口径统一,e2e 测试用直插 entry 构造。
+- **C1 验证边界**:Linux 分支行为在 Windows 开发机不可复现,验证=Windows `npm run verify` 全链回归绿+tmp 零残留+清理逻辑推演(Ruling 在台账);服务器首跑可观察。
+- 验证:engine 全套件 **301 passed**(192s,含 7 个新交界测试);site `npm run verify` 全链绿。
+- C 路核验另附 5 处 P3 deferred(台账 "Cross-module round: minor (deferred)" 各行:夹具日期撞车误报窗、杂散合规 .md 无清单校验、崩溃路径 tmp 残留、人工删除提示未警告活链接、探针 dotfile/并发 flaky)。
