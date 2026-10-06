@@ -27,6 +27,7 @@ from nanmu_engine.collect import CollectError, collect_once
 from nanmu_engine.config import Config, ConfigError
 from nanmu_engine.ledger import (compute_n_new, issue_cost_snapshot,
                                  reusable_scores)
+from nanmu_engine.notify import notify_event
 from nanmu_engine.prescreen import prescreen
 from nanmu_engine.publish import (ManualIntervention, PublishContext,
                                   publish_issue, recover_issue,
@@ -42,6 +43,13 @@ logger = logging.getLogger(__name__)
 
 RECOVER_BUDGET_S = 600.0        # 恢复阶段总预算(config 运行参数初值)
 _EXIT_PRIORITY = (1, 2, 4, 3, 0)  # design.md:不得以部分成功覆盖需排查错误
+
+
+def _log_sender(dedup_key: str, message: str) -> str:
+    """默认发送体=M1 结构化日志(渠道凭据部署期接入;scheduling-ops §9)。"""
+    logger.info("stage=notify event=send key=%s message=%s", dedup_key,
+                message)
+    return "logged"
 
 
 def _now_str() -> str:
@@ -76,24 +84,7 @@ def _auto_eligible(frozen_utc: str, today: str) -> bool:
         return False
 
 
-# ---------- 通知去重(同 key UPSERT;发送体 Task 20 统一,此处记账) ----------
-
-def _notify(conn: sqlite3.Connection, dedup_key: str, message: str,
-            notify_send: Callable[[str, str], str] | None) -> bool:
-    """首现发送+落表;已落库同 key 零重发(崩溃边界:发送成功未落库→重启
-    可能重复,不承诺 exactly-once)。"""
-    if conn.execute("SELECT 1 FROM notify_sent WHERE dedup_key=?",
-                    (dedup_key,)).fetchone():
-        return False
-    result = notify_send(dedup_key, message) if notify_send else "logged"
-    with conn:
-        conn.execute(
-            "INSERT INTO notify_sent (dedup_key, channel, sent_utc, result)"
-            " VALUES (?, 'log', ?, ?)"
-            " ON CONFLICT(dedup_key) DO UPDATE SET"
-            " sent_utc=excluded.sent_utc, result=excluded.result",
-            (dedup_key, _now_str(), str(result)))
-    return True
+# ---------- 通知(去重与发送统一走 notify.py;发送体注入) ----------
 
 
 def _fail_issue(conn: sqlite3.Connection, issue_date: str,
@@ -337,9 +328,10 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         if kind != "submitted" and freeze_row \
                 and not _auto_eligible(freeze_row[1], today):
             events(f"phase:expired:{issue_date}")       # 移出自动清单
-            _notify(conn, f"auto_expire:{issue_date}",
-                    f"{issue_date} 自动恢复到期(frozen_utc="
-                    f"{freeze_row[1]})仍非终态,转人工", notify_send)
+            notify_event(conn, "auto_expire", issue_date,
+                         f"{issue_date} 自动恢复到期(frozen_utc="
+                         f"{freeze_row[1]})仍非终态,转人工",
+                         send=notify_send or _log_sender)
             codes.append(4)
             continue
         events(f"phase:recover:{issue_date}")
