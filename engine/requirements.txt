@@ -1,0 +1,7 @@
+# 运行依赖(与 pyproject.toml [project].dependencies 保持一致)
+# Task 1 选定 tokenizer 包后追加白名单(coding-standards 依赖纪律)
+httpx>=0.27
+PyYAML>=6.0
+
+# 测试依赖:经 pyproject 的 [dev] extra 安装(pip install -e ".[dev]"),
+# 与部署安装分开列出(coding-standards):pytest、pytest-mock

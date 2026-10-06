@@ -1,0 +1,6 @@
+# Python 构建与测试产物(不入库)
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
