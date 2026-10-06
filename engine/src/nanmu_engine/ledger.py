@@ -557,12 +557,15 @@ def request_hash(identity_ctx: dict) -> str:
 
 
 def _passes_e4(purpose: str, response_json: str | None) -> bool:
-    """完整 E4 业务验证器(契约桩;Task 13/14 落地真验证器后回跑本测试)。
+    """完整 E4 业务验证器分派(与首次消费同一验证器,判定与复用通用)。
 
-    桩契约:finish_reason=stop + content JSON 可解析为对象 + purpose 对应
-    字段齐(score:attentionScore 为 0-100 整数;understand:title_zh/
-    summary/reason 非空字符串)。length 即使 JSON 恰好可解析也不可。
+    score 分支=Task 13 定稿(score.validate_score_response,design.md
+    错误矩阵为真相源);understand 分支=契约桩,Task 14 落地
+    summarize.py 后回填(回跑 reusable_scores 测试)。
     """
+    if purpose == "score":
+        from nanmu_engine.score import validate_score_response
+        return validate_score_response(response_json)
     if not response_json:
         return False
     try:
@@ -577,9 +580,6 @@ def _passes_e4(purpose: str, response_json: str | None) -> bool:
         return False
     if not isinstance(payload, dict):
         return False
-    if purpose == "score":
-        score = payload.get("attentionScore")
-        return type(score) is int and 0 <= score <= 100
     return all(isinstance(payload.get(k), str) and payload.get(k)
                for k in ("title_zh", "summary", "reason"))
 
