@@ -30,6 +30,24 @@ function checkHtml(dir) {
 }
 if (existsSync(dist)) checkHtml(dist);
 
+// cost_pending 期的成本标注(digest-design §3.4:列表/详情/正文三处口径
+// 一致;正文标注由 engine assemble 保证,此处验渲染侧两处)
+{
+  const digestSrc = new URL('../src/content/digest/', import.meta.url);
+  if (existsSync(digestSrc)) {
+    for (const f of readdirSync(digestSrc)) {
+      if (!f.endsWith('.md')) continue;
+      const src = readFileSync(new URL(f, digestSrc), 'utf8');
+      if (!/^cost_pending:\s*true\s*$/m.test(src)) continue;
+      const id = f.replace(/\.md$/, '');
+      const detail = readFileSync(new URL(`digest/${id}/index.html`, dist), 'utf8');
+      if (!detail.includes('含未决预占')) problems.push(`cost_pending 期 ${id} 详情页缺成本标注`);
+      const list = readFileSync(new URL('digest/index.html', dist), 'utf8');
+      if (!list.includes('含未决预占')) problems.push(`cost_pending 期 ${id} 列表页缺成本标注`);
+    }
+  }
+}
+
 if (problems.length) {
   console.error('SMOKE FAIL:\n' + problems.join('\n'));
   process.exit(1);

@@ -23,6 +23,10 @@ const digest = defineCollection({
       ai_model: z.string().trim().min(1),
       entry_count: z.number().int().nonnegative(),
       cost_cny: z.number().finite().nonnegative(),
+      // 未决预占标注(digest-design §3.4 三处口径一致);default(false)
+      // 仅为旧文件兼容——新生成文件必须显式写布尔值由 engine 组装断言
+      // (Task 16:assemble 产物总含显式 cost_pending),两职责不混在 schema
+      cost_pending: z.boolean().default(false),
     })
     // strict:同 posts,未知键(含 slug)入库前拒绝(Task 8a)
     .strict(),

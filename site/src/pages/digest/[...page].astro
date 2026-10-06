@@ -21,7 +21,7 @@ const { page } = Astro.props;
     page.data.map((d) => (
       <div class="card">
         <a href={`/digest/${d.id}/`}><strong>{d.data.date} 日报</strong></a>
-        <div class="muted">{d.data.entry_count} 条 · 由 {d.data.ai_model} 生成 · 成本 ¥{d.data.cost_cny}</div>
+        <div class="muted">{d.data.entry_count} 条 · 由 {d.data.ai_model} 生成 · 成本 ¥{d.data.cost_cny}{d.data.cost_pending ? '(含未决预占,为保守上界)' : ''}</div>
       </div>
     ))
   )}

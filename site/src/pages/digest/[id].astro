@@ -13,7 +13,7 @@ const { Content } = await render(digest);
 ---
 <Base title={`${digest.data.date} 日报`} description={`AI 生成 · ${digest.data.entry_count} 条`}>
   <h1>{digest.data.date} 日报</h1>
-  <p class="muted">AI 生成({digest.data.ai_model})· {digest.data.entry_count} 条 · 成本 ¥{digest.data.cost_cny}</p>
+  <p class="muted">AI 生成({digest.data.ai_model})· {digest.data.entry_count} 条 · 成本 ¥{digest.data.cost_cny}{digest.data.cost_pending ? '(含未决预占,为保守上界)' : ''}</p>
   <hr />
   <article><Content /></article>
 </Base>
