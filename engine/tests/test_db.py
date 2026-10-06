@@ -96,3 +96,42 @@ def test_connect_readonly_rejects_writes(tmp_path):
         ro.execute("INSERT INTO entry (identity_key, url, title, discovered_utc) "
                    "VALUES ('k', 'u', 't', 'now')")
     ro.close()
+
+
+# ---------- 修复轮(评审 I5):建库单事务,中途崩溃可重入 ----------
+
+def test_migrate_interrupted_leaves_empty_db_and_reentrant(tmp_path):
+    import sqlite3
+    db = str(tmp_path / "engine.db")
+
+    class _BoomConn(sqlite3.Connection):
+        armed = True
+
+        def execute(self, sql, *a):
+            if self.armed and "engine_meta" in sql:
+                self.armed = False
+                raise sqlite3.OperationalError("simulated crash")
+            return super().execute(sql, *a)
+
+    conn = sqlite3.connect(db, factory=_BoomConn, timeout=5,
+                           isolation_level=None)
+    conn.execute("PRAGMA journal_mode=WAL")
+    with pytest.raises(sqlite3.OperationalError):
+        migrate(conn)
+    # 单事务回滚:无表残留、user_version 仍 0(不是"非空但 version 0"死库)
+    objects = conn.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
+    ).fetchone()[0]
+    assert objects == 0
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
+    conn.close()
+
+    # 崩溃后重入 migrate 成功(同事务原子建库)
+    from nanmu_engine.db import connect_db
+    conn2 = connect_db(db)
+    migrate(conn2)
+    assert conn2.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert conn2.execute(
+        "SELECT value FROM engine_meta WHERE key='pay_paused'"
+    ).fetchone()[0] == "0"
+    conn2.close()

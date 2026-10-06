@@ -152,9 +152,13 @@ def test_budget_row_missing_rejects(env):
 
 def test_reserved_formula_includes_output_cap(env):
     conn, config = env
+    import dataclasses
     # token_count=1_000_000,input ¥2/M=2_000_000 微元/M,out ¥8/M,
     # max_output_tokens=200 → 1M×2 + 200×8 = 2_001_600 微元(输出上限必含)
-    result = _authorize(conn, config, token_count=1_000_000)
+    # 期红线含本次预占(C2):默认 1M 上限容不下这笔,构造充足 odd 配置
+    odd = dataclasses.replace(config.budget, per_issue_micro_cny=50_000_000)
+    result = _authorize(conn, dataclasses.replace(config, budget=odd),
+                        token_count=1_000_000)
     assert result.status == "reserved"
     assert result.reserved_micro_cny == 2_001_600
 
@@ -389,8 +393,12 @@ def _ok_result(prompt_tokens=100, completion_tokens=50) -> "LLMResult":
 
 def test_record_response_persists_received_and_settles(env):
     conn, config = env
-    ref = _authorize(conn, config, token_count=1_000_000)
-    record_response(conn, config, ref, _ok_result(prompt_tokens=1_000_000))
+    import dataclasses
+    # C2 后预占不得越期红线:token_count=1M 需充足期上限才可授权
+    odd = dataclasses.replace(config.budget, per_issue_micro_cny=50_000_000)
+    odd_cfg = dataclasses.replace(config, budget=odd)
+    ref = _authorize(conn, odd_cfg, token_count=1_000_000)
+    record_response(conn, odd_cfg, ref, _ok_result(prompt_tokens=1_000_000))
     attempt = conn.execute(
         "SELECT status, actual_micro_cny, usage_json FROM receipt_attempt"
         " WHERE id=?", (ref.attempt_id,)).fetchone()
@@ -723,9 +731,109 @@ def test_compute_n_new_retry_reserve_zero(env):
                          issue_date="2026-10-06") == 40
 
 
-def test_compute_n_new_cross_month_unknown(env):
+# ---------- 修复轮(评审 C1/C2/I1-I4):停用语义/含本次预占/跨月未决/回执状态/月投影幂等/对账共用 ----------
+# (旧 test_compute_n_new_cross_month_unknown 断言"跨月未决不扣本月"已删:
+#  budget.md L67 推翻 Task 8 Ruling,新语义由 test_i1 覆盖)
+
+import dataclasses as _dc
+
+from nanmu_engine.config import RateLimits as _RateLimits
+
+
+def test_c1_rate_limits_zero_disables_new_attempts(env):
+    # 合法停用(budget 行任一档 ≤0)= 停止新增付费(E5),不是"该档不设限"
     conn, config = env
-    # 上月 unknown 预占行:按 started_utc 归属上月,不占本月/本期容量
+    odd = _dc.replace(config.budget, rate_limits=_RateLimits(10, 0, 400))
+    odd_cfg = _dc.replace(config, budget=odd)
+    sync_budget_limits(conn, odd_cfg)          # 停用配置同步进 budget 表
+    result = _authorize(conn, odd_cfg)
+    assert result.status == "rejected"
+    assert result.reject_reason == "disabled"
+
+
+def test_c1_monthly_zero_disables_new_attempts(env):
+    conn, config = env
+    odd = _dc.replace(config.budget, monthly_micro_cny=0)
+    odd_cfg = _dc.replace(config, budget=odd)
+    sync_budget_limits(conn, odd_cfg)
+    result = _authorize(conn, odd_cfg)
+    assert result.status == "rejected" and result.reject_reason == "disabled"
+
+
+def test_c2_money_check_includes_new_reservation_month(env):
+    # 存量 49_999_999 未达 50M,但 +本次预占 3_600 越线 → 拒
+    # (种子行放在外月,期分支不触发,单独验证月边界)
+    conn, config = env
+    _seed_attempt(conn, minutes_ago=5, reserved=3_600, actual=49_999_999,
+                  issue_date="2026-09-30")
+    result = _authorize(conn, config)          # 默认 1000 tokens → reserved 3_600
+    assert result.status == "rejected" and result.reject_reason == "money"
+
+
+def test_c2_money_check_includes_new_reservation_issue(env):
+    conn, config = env
+    _seed_attempt(conn, minutes_ago=5, reserved=3_600, actual=999_990)
+    result = _authorize(conn, config)
+    assert result.status == "rejected" and result.reject_reason == "money"
+
+
+def test_i1_cross_month_pending_counts_month_available(env):
+    # budget.md:月可用扣**所有月份**尚未核清预占(跨月 unknown 保留直至核清)
+    conn, config = env
     _seed_attempt(conn, minutes_ago=40 * 24 * 60, reserved=500_000,
                   actual=None, issue_date="2026-08-27", status="unknown")
-    assert compute_n_new(conn, config, issue_date="2026-10-06") == 34
+    odd = _dc.replace(config.budget, monthly_micro_cny=1_000_000)
+    odd_cfg = _dc.replace(config, budget=odd)
+    # 月可用=1M−500_000=500_000;期可用=min(1M,500K)=500K
+    # N_money=floor((500_000−144_000−200_000)/19_200)=8
+    assert compute_n_new(conn, odd_cfg, issue_date="2026-10-06") == 8
+    # authorize 同口径:月可用 0 余量 + 本次预占 → money 拒
+    odd2 = _dc.replace(config.budget, monthly_micro_cny=500_000)
+    result = _authorize(conn, _dc.replace(config, budget=odd2))
+    assert result.status == "rejected" and result.reject_reason == "money"
+
+
+def test_i2_record_failure_updates_receipt_status(env):
+    conn, config = env
+    result, _ = _run_attempt(conn, config, error_class="unknown")
+    st = conn.execute("SELECT status FROM receipt WHERE id=?",
+                      (result.receipt_id,)).fetchone()[0]
+    assert st == "unknown"
+    result2, _ = _run_attempt(conn, config, error_class="no_retry",
+                              request_hash="g" * 64)
+    st2 = conn.execute("SELECT status FROM receipt WHERE id=?",
+                       (result2.receipt_id,)).fetchone()[0]
+    assert st2 == "failed"
+
+
+def test_i3_api_usage_recomputed_idempotent_after_reconcile(env):
+    conn, config = env
+    ref = _authorize(conn, config, token_count=1_000)
+    record_response(conn, config, ref, _ok_result(prompt_tokens=100))
+    before = conn.execute("SELECT cost_cny FROM api_usage").fetchone()[0]
+    assert before == pytest.approx(0.0006)     # 结算 600 微元
+    reconcile(conn, config, ref.attempt_id, dict(EVIDENCE_FULL),
+              actual_micro_cny=1_000)
+    mid = conn.execute("SELECT cost_cny FROM api_usage").fetchone()[0]
+    reconcile(conn, config, ref.attempt_id, dict(EVIDENCE_FULL, ref="L44"),
+              actual_micro_cny=1_000)          # 重复核清不双计
+    after = conn.execute("SELECT cost_cny FROM api_usage").fetchone()[0]
+    assert mid == after == pytest.approx(0.001)  # 幂等重算
+
+
+def test_i4_record_failure_usage_over_count_pauses(env):
+    conn, config = env
+    ref = _authorize(conn, config, token_count=500)
+    record_failure(conn, config, ref, "no_retry",
+                   {"http_status": 400, "matrix_code": "E1.request",
+                    "message": "bad"},
+                   usage={"prompt_tokens": 2_000,
+                          "prompt_cache_hit_tokens": 0,
+                          "prompt_cache_miss_tokens": 2_000,
+                          "completion_tokens": 5})
+    paused = conn.execute(
+        "SELECT value FROM engine_meta WHERE key='pay_paused'").fetchone()[0]
+    assert paused == "1"                       # 失败路径同样对账停新增
+    row = conn.execute("SELECT status FROM receipt_attempt WHERE id=?",
+                       (ref.attempt_id,)).fetchone()
+    assert row[0] == "failed"                  # 先落库后判定

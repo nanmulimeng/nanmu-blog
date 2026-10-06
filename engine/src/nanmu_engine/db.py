@@ -186,7 +186,10 @@ def connect_readonly(path: str) -> sqlite3.Connection:
 
 
 def migrate(conn: sqlite3.Connection) -> None:
-    """版本化迁移。空库建 12 表并同事务写 engine_meta 默认 pay_paused=0。
+    """版本化迁移。空库建 12 表,**单事务**(DDL 逐条 + engine_meta 默认
+    pay_paused=0 + user_version 同一 BEGIN IMMEDIATE…COMMIT):中途崩溃
+    整体回滚,库保持空且 version 0 → 可重入,不产生"非空但 version 0"
+    死库(executescript 会先隐式 COMMIT,故逐条执行)。
 
     未知较新版本(> 当前已知)→ 抛错拒绝,不重置不删库。
     """
@@ -206,9 +209,23 @@ def migrate(conn: sqlite3.Connection) -> None:
         raise RuntimeError(
             "engine.db 非空但 user_version=0:结构未知,拒绝迁移(不猜测、不删库)")
 
-    conn.executescript(_SCHEMA_V1)
-    with conn:  # 建库同事务写默认标志(键缺失不可能是正常新库状态)
+    # 注释行内含 ASCII 分号,先剥离注释再按 ';' 切分(DDL 本体无内嵌分号)
+    body = "\n".join(
+        line for line in _SCHEMA_V1.splitlines()
+        if not line.lstrip().startswith("--"))
+    statements = [s for s in body.split(";") if s.strip()]
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        for stmt in statements:
+            conn.execute(stmt)
         conn.execute(
             "INSERT INTO engine_meta (key, value, updated_utc) "
             "VALUES ('pay_paused', '0', ?)", (_utc_now(),))
         conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+        conn.execute("COMMIT")
+    except Exception:
+        try:
+            conn.execute("ROLLBACK")
+        except sqlite3.Error:
+            pass
+        raise
