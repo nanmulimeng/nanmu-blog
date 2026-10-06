@@ -74,20 +74,27 @@ def settle_published(conn: sqlite3.Connection, issue_date: str,
     """published 终态统一清算(单事务):本期 claim 的全部 entry——进最终
    产物 → 'used'+清 claim;未进(裁剪/剔除)→ 'rejected'+清 claim。
     混合事实不允许存在:rejected 不持旧 claim。"""
-    final = set(final_identity_keys)
     with conn:
-        rows = conn.execute(
-            "SELECT identity_key FROM entry WHERE claim_issue=?",
-            (issue_date,)).fetchall()
-        for (key,) in rows:
-            if key in final:
-                conn.execute(
-                    "UPDATE entry SET status='used', claim_issue=NULL"
-                    " WHERE identity_key=?", (key,))
-            else:
-                conn.execute(
-                    "UPDATE entry SET status='rejected', claim_issue=NULL"
-                    " WHERE identity_key=?", (key,))
+        _settle_published_sql(conn, issue_date, final_identity_keys)
+
+
+def _settle_published_sql(conn: sqlite3.Connection, issue_date: str,
+                          final_identity_keys: list[str]) -> None:
+    """settle 的事务体(供发布单元在同一事务内与 published 状态推进
+    合并执行——publish-withdraw §3 规则 2 表)。"""
+    final = set(final_identity_keys)
+    rows = conn.execute(
+        "SELECT identity_key FROM entry WHERE claim_issue=?",
+        (issue_date,)).fetchall()
+    for (key,) in rows:
+        if key in final:
+            conn.execute(
+                "UPDATE entry SET status='used', claim_issue=NULL"
+                " WHERE identity_key=?", (key,))
+        else:
+            conn.execute(
+                "UPDATE entry SET status='rejected', claim_issue=NULL"
+                " WHERE identity_key=?", (key,))
 
 
 def release_abandoned_issue(conn: sqlite3.Connection, issue_date: str) -> None:
