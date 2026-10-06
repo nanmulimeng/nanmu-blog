@@ -40,6 +40,27 @@ _WINDOW_SQL = (
 )
 
 
+def freeze_issue(engine_conn: sqlite3.Connection, issue_date: str,
+                 manifest: list, now_utc: datetime) -> str:
+    """在**调用方事务内**写冻结行(不 COMMIT——事务拥有者是
+    collect_once,entry upsert 与本 INSERT 一次提交);行已存在=幂等
+    返回既有 frozen_utc,不插第二行不覆盖。空 manifest 合法(空集合
+    是合法冻结)。返回 frozen_utc。
+    """
+    existing = engine_conn.execute(
+        "SELECT frozen_utc FROM issue_freeze WHERE issue_date=?",
+        (issue_date,)).fetchone()
+    if existing is not None:
+        return existing[0]
+    frozen_utc = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+    engine_conn.execute(
+        "INSERT INTO issue_freeze (issue_date, frozen_utc, entry_count,"
+        " manifest_json) VALUES (?,?,?,?)",
+        (issue_date, frozen_utc, len(manifest),
+         json.dumps(manifest, ensure_ascii=False)))
+    return frozen_utc
+
+
 class CollectError(Exception):
     """E2:上游读取失败(打不开/权限/schema 依赖红)。
 
@@ -122,7 +143,6 @@ def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
              source_name or "", tier, priority))
 
     members: list[dict] = []
-    now_iso = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         engine_conn.execute("BEGIN IMMEDIATE")
         for key, group in groups.items():
@@ -178,11 +198,7 @@ def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
                     (row[0] or "").encode("utf-8")).hexdigest(),
             })
 
-        engine_conn.execute(
-            "INSERT INTO issue_freeze (issue_date, frozen_utc, entry_count,"
-            " manifest_json) VALUES (?,?,?,?)",
-            (issue_date, now_iso, len(members),
-             json.dumps(members, ensure_ascii=False)))
+        freeze_issue(engine_conn, issue_date, members, now_utc)
         engine_conn.execute("COMMIT")       # 冻结确认事件在此刻发生
     except Exception:
         try:
