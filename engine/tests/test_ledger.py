@@ -368,3 +368,160 @@ def test_record_failure_settles_usage(env):
     assert row[2] == 2_000_400
     import json as _json
     assert _json.loads(row[3])["prompt_tokens"] == 1_000_000
+
+
+# ---------- Task 7:record_response / reconcile / issue_cost_snapshot(验收 8/9/10) ----------
+
+from nanmu_engine.ledger import issue_cost_snapshot, record_failure, record_response, reconcile
+
+
+def _ok_result(prompt_tokens=100, completion_tokens=50) -> "LLMResult":
+    from nanmu_engine.llm import LLMResult
+    return LLMResult(
+        http_status=200, finish_reason="stop",
+        content='{"attentionScore": 60}', json_parsed=True,
+        usage={"prompt_tokens": prompt_tokens,
+               "prompt_cache_hit_tokens": 0,
+               "prompt_cache_miss_tokens": prompt_tokens,
+               "completion_tokens": completion_tokens},
+        provider_request_id="resp-x", error_message=None)
+
+
+def test_record_response_persists_received_and_settles(env):
+    conn, config = env
+    ref = _authorize(conn, config, token_count=1_000_000)
+    record_response(conn, config, ref, _ok_result(prompt_tokens=1_000_000))
+    attempt = conn.execute(
+        "SELECT status, actual_micro_cny, usage_json FROM receipt_attempt"
+        " WHERE id=?", (ref.attempt_id,)).fetchone()
+    assert attempt[0] == "received"
+    # 1M×2 + 50×8 = 2_000_400 微元
+    assert attempt[1] == 2_000_400
+    receipt = conn.execute(
+        "SELECT status, response_json, usage_json FROM receipt WHERE id=?",
+        (ref.receipt_id,)).fetchone()
+    assert receipt[0] == "received" and receipt[2] is not None
+
+
+def test_record_response_without_usage_keeps_unsettled(env):
+    conn, config = env
+    ref = _authorize(conn, config)
+    result = _ok_result()
+    object.__setattr__(result, "usage", None)  # frozen dataclass 替换
+    record_response(conn, config, ref, result)
+    row = conn.execute(
+        "SELECT status, actual_micro_cny FROM receipt_attempt WHERE id=?",
+        (ref.attempt_id,)).fetchone()
+    assert row[0] == "received" and row[1] is None  # actual NULL=未决,不 COALESCE
+
+
+class _QueryCounter:
+    def __init__(self, conn):
+        self._conn = conn
+        self.calls = 0
+
+    def execute(self, *args, **kwargs):
+        self.calls += 1
+        return self._conn.execute(*args, **kwargs)
+
+
+def test_snapshot_3settled_1pending_single_query(env):
+    conn, config = env
+    # 3 条已核清(9600+9600+100)+1 条 received 未核清(reserved 9600)
+    for actual in (9600, 9600, 100):
+        _seed_attempt(conn, reserved=actual, actual=actual)
+    _seed_attempt(conn, reserved=9600, actual=None, status="received")
+    counter = _QueryCounter(conn)
+    cost, pending = issue_cost_snapshot(counter, "2026-10-06")
+    assert counter.calls == 1                # 两值出自同一查询
+    assert cost == pytest.approx(0.0289)     # 28900 微元
+    assert pending is True
+
+    # 核清最后一例为 9000 微元 → 28300 → ¥0.0283 / false
+    conn.execute(
+        "UPDATE receipt_attempt SET actual_micro_cny=9000 WHERE actual_micro_cny IS NULL")
+    conn.commit()
+    cost2, pending2 = issue_cost_snapshot(conn, "2026-10-06")
+    assert cost2 == pytest.approx(0.0283) and pending2 is False
+
+
+def test_snapshot_zero_attempt_issue(env):
+    conn, config = env
+    cost, pending = issue_cost_snapshot(conn, "2099-01-01")
+    assert cost == 0.0 and pending is False
+
+
+EVIDENCE_FULL = {
+    "evidence_type": "bill_line",      # 类型[账单行/usage 复核]
+    "ref": "bill-2026-10-L42",         # 关联标识
+    "checked_utc": "2026-10-06T12:00:00Z",  # 核查时间
+    "note": "账单行与 attempt 一一对应",     # 依据说明
+}
+
+
+def test_reconcile_missing_evidence_rejected(env):
+    conn, config = env
+    _seed_attempt(conn, reserved=9600, actual=None, status="unknown")
+    attempt_id = conn.execute(
+        "SELECT id FROM receipt_attempt WHERE actual_micro_cny IS NULL").fetchone()[0]
+    for missing in ("evidence_type", "ref", "checked_utc", "note"):
+        evidence = {k: v for k, v in EVIDENCE_FULL.items() if k != missing}
+        ok = reconcile(conn, config, attempt_id, evidence,
+                       actual_micro_cny=5000)
+        assert ok is False
+    row = conn.execute(
+        "SELECT actual_micro_cny FROM receipt_attempt WHERE id=?",
+        (attempt_id,)).fetchone()
+    assert row[0] is None  # 证据缺失不得核清,保持未决
+
+
+def test_reconcile_full_evidence_updates_projection(env):
+    conn, config = env
+    _seed_attempt(conn, reserved=9600, actual=None, status="unknown")
+    attempt_id = conn.execute(
+        "SELECT id FROM receipt_attempt WHERE actual_micro_cny IS NULL").fetchone()[0]
+    ok = reconcile(conn, config, attempt_id, dict(EVIDENCE_FULL, ref="bill-L43"),
+                   actual_micro_cny=5000)
+    assert ok is True
+    row = conn.execute(
+        "SELECT actual_micro_cny, reconcile_json FROM receipt_attempt"
+        " WHERE id=?", (attempt_id,)).fetchone()
+    assert row[0] == 5000 and row[1] is not None
+    month = conn.execute("SELECT * FROM api_usage").fetchall()
+    assert len(month) >= 1                 # 月投影更新(报表,不作授权依据)
+
+
+def test_reconcile_actual_over_reserved_pauses(env):
+    conn, config = env
+    _seed_attempt(conn, reserved=1000, actual=None, status="unknown")
+    attempt_id = conn.execute(
+        "SELECT id FROM receipt_attempt WHERE actual_micro_cny IS NULL").fetchone()[0]
+    reconcile(conn, config, attempt_id, dict(EVIDENCE_FULL), actual_micro_cny=2000)
+    paused = conn.execute(
+        "SELECT value FROM engine_meta WHERE key='pay_paused'").fetchone()[0]
+    assert paused == "1"                    # 实付超预占=停新增(持久化)
+
+
+def test_record_response_usage_over_count_pauses(env):
+    conn, config = env
+    ref = _authorize(conn, config, token_count=500)  # 预占计数 500
+    record_response(conn, config, ref,
+                    _ok_result(prompt_tokens=2_000))  # usage 超 → 上界失效
+    paused = conn.execute(
+        "SELECT value FROM engine_meta WHERE key='pay_paused'").fetchone()[0]
+    assert paused == "1"
+    # 但先持久化再判定:attempt 已 received+结算
+    row = conn.execute(
+        "SELECT status FROM receipt_attempt WHERE id=?",
+        (ref.attempt_id,)).fetchone()
+    assert row[0] == "received"
+
+
+def test_reuse_cost_attribution_across_issues(env):
+    conn, config = env
+    # 上期 attempt 已结算 ¥0.01(10000 微元),本期零 attempt
+    _seed_attempt(conn, reserved=10000, actual=10000, issue_date="2026-10-05")
+    cost_new, pending_new = issue_cost_snapshot(conn, "2026-10-06")
+    assert cost_new == 0.0 and pending_new is False   # 复用不把旧费用计入新期
+    cost_old, _ = issue_cost_snapshot(conn, "2026-10-05")
+    assert cost_old == pytest.approx(0.01)            # 上期快照不变
