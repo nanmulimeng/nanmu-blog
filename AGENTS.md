@@ -8,7 +8,7 @@
 - **当前阶段(2026-10-05 第五轮核验):M1 详细设计与实施计划评审通过**——五单元设计+M1 plan(27 任务)经五轮核验关闭全部阻塞项;**待 M0 收尾(Task 10)及用户明确恢复实施**,实施暂停未解除(编码/Task10/服务器/推送仍暂停)。工作重心转向"准备按已通过的计划实施";仅当实现证据暴露契约问题才局部回补设计。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
 - 顺序:**用户明确恢复实施**→M0 Task 10(首篇文章+tag m0)→M1 Task 0 起本地实现(替身环境费用与内容闭环)→Task 25 部署→Task 26 分两段授权启用付费;进入条件以spec §9为准。评审通过不自动解除实施暂停
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-05 第五轮核验:M1 实施计划通过评审+三处引用勘误落盘](docs/sessions/2026-10-05-m1-plan-review5-passed.md)(4 组 P1 关闭,plan 作为实施基线;通过边界=tokenizer/费用上界/备份恢复/真实发布均未运行验收([V1]/[V2]/Task 21/22/26 实施验证),不解除实施暂停;同批勘误:①plan Task 25 timer 保持 disabled 直到 Task 26 Step 5(含正常运行授权+首期人工核验);②scheduling-ops §0 表 pay_paused 写入职责对齐(单元二对账置位+单元五恢复置位/解除);③spec §5.3 engine_meta 注释更新为两类键(pay_paused+校准记录引规则 11);前轮链:[review4-fix](docs/sessions/2026-10-05-m1-plan-review4-fix.md)、[review3](docs/sessions/2026-10-05-m1-retry-persistence-m1-plan.md)、[review2-fix](docs/sessions/2026-10-05-m1-units-review3-fix.md)、[review2](docs/sessions/2026-10-05-m1-units-review2-fix.md)、[batch](docs/sessions/2026-10-05-m1-units-batch.md) 含 erratum);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新进度:[2026-10-06 M1 设计评审收口确认](docs/sessions/2026-10-06-m1-review-closure.md)(第六轮核对 ba2e907 通过:三处勘误与阶段登记一致,无新阻塞项,集中设计审查正式收口;调研事项处置归属=上游长摘要缺口与 AIHOT 旧域名迁移留真实数据接入/部署核查时确认、tokenizer 对应关系由 Task 1+校准取证、中文 FTS 留 M2;不再安排全面文档评审,后续仅对实现暴露的契约问题局部修订;**等待用户恢复实施指示→M0 Task 10→M1 Task 0**;评审通过与勘误主交接见 [review5-passed](docs/sessions/2026-10-05-m1-plan-review5-passed.md),前轮链从该文回溯);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 

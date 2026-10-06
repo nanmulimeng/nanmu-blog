@@ -58,7 +58,7 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-05-m1-plan-review5-passed.md)(第五轮核验:**M1 实施计划通过评审**,4 组 P1 关闭+三处引用勘误落盘;通过边界与后续顺序见该 session;前轮见 [review4-fix](sessions/2026-10-05-m1-plan-review4-fix.md)、[review3](sessions/2026-10-05-m1-retry-persistence-m1-plan.md)、[review2-fix](sessions/2026-10-05-m1-units-review3-fix.md)、[review2](sessions/2026-10-05-m1-units-review2-fix.md) 与 [batch](sessions/2026-10-05-m1-units-batch.md) 含 erratum),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前阶段=M1 详细设计与实施计划评审通过(2026-10-05);待 M0 收尾及用户明确恢复实施——编码/Task10/服务器/推送仍暂停,评审通过不自动解除**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先看[最新交接](sessions/2026-10-06-m1-review-closure.md)(第六轮收口确认:评审与三处勘误核对通过,无新阻塞项,集中设计审查收口;调研事项处置归属=上游缺口与域名迁移留部署核查/tokenizer 由 Task 1+校准取证/中文 FTS 留 M2;评审通过主交接 [review5-passed](sessions/2026-10-05-m1-plan-review5-passed.md),前轮链从该文回溯),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前阶段=M1 详细设计与实施计划评审通过并收口(2026-10-06);待 M0 收尾及用户明确恢复实施——编码/Task10/服务器/推送仍暂停,评审通过不自动解除**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
 - 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
 - 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计经四轮核验修正,单元文档现状见 [units/](engine/units/))→ M1计划(**已经第五轮评审通过(27 任务)** [plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md);实施入口=用户明确解除暂停后 M1 Task 0,前置 M0 Task 10 收尾)。
