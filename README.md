@@ -4,9 +4,9 @@
 
 ## 当前状态(2026-10-04)
 
-M0:Task1-9已完成——site/(Astro5.18.2)、部署工件与服务器链路均已验收,**线上 `https://nanmu.xyz`**(常态发布计时13s,韧性实测5项通过)。Task10(首篇文章+tag m0)未做。**当前阶段(2026-10-05 第五轮核验):M1 详细设计与实施计划评审通过**(五单元+27 任务 plan,待 M0 收尾及用户明确恢复实施,实施类操作仍暂停);tokenizer/费用上界/备份恢复/真实发布属实施验证未运行。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 已建立(digest-design v3 + design/pipeline/budget + units/ 五单元,评审通过版)。
+M0:Task1-9已完成——site/(Astro5.18.2)、部署工件与服务器链路均已验收,**线上 `https://nanmu.xyz`**(常态发布计时13s,韧性实测5项通过)。**当前阶段(2026-10-06 用户恢复实施):实施阶段**——设计审查已收口;第一批 M0 Task 10(首篇文章+本地验证)执行中,发布与 m0 验收待授权;随后 M1 Task 0-12 批量本地实现(替身模型,不部署不付费)。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
 
-背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);最新执行证据见[最新交接](docs/sessions/2026-10-06-m1-review-closure.md)(第六轮收口确认:评审与勘误核对通过,集中设计审查结束;调研事项归属已定,后续仅对实现暴露的契约问题局部修订;评审通过主交接见 [review5](docs/sessions/2026-10-05-m1-plan-review5-passed.md))。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
+背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);最新执行证据见[最新交接](docs/sessions/2026-10-06-resume-implementation.md)(恢复实施指示:两批结构=M0 Task 10 真实文章发布验收→M1 Task 0-12 批量本地实现;含给执行 AI 的指令原文)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
 
 ## 开发与部署
 
