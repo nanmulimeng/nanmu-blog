@@ -17,10 +17,15 @@ from nanmu_engine.publish import (
     PublishContext,
     append_op,
     confirm_op,
+    correct,
     publish_issue,
+    recover_content_op,
     recover_issue,
+    relist,
+    stale_cost_issues,
     update_op_stage,
     visible_status,
+    withdraw,
 )
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
@@ -316,3 +321,185 @@ def test_ops_json_append_stage_confirm_and_visible_status(env):
     confirm_op(conn, "2026-10-06", 3,
                confirmed_utc="2026-10-06T10:00:00Z")
     assert visible_status(conn, "2026-10-06") == "withdrawn"
+
+
+# ==================== Task 18:撤回/重新上线/纠错(验收 4/5/6/7) ====================
+
+def _seed_attempt(conn, issue_date, micro):
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO receipt (logical_key, provider, endpoint,"
+            " request_hash, service, purpose, model, status, request_digest,"
+            " created_utc) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (f"lk{micro}-{issue_date}", "deepseek", "/chat/completions",
+             "h1", "llm", "score", "m", "completed", "{}",
+             "2026-10-06T00:00:00Z"))
+        conn.execute(
+            "INSERT INTO receipt_attempt (receipt_id, attempt_no,"
+            " issue_date, started_utc, status, attempt_origin,"
+            " reserved_micro_cny, actual_micro_cny, pricing_version)"
+            " VALUES (?,1,?,'2026-10-06T01:00:00Z','received','initial',"
+            " ?,?, 'v1')", (cur.lastrowid, issue_date, micro, micro))
+
+
+def _publish_ok(conn, ctx, work, *, issue_date="2026-10-06", micro=10000):
+    """把一期推到 published(含一条已结算 attempt 使行 cost=快照一致)。"""
+    _seed_attempt(conn, issue_date, micro)
+    in1 = _seed_claim(conn, "in1")
+    sha, _ = _make_draft(conn, work, issue_date, entry_ids=(in1,))
+    res = publish_issue(conn, issue_date, ctx, final_keys=["in1"])
+    assert res.status == "published"
+    return sha
+
+
+def _withdraw_confirmed(conn, ctx, work, state, *, issue_date="2026-10-06"):
+    state["url_ok"] = True                   # 期在线
+    withdraw(conn, issue_date, ctx, reason="内容有误")
+    state["url_ok"] = False                  # 部署生效:三处消失
+    out = recover_content_op(conn, issue_date, ctx)
+    assert out == "withdrawn"
+
+
+def test_withdraw_full_sequence_pause_and_rewithdraw(env):
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    state["url_ok"] = True
+    res = withdraw(conn, "2026-10-06", ctx, reason="内容有误")
+    assert res.status == "pending"           # push 完成,线上未消失
+    row = conn.execute(
+        "SELECT status, withdrawn_utc, withdraw_commit FROM digest_issue"
+        " WHERE issue_date='2026-10-06'").fetchone()
+    assert row[0] == "published"             # status 保持=历史事实
+    assert row[1] is None                    # 未确认不落两列
+    tip = _run(["rev-parse", "origin/main"], work)
+    assert _run(["ls-tree", tip, f"{DIGEST_DIR}/2026-10-06.md"], work) == ""
+    # 暂停置位(重启后无自动重发)
+    assert conn.execute("SELECT paused, paused_reason FROM issue_freeze"
+                        " WHERE issue_date='2026-10-06'"
+                        ).fetchone() == (1, "内容有误")
+    state["url_ok"] = False
+    out = recover_content_op(conn, "2026-10-06", ctx)
+    assert out == "withdrawn"
+    row = conn.execute(
+        "SELECT withdrawn_utc, withdraw_commit FROM digest_issue"
+        " WHERE issue_date='2026-10-06'").fetchone()
+    assert row[0] and row[1]
+    assert visible_status(conn, "2026-10-06") == "withdrawn"
+
+
+def test_relist_verbatim_restores_parent_version_zero_llm(env):
+    conn, config, ctx, work, state = env
+    old_sha = _publish_ok(conn, ctx, work)
+    _withdraw_confirmed(conn, ctx, work, state)
+    state["url_ok"] = True                   # 重上后线上恢复
+    before = _attempts(conn)
+    res = relist(conn, "2026-10-06", ctx, mode="verbatim")
+    assert res.status == "relisted"
+    assert _attempts(conn) == before         # 零模型调用
+    row = conn.execute(
+        "SELECT content_sha256, relisted_utc, relist_commit, withdrawn_utc"
+        " FROM digest_issue WHERE issue_date='2026-10-06'").fetchone()
+    assert row[0] == old_sha                 # 恢复身份=撤回父版本
+    assert row[1] and row[2]
+    assert row[3]                            # 撤回史实保留
+    assert visible_status(conn, "2026-10-06") == "relisted"
+    tip = _run(["rev-parse", "origin/main"], work)
+    blob = _run(["show", f"{tip}:{DIGEST_DIR}/2026-10-06.md"], work,
+                binary=True)
+    assert hashlib.sha256(blob).hexdigest() == old_sha
+
+
+def test_relist_corrected_target_persisted_before_network(env):
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    _withdraw_confirmed(conn, ctx, work, state)
+    state["url_ok"] = False                  # push 后部署前 kill
+    new_md = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+              "entry_count: 2\ncost_cny: 0.01\ncost_pending: false\n---\n"
+              "\n## 值得一瞥(压线入选)\n\n- [修正](https://e.com)"
+              "(s · 展示分 71)——p\n")
+    res = relist(conn, "2026-10-06", ctx, mode="corrected",
+                 corrected_content=new_md)
+    assert res.status == "pending"
+    ops = json.loads(conn.execute(
+        "SELECT ops_json FROM digest_issue WHERE issue_date='2026-10-06'"
+        ).fetchone()[0])
+    last = ops[-1]
+    target = hashlib.sha256(new_md.encode("utf-8")).hexdigest()
+    assert last["op"] == "relist_corrected"
+    assert last["target_sha256"] == target   # 目标版本在出网前已持久化
+    assert not last["stages"].get("confirmed_utc")
+    state["url_ok"] = True                   # 重启:线上已恢复
+    out = recover_content_op(conn, "2026-10-06", ctx)
+    assert out == "relisted"
+    row = conn.execute(
+        "SELECT content_sha256, relisted_utc, relist_commit FROM"
+        " digest_issue WHERE issue_date='2026-10-06'").fetchone()
+    assert row[0] == target
+    assert row[1] and row[2]
+
+
+def test_content_op_recovery_insufficient_evidence_goes_manual(env):
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    _withdraw_confirmed(conn, ctx, work, state)
+    append_op(conn, "2026-10-06", "relist", "deadbeef")  # target 无匹配提交
+    state["url_ok"] = True
+    with pytest.raises(ManualIntervention, match="证据不足"):
+        recover_content_op(conn, "2026-10-06", ctx)
+
+
+def test_rewithdraw_after_relist_visible_is_withdrawn(env):
+    # 验收 4 反例:撤回→重上→再撤,当前可见=撤回;relisted 列不参与判定
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    _withdraw_confirmed(conn, ctx, work, state)
+    state["url_ok"] = True
+    relist(conn, "2026-10-06", ctx, mode="verbatim")
+    assert visible_status(conn, "2026-10-06") == "relisted"
+    _withdraw_confirmed(conn, ctx, work, state)           # 再撤回
+    assert visible_status(conn, "2026-10-06") == "withdrawn"
+    row = conn.execute(
+        "SELECT relisted_utc, withdrawn_utc FROM digest_issue"
+        " WHERE issue_date='2026-10-06'").fetchone()
+    assert row[0] and row[1]                 # 两类史实均在,判定只看 op
+
+
+def test_correct_replaces_content_keeps_history(env):
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    old_commit = conn.execute(
+        "SELECT git_commit FROM digest_issue WHERE issue_date='2026-10-06'"
+        ).fetchone()[0]
+    fixed = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+             "entry_count: 3\ncost_cny: 0.01\ncost_pending: false\n---\n"
+             "\n## 值得一瞥(压线入选)\n\n- [纠错版](https://e.com)"
+             "(s · 展示分 71)——p\n")
+    res = correct(conn, "2026-10-06", ctx, new_content=fixed)
+    assert res.status == "corrected"
+    new_sha = hashlib.sha256(fixed.encode("utf-8")).hexdigest()
+    row = conn.execute(
+        "SELECT content_sha256, status FROM digest_issue"
+        " WHERE issue_date='2026-10-06'").fetchone()
+    assert row[0] == new_sha and row[1] == "published"
+    assert "entry_count: 3" in fixed          # entry_count 如实变化
+    _run(["fetch", "origin"], work)
+    r = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", old_commit, "origin/main"],
+        cwd=str(work), capture_output=True)
+    assert r.returncode == 0                  # 历史保留
+
+
+def test_stale_cost_issues_after_settlement_change(env):
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)             # 行 cost=快照=0.01
+    assert stale_cost_issues(conn) == []
+    _seed_attempt(conn, "2026-10-06", 20000)  # 核清后快照变化→0.03
+    stale = stale_cost_issues(conn)
+    assert [s["issue_date"] for s in stale] == ["2026-10-06"]
+    assert stale[0]["snapshot_cost_cny"] == pytest.approx(0.03)
+    # 更新走纠错式提交(此处模拟三处一致后)→清单清空
+    with conn:
+        conn.execute("UPDATE digest_issue SET cost_cny=0.03 WHERE"
+                     " issue_date='2026-10-06'")
+    assert stale_cost_issues(conn) == []

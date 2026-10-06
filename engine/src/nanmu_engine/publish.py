@@ -369,3 +369,212 @@ def visible_status(conn, issue_date: str) -> str:
     return conn.execute(
         "SELECT status FROM digest_issue WHERE issue_date=?",
         (issue_date,)).fetchone()[0]
+
+
+# ---------- 撤回/重新上线/纠错(规则 5/6/7;均零模型调用) ----------
+
+def _issue_url(ctx: PublishContext, issue_date: str) -> str:
+    return f"{ctx.site_base}/digest/{issue_date}/"
+
+
+def _set_paused(conn, issue_date: str, paused: bool, reason: str) -> None:
+    """期级暂停标志置位(issue_freeze.paused;单元五存储,本单元写)。
+    撤回防自动重发;解除只恢复调度可见性。"""
+    now = _now()
+    with conn:
+        conn.execute(
+            "INSERT INTO issue_freeze (issue_date, frozen_utc, entry_count,"
+            " manifest_json, paused, paused_reason, paused_utc)"
+            " VALUES (?, ?, 0, '{}', ?, ?, ?)"
+            " ON CONFLICT(issue_date) DO UPDATE SET"
+            " paused=excluded.paused, paused_reason=excluded.paused_reason,"
+            " paused_utc=excluded.paused_utc",
+            (issue_date, now, 1 if paused else 0, reason,
+             now if paused else None))
+
+
+def _push_op(conn, issue_date: str, ctx: PublishContext, seq: int, *,
+             op_name: str, delete: bool) -> str:
+    """变更集落副本→(恢复类先 verify)→commit→push,各阶段补记 stages。"""
+    _sync_workdir(ctx, issue_date)
+    rel = _digest_rel(ctx, issue_date)
+    if delete:
+        (ctx.workdir / rel).unlink(missing_ok=True)
+        _git(ctx, "add", "-A", rel)
+    else:
+        verify_draft(ctx.workdir / rel)
+        _git(ctx, "add", rel)
+    _git(ctx, "commit", "-q", "-m", f"digest({op_name}): {issue_date}")
+    sha = _git(ctx, "rev-parse", "HEAD")
+    update_op_stage(conn, issue_date, seq, "commit", sha)
+    _git(ctx, "push", "origin", ctx.branch)
+    update_op_stage(conn, issue_date, seq, "pushed", _now())
+    return sha
+
+
+def withdraw(conn, issue_date: str, ctx: PublishContext, *,
+             reason: str) -> PublishResult:
+    """撤回序列(规则 5):①置暂停(防自动重发)②append 未完成 withdraw
+    项(target=ABSENT)→副本删文件→commit+push(补记 stages)③线上三处
+    消失确认④confirmed+withdrawn 两列(status 保持 published=史实)。"""
+    vis = visible_status(conn, issue_date)
+    if vis not in ("published", "relisted"):
+        raise ManualIntervention(
+            f"withdraw 前置失败:{issue_date} 当前可见状态={vis}(须在线)")
+    _set_paused(conn, issue_date, True, reason)
+    seq = append_op(conn, issue_date, "withdraw", "ABSENT")
+    commit_sha = _push_op(conn, issue_date, ctx, seq, op_name="withdraw",
+                          delete=True)
+    if ctx.fetch_url_ok(_issue_url(ctx, issue_date)):
+        return PublishResult("pending", "push 完成,等待线上三处消失")
+    now = _now()
+    with conn:
+        ops = _load_ops(conn, issue_date)
+        item = next(o for o in ops if o["seq"] == seq)
+        item["stages"]["confirmed_utc"] = now
+        _save_ops(conn, issue_date, ops)
+        conn.execute(
+            "UPDATE digest_issue SET withdrawn_utc=?, withdraw_commit=?,"
+            " updated_utc=? WHERE issue_date=?",
+            (now, commit_sha, now, issue_date))
+    return PublishResult("withdrawn", f"撤回完成({reason})")
+
+
+def relist(conn, issue_date: str, ctx: PublishContext, *, mode: str,
+           corrected_content: str | None = None) -> PublishResult:
+    """重新上线两条(规则 7,仅已撤回;零模型调用):
+    verbatim=从 git 历史取撤回提交父版本;corrected=修正稿落盘即算身份。
+    target 在出网前持久化(append 未完成项),push 后线上确认→confirmed+
+    relisted 两列+content_sha256 前进(在线身份=该 target)。"""
+    if visible_status(conn, issue_date) != "withdrawn":
+        raise ManualIntervention(
+            f"relist 前置失败:{issue_date} 非撤回态")
+    rel = _digest_rel(ctx, issue_date)
+    if mode == "verbatim":
+        w_commit = conn.execute(
+            "SELECT withdraw_commit FROM digest_issue WHERE issue_date=?",
+            (issue_date,)).fetchone()[0]
+        parent = _git(ctx, "rev-parse", f"{w_commit}^")
+        data = _git_bytes(ctx, "show", f"{parent}:{rel}")
+        if data is None:
+            raise ManualIntervention(f"证据不足:撤回父版本无产物内容")
+        target = hashlib.sha256(data).hexdigest()
+        op = "relist"
+    elif mode == "corrected":
+        if corrected_content is None:
+            raise ValueError("corrected 模式须提供修正稿内容")
+        data = corrected_content.encode("utf-8")
+        target = hashlib.sha256(data).hexdigest()
+        op = "relist_corrected"
+    else:
+        raise ValueError(f"mode 须为 verbatim|corrected,得到 {mode}")
+    (ctx.workdir / rel).write_bytes(data)
+    seq = append_op(conn, issue_date, op, target)      # 落盘即持久化目标
+    commit_sha = _push_op(conn, issue_date, ctx, seq, op_name=op,
+                          delete=False)
+    if not ctx.fetch_url_ok(_issue_url(ctx, issue_date)):
+        return PublishResult("pending", "push 完成,等待线上恢复")
+    confirm_op(conn, issue_date, seq, confirmed_utc=_now())
+    with conn:
+        conn.execute(
+            "UPDATE digest_issue SET relisted_utc=?, relist_commit=?,"
+            " updated_utc=? WHERE issue_date=?",
+            (_now(), commit_sha, _now(), issue_date))
+    return PublishResult("relisted")
+
+
+def correct(conn, issue_date: str, ctx: PublishContext, *,
+            new_content: str) -> PublishResult:
+    """纠错(规则 6,仅 published):修订稿落盘即算身份→append correct
+    项→verify→commit+push→线上确认→confirmed+content_sha256 前进(当前
+    确认版本);历史提交保留;零模型费用。"""
+    if visible_status(conn, issue_date) != "published":
+        raise ManualIntervention(
+            f"correct 前置失败:{issue_date} 当前可见状态须为在线")
+    rel = _digest_rel(ctx, issue_date)
+    data = new_content.encode("utf-8")
+    target = hashlib.sha256(data).hexdigest()
+    (ctx.workdir / rel).write_bytes(data)
+    seq = append_op(conn, issue_date, "correct", target)
+    _push_op(conn, issue_date, ctx, seq, op_name="correct", delete=False)
+    if not ctx.fetch_url_ok(_issue_url(ctx, issue_date)):
+        return PublishResult("pending", "push 完成,等待线上确认")
+    confirm_op(conn, issue_date, seq, confirmed_utc=_now())
+    return PublishResult("corrected")
+
+
+def recover_content_op(conn, issue_date: str,
+                       ctx: PublishContext) -> str:
+    """内容操作中断恢复(规则 5/7):存在未完成项→按其 op/target 先查远端
+    与线上证据再补记;证据不足→转人工;线上未生效→waiting(不预记)。
+    撤回=远端该路径最新删除提交+线上三处消失;在线类=远端含"树内身份=
+    target"提交+URL 可读。"""
+    _git(ctx, "fetch", "origin")
+    rel = _digest_rel(ctx, issue_date)
+    url = _issue_url(ctx, issue_date)
+    ops = _load_ops(conn, issue_date)
+    pending = [o for o in ops if not o["stages"].get("confirmed_utc")]
+    if not pending:
+        return visible_status(conn, issue_date)
+    op = pending[-1]
+    commits = [c for c in _git(
+        ctx, "log", "--format=%H", "--", rel).split() if c]
+    now = _now()
+
+    if op["op"] == "withdraw":
+        deleted = next((c for c in commits
+                        if _blob_sha(ctx, c, rel) is None), None)
+        if deleted is None:
+            raise ManualIntervention(
+                f"证据不足:远端无 {issue_date} 路径删除提交——转人工")
+        if ctx.fetch_url_ok(url):
+            return "waiting"                    # 线上未消失(缓存未过/未部署)
+        with conn:
+            o2 = _load_ops(conn, issue_date)
+            item = next(o for o in o2 if o["seq"] == op["seq"])
+            item["stages"].update({"commit": deleted, "pushed": deleted,
+                                   "confirmed_utc": now})
+            _save_ops(conn, issue_date, o2)
+            conn.execute(
+                "UPDATE digest_issue SET withdrawn_utc=?, withdraw_commit=?,"
+                " updated_utc=? WHERE issue_date=?",
+                (now, deleted, now, issue_date))
+        return "withdrawn"
+
+    match = next((c for c in commits
+                  if _blob_sha(ctx, c, rel) == op["target_sha256"]), None)
+    if match is None:
+        raise ManualIntervention(
+            f"证据不足:target {op['target_sha256'][:12]} 在远端无内容"
+            "匹配的提交——转人工(不自动重提交)")
+    if not ctx.fetch_url_ok(url):
+        return "waiting"
+    confirm_op(conn, issue_date, op["seq"], confirmed_utc=now)
+    if op["op"] in ("relist", "relist_corrected"):
+        with conn:
+            conn.execute(
+                "UPDATE digest_issue SET relisted_utc=?, relist_commit=?,"
+                " updated_utc=? WHERE issue_date=?",
+                (now, match, now, issue_date))
+    return visible_status(conn, issue_date)
+
+
+# ---------- 核清后过期期提示(规则 8:更新不自动执行,走人工纠错提交) ----------
+
+def stale_cost_issues(conn) -> list[dict]:
+    """比对已发布期 digest_issue.cost_cny 与当前期费用快照(issue_cost_
+    snapshot 同口径):差异→过期清单(核清后提示;数字/标志/正文标注三处
+    一致更新由人工走纠错提交,不另发模型请求)。"""
+    from nanmu_engine.ledger import issue_cost_snapshot
+    out: list[dict] = []
+    rows = conn.execute(
+        "SELECT issue_date, cost_cny FROM digest_issue"
+        " WHERE status='published'").fetchall()
+    for issue_date, row_cost in rows:
+        snap_cost, snap_pending = issue_cost_snapshot(conn, issue_date)
+        if abs(snap_cost - (row_cost or 0.0)) > 1e-9:
+            out.append({"issue_date": issue_date,
+                        "row_cost_cny": row_cost or 0.0,
+                        "snapshot_cost_cny": snap_cost,
+                        "snapshot_pending": snap_pending})
+    return out
