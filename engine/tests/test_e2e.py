@@ -263,3 +263,29 @@ def test_published_member_not_reselected_next_issue(env):
     day2 = (env["work"] / DIGEST_DIR / "2026-10-06.md").read_text(
         encoding="utf-8")
     assert "https://e.com/dup" not in day2
+
+
+# ---------- 交界核验 B-缝B:清算口径=最终产物成员(与恢复路径一致) ----------
+
+def test_safety_excluded_member_settles_rejected_on_publish(env):
+    """发布主链清算口径=最终产物成员(assemble ready),与恢复路径
+    entry_ids 口径一致——被安全剔除(url scheme 非白名单)的入选成员置
+    rejected,不因走发布主链被置 used(丧失再入选资格)。注:采集侧
+    normalize R0 白名单本就挡住 javascript url 入库(正常链路不可达),
+    本测试直插 entry 构造,锁的是清算口径的防御性统一。"""
+    conn = env["conn"]
+    bad = _entry(conn, "k-badurl", title="坏URL条目", body="正常正文足够长度以入选。",
+                 url="javascript:alert(1)")
+    good = _entry(conn, "k-good2", title="好条目", body="正常正文。")
+    _freeze(conn, "2026-10-06", [bad, good], frozen="2026-10-06T08:31:00Z")
+
+    code = _run_once(env, transport=_transport(env["config"]))
+
+    assert code == 0
+    assert _status(env, "2026-10-06") == "published"
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='k-badurl'"
+                        ).fetchone()[0] == "rejected"   # 不进产物=不 used
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='k-good2'"
+                        ).fetchone()[0] == "used"

@@ -308,9 +308,12 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
         path = ctx.workdir / ctx.digest_dir / f"{issue_date}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         write_draft(conn, draft, path)
+        # 清算口径=最终产物成员(交界 B-缝B):与恢复路径 entry_ids 口径
+        # 一致——组装剔除的 safety_excluded 成员不进产物,不得置 used
         res = publish_issue(conn, issue_date, ctx,
-                            final_keys=[m["identity_key"]
-                                        for m in fsr.final])
+                            final_keys=[m["identity_key"] for m in fsr.final
+                                        if m["identity_key"]
+                                        not in draft.safety_excluded])
     except (AssemblyPaused, ManualIntervention) as exc:
         logger.error("stage=run event=manual_intervention issue=%s"
                      " message=%s", issue_date, exc)

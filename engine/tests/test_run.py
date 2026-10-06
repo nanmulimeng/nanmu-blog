@@ -109,16 +109,17 @@ def _transport(config, *, score=80, score_fail_marker=None,
 
 
 def _entry(conn, key, title="标题A", body="正文内容若干。", *, status="pending",
-           claim=None):
+           claim=None, url=None):
+    url = url or f"https://e.com/{key}"
     cur = conn.execute(
         "INSERT INTO entry (identity_key, url, title, source_name,"
         " source_tier, discovered_utc, content_text, status, claim_issue)"
         " VALUES (?,?,?,?,?,?,?,?,?)",
-        (key, f"https://e.com/{key}", title, "src-a", "T1",
+        (key, url, title, "src-a", "T1",
          "2026-10-05T00:00:00Z", body, status, claim))
     conn.commit()
     return {"identity_key": key, "entry_id": cur.lastrowid,
-            "url": f"https://e.com/{key}", "title": title,
+            "url": url, "title": title,
             "source_name": "src-a", "source_tier": "T1",
             "published_utc": None, "discovered_utc": "2026-10-05T00:00:00Z",
             "content_text": body,
