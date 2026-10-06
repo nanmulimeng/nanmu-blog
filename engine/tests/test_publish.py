@@ -180,16 +180,18 @@ def test_publish_without_online_evidence_stays_submitted(env):
 def test_w1_commit_without_db_row_backfills_draft(env):
     conn, config, ctx, work, state = env
     before = _attempts(conn)
+    eid = _seed_claim(conn, "in1")                 # 期成员(claim 在)
     sha = _commit_file(work, "2026-10-06")         # commit 成功、DB 未记 draft
     out = recover_issue(conn, "2026-10-06", ctx)
     assert out.status == "draft"
     row = conn.execute(
-        "SELECT status, git_commit, content_sha256 FROM digest_issue"
-        " WHERE issue_date='2026-10-06'").fetchone()
+        "SELECT status, git_commit, content_sha256, entry_ids FROM"
+        " digest_issue WHERE issue_date='2026-10-06'").fetchone()
     assert row[0] == "draft" and row[1] == sha     # 复用提交不重组
     blob = _run(["show", f"{sha}:{DIGEST_DIR}/2026-10-06.md"], work,
                 binary=True)
     assert row[2] == hashlib.sha256(blob).hexdigest()
+    assert json.loads(row[3]) == [eid]             # 成员从 claim 反查,非 '[]'
     assert _attempts(conn) == before               # 零评分调用
 
 
@@ -503,3 +505,140 @@ def test_stale_cost_issues_after_settlement_change(env):
         conn.execute("UPDATE digest_issue SET cost_cny=0.03 WHERE"
                      " issue_date='2026-10-06'")
     assert stale_cost_issues(conn) == []
+
+
+# ==================== 审计修复轮 P1-4/P1-5:证据链与提交隔离 ====================
+
+def test_publish_ff_syncs_when_workdir_behind_remote(env, tmp_path):
+    # P1-5:本地落后远端(他处已推送)→ 必须 fast-forward 同步后再提交,
+    # 否则后续 push 非快进失败
+    conn, config, ctx, work, state = env
+    _make_draft(conn, work)
+    _seed_claim(conn, "in1")
+    other = tmp_path / "other"
+    _run(["clone", ctx.remote_url, str(other)], tmp_path)
+    _run(["config", "user.email", "t@t"], other)
+    _run(["config", "user.name", "t"], other)
+    (other / "README.md").write_text("site v2", encoding="utf-8")
+    _run(["add", "."], other)
+    _run(["commit", "-m", "elsewhere", "-q"], other)
+    _run(["push", "origin", "main"], other)        # 远端前进,work 落后
+
+    res = publish_issue(conn, "2026-10-06", ctx, final_keys=["in1"])
+    assert res.status == "published"               # ff 同步→提交→push 成功
+
+
+def test_publish_ignores_staged_foreign_files(env):
+    # P1-5:暂存区的无关文件不得被日报提交一并带出(提交范围=pathspec)
+    conn, config, ctx, work, state = env
+    _make_draft(conn, work)
+    _seed_claim(conn, "in1")
+    (work / "foreign.txt").write_text("无关暂存", encoding="utf-8")
+    _run(["add", "foreign.txt"], work)             # 暂存区有无关内容
+
+    res = publish_issue(conn, "2026-10-06", ctx, final_keys=["in1"])
+    assert res.status == "published"
+    tip = _run(["rev-parse", "origin/main"], work)
+    assert "foreign.txt" not in _run(
+        ["ls-tree", "-r", "--name-only", tip], work)
+
+
+def test_publish_refuses_when_worktree_identity_mismatch(env):
+    # P1-5:提交前校验工作树文件身份=库内预期,被改动的日报不得提交
+    conn, config, ctx, work, state = env
+    sha, path = _make_draft(conn, work)
+    _seed_claim(conn, "in1")
+    tampered = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+                "entry_count: 1\ncost_cny: 0.01\ncost_pending: false\n---\n"
+                "\n## 被人改过的日报\n\n- [x](https://e.com)——p\n")
+    path.write_text(tampered, encoding="utf-8")    # frontmatter 完好的改动
+    with pytest.raises(ManualIntervention, match="身份|identity"):
+        publish_issue(conn, "2026-10-06", ctx, final_keys=["in1"])
+    # 无新提交,远端未收到
+    assert _run(["rev-parse", "HEAD"], work) == \
+        _run(["rev-parse", "origin/main"], work)
+
+
+def test_correct_needs_deployed_sha_match_not_only_url(env):
+    # P1-4:URL 可读(旧页本就可读)≠ 部署已吃进修正版;部署 SHA 树内
+    # 身份≠target → 不 confirmed、content_sha256 不前进
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    stale_tip = _run(["rev-parse", "origin/main"], work)
+    ctx.fetch_release_sha = lambda: stale_tip     # 部署停在纠错前
+    fixed = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+             "entry_count: 9\ncost_cny: 0.01\ncost_pending: false\n---\n"
+             "\n## 值得一瞥\n\n- [x](https://e.com)(s · 展示分 71)——p\n")
+    res = correct(conn, "2026-10-06", ctx, new_content=fixed)
+    assert res.status == "pending"                 # 证据不足保持未确认
+    old_sha = conn.execute("SELECT content_sha256 FROM digest_issue WHERE"
+                           " issue_date='2026-10-06'").fetchone()[0]
+    assert old_sha != hashlib.sha256(fixed.encode("utf-8")).hexdigest()
+    ops = json.loads(conn.execute(
+        "SELECT ops_json FROM digest_issue WHERE issue_date='2026-10-06'"
+        ).fetchone()[0])
+    assert not ops[-1]["stages"].get("confirmed_utc")
+
+
+def test_withdraw_needs_deployment_evidence_not_only_404(env):
+    # P1-4:URL 不可读(可能是网络抖/站点故障)≠ 撤回已部署;部署 SHA
+    # 树内仍有该路径 → 不 confirmed、withdrawn_utc 不落
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    stale_tip = _run(["rev-parse", "origin/main"], work)
+    ctx.fetch_release_sha = lambda: stale_tip     # 部署未吃掉删除
+    state["url_ok"] = False
+    res = withdraw(conn, "2026-10-06", ctx, reason="内容有误")
+    assert res.status == "pending"
+    row = conn.execute("SELECT withdrawn_utc, withdraw_commit FROM"
+                       " digest_issue WHERE issue_date='2026-10-06'"
+                       ).fetchone()
+    assert row[0] is None
+
+
+def test_w1_backfills_members_then_w4_settles_used(env):
+    # P1-4:W1 补记 entry_ids 从 claim 反查;随后 W4 确认 published 时
+    # 成员结算 used(不是 '[]' → 全员 rejected 丢"已发布使用"事实)
+    conn, config, ctx, work, state = env
+    in1 = _seed_claim(conn, "in1")
+    sha = _commit_file(work, "2026-10-06")
+    _run(["push", "origin", "main"], work)
+    out = recover_issue(conn, "2026-10-06", ctx)   # W1
+    assert out.status == "draft"
+    ids = json.loads(conn.execute(
+        "SELECT entry_ids FROM digest_issue WHERE issue_date='2026-10-06'"
+        ).fetchone()[0])
+    assert ids == [in1]
+    with conn:
+        conn.execute("UPDATE digest_issue SET git_commit=?, status="
+                     " 'submitted' WHERE issue_date='2026-10-06'", (sha,))
+    out2 = recover_issue(conn, "2026-10-06", ctx)  # W4
+    assert out2.status == "published"
+    assert _entry_states(conn) == [("in1", "used", None)]
+
+
+def test_w1_without_claimed_members_goes_manual(env):
+    # 无 claim 成员可回填 → 不写 '[]',转人工
+    conn, config, ctx, work, state = env
+    _commit_file(work, "2026-10-06")
+    with pytest.raises(ManualIntervention, match="证据不足"):
+        recover_issue(conn, "2026-10-06", ctx)
+
+
+def test_content_op_unpushed_target_goes_manual(env):
+    # P1-4:目标版本在本地历史但未被远端接收(push 中断)→ 证据不足
+    # 转人工,不自动重提交、不凭 URL 可读确认
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    _withdraw_confirmed(conn, ctx, work, state)
+    new_md = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+              "entry_count: 2\ncost_cny: 0.01\ncost_pending: false\n---\n"
+              "\n## 值得一瞥\n\n- [y](https://e.com)(s · 展示分 71)——p\n")
+    _digest_path(work, "2026-10-06").write_text(new_md, encoding="utf-8")
+    _run(["add", "."], work)
+    _run(["commit", "-m", "digest(relist_corrected): 2026-10-06", "-q"], work)
+    target = hashlib.sha256(new_md.encode("utf-8")).hexdigest()
+    append_op(conn, "2026-10-06", "relist_corrected", target)  # 未推送
+    state["url_ok"] = True                          # 旧页可读≠新版本已上线
+    with pytest.raises(ManualIntervention, match="证据不足"):
+        recover_content_op(conn, "2026-10-06", ctx)

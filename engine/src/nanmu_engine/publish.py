@@ -112,8 +112,9 @@ def verify_draft(path: Path) -> None:
 
 def _sync_workdir(ctx: PublishContext, issue_date: str) -> None:
     """fetch 后:本地有未推送提交时逐提交核对变更集只含本期文件(他期
-    未推送提交会被本次 push 带出→不 push 转人工);无未推送→fast-forward
-    同步;分叉(远端前进且与本地分叉)→E8 转人工。"""
+    未推送提交会被本次 push 带出→不 push 转人工);本地落后远端 →
+    fast-forward 同步(否则后续 push 非快进失败);分叉(远端前进且与
+    本地未推送提交分叉)→E8 转人工。"""
     _git(ctx, "fetch", "origin")
     rel = _digest_rel(ctx, issue_date)
     ahead = [s for s in _git(
@@ -132,23 +133,44 @@ def _sync_workdir(ctx: PublishContext, issue_date: str) -> None:
     base = _git(ctx, "merge-base", "HEAD", f"origin/{ctx.branch}")
     if head == origin:
         return                                  # 已同步
-    if base == origin:                          # 本地落后 → ff 同步
+    if base == head:                            # 本地落后 → ff 同步
         _git(ctx, "merge", "--ff-only", f"origin/{ctx.branch}")
-    elif base != head:                          # 双向分叉 → E8
+    elif base == origin:
+        return          # 本地领先(未推送提交已过隔离核对)→等本次 push 带出
+    else:                                       # 双向分叉 → E8
         raise ManualIntervention(
             "push-conflict:远端已前进且与本地分叉(E8)——转人工")
+
+
+def _staged_sha(ctx: PublishContext, rel: str) -> str | None:
+    """暂存内容身份(add 过 clean 过滤后=将被提交的字节;索引无该路径=
+    None)。提交前与库内预期比对——被人为改动的产物不得进入提交(远端
+    身份≠库内身份=账实分离)。"""
+    data = _git_bytes(ctx, "show", f":{rel}")
+    return hashlib.sha256(data).hexdigest() if data is not None else None
 
 
 def _commit_digest(ctx: PublishContext, issue_date: str, rel: str,
                    expected_sha: str) -> str:
     """幂等提交:HEAD 树内该路径身份已=库内身份→复用 HEAD(不造空提交);
-    否则 verify→add→commit;返回提交 SHA(commit 成功即回填,仍 draft)。"""
+    否则 verify→add→暂存身份校验→commit(pathspec 限定提交范围,暂存区
+    无关文件不被带出)。返回提交 SHA(commit 成功即回填,仍 draft)。"""
     head = _git(ctx, "rev-parse", "HEAD")
     if _blob_sha(ctx, head, rel) == expected_sha:
         return head
+    if not (ctx.workdir / rel).exists():
+        raise ManualIntervention(
+            f"identity:副本文件缺失({rel})≠库内预期"
+            f"{expected_sha[:12]}——不提交,转人工")
     verify_draft(ctx.workdir / rel)
     _git(ctx, "add", rel)
-    _git(ctx, "commit", "-q", "-m", f"digest: {issue_date}")
+    actual = _staged_sha(ctx, rel)
+    if actual != expected_sha:
+        raise ManualIntervention(
+            f"identity:副本文件身份"
+            f"{actual[:12] if actual else '(缺失)'} ≠ 库内预期"
+            f"{expected_sha[:12]}——不提交,转人工")
+    _git(ctx, "commit", "-q", "-m", f"digest: {issue_date}", "--", rel)
     return _git(ctx, "rev-parse", "HEAD")
 
 
@@ -171,6 +193,18 @@ def _online_evidence(ctx: PublishContext, issue_date: str,
         return False
     url = f"{ctx.site_base}/digest/{issue_date}/"
     return bool(ctx.fetch_url_ok(url))
+
+
+def _deployed_evidence(ctx: PublishContext, issue_date: str,
+                       expected: str | None) -> bool:
+    """部署证据(审计 P1-4):线上部署 SHA(fetch_release_sha)树内该路径
+    身份=expected(expected=None 表示路径应已不存在)。部署 SHA 不可得或
+    树内身份不符=部署未吃进该版本,证据不足;URL 可读/不可读只是辅助
+    信号(旧页本就可读、404 也可能是站点故障)。"""
+    deployed = ctx.fetch_release_sha()
+    if not deployed:
+        return False
+    return _blob_sha(ctx, deployed, _digest_rel(ctx, issue_date)) == expected
 
 
 def _mark_published(conn, issue_date: str, final_keys: list[str]) -> None:
@@ -250,15 +284,26 @@ def recover_issue(conn, issue_date: str,
                 "——转人工(人工确认未提交后可重组装,评分/摘要全复用)")
         commit = commits[0]                             # 该路径最新提交
         blob_sha = _blob_sha(ctx, commit, rel)
+        # 期成员从 claim 反查(审计 P1-4):entry_ids='[]' 会让后续 published
+        # 清算把已进产物成员置 rejected+claim 清空,丢"已发布使用"事实;
+        # 反查不到成员=成员事实无法重建→不写行,转人工
+        ids = [r[0] for r in conn.execute(
+            "SELECT id FROM entry WHERE claim_issue=? ORDER BY id",
+            (issue_date,)).fetchall()]
+        if not ids:
+            raise ManualIntervention(
+                f"证据不足:{issue_date} 无 claim 成员可回填 entry_ids"
+                "——转人工(不得以空成员清单落库)")
         with conn:
             conn.execute(
                 "INSERT INTO digest_issue (issue_date, entry_ids,"
                 " markdown_path, content_sha256, git_commit, status,"
                 " created_utc, updated_utc)"
-                " VALUES (?, '[]', ?, ?, ?, 'draft', ?, ?)",
-                (issue_date, str(ctx.workdir / rel), blob_sha, commit,
-                 _now(), _now()))
-        return PublishResult("draft", f"W1 补记(git_commit={commit[:12]})")
+                " VALUES (?, ?, ?, ?, ?, 'draft', ?, ?)",
+                (issue_date, json.dumps(ids), str(ctx.workdir / rel),
+                 blob_sha, commit, _now(), _now()))
+        return PublishResult("draft", f"W1 补记(git_commit={commit[:12]},"
+                                      f"成员 {len(ids)} 条从 claim 反查)")
 
     markdown_path, expected, status, git_commit, entry_ids_json = row
     if git_commit is None:                              # W2
@@ -394,8 +439,10 @@ def _set_paused(conn, issue_date: str, paused: bool, reason: str) -> None:
 
 
 def _push_op(conn, issue_date: str, ctx: PublishContext, seq: int, *,
-             op_name: str, delete: bool) -> str:
-    """变更集落副本→(恢复类先 verify)→commit→push,各阶段补记 stages。"""
+             op_name: str, delete: bool, target: str | None = None) -> str:
+    """变更集落副本→(非删除类先校验工作树身份=target)→verify→commit
+    (pathspec 限定范围,暂存区无关文件不被带出)→push,各阶段补记
+    stages。"""
     _sync_workdir(ctx, issue_date)
     rel = _digest_rel(ctx, issue_date)
     if delete:
@@ -404,7 +451,14 @@ def _push_op(conn, issue_date: str, ctx: PublishContext, seq: int, *,
     else:
         verify_draft(ctx.workdir / rel)
         _git(ctx, "add", rel)
-    _git(ctx, "commit", "-q", "-m", f"digest({op_name}): {issue_date}")
+        actual = _staged_sha(ctx, rel)
+        if actual != target:
+            raise ManualIntervention(
+                f"identity:副本文件身份"
+                f"{actual[:12] if actual else '(缺失)'} ≠ 操作目标"
+                f"{(target or '')[:12]}——不提交,转人工")
+    _git(ctx, "commit", "-q", "-m", f"digest({op_name}): {issue_date}",
+         "--", rel)
     sha = _git(ctx, "rev-parse", "HEAD")
     update_op_stage(conn, issue_date, seq, "commit", sha)
     _git(ctx, "push", "origin", ctx.branch)
@@ -425,7 +479,10 @@ def withdraw(conn, issue_date: str, ctx: PublishContext, *,
     seq = append_op(conn, issue_date, "withdraw", "ABSENT")
     commit_sha = _push_op(conn, issue_date, ctx, seq, op_name="withdraw",
                           delete=True)
-    if ctx.fetch_url_ok(_issue_url(ctx, issue_date)):
+    # 确认证据=部署 SHA 树内路径消失 + URL 不可读(仅 URL 不可读可能是
+    # 站点故障/网络抖,不构成撤回已部署的证据;审计 P1-4)
+    if (ctx.fetch_url_ok(_issue_url(ctx, issue_date))
+            or not _deployed_evidence(ctx, issue_date, None)):
         return PublishResult("pending", "push 完成,等待线上三处消失")
     now = _now()
     with conn:
@@ -471,8 +528,11 @@ def relist(conn, issue_date: str, ctx: PublishContext, *, mode: str,
     (ctx.workdir / rel).write_bytes(data)
     seq = append_op(conn, issue_date, op, target)      # 落盘即持久化目标
     commit_sha = _push_op(conn, issue_date, ctx, seq, op_name=op,
-                          delete=False)
-    if not ctx.fetch_url_ok(_issue_url(ctx, issue_date)):
+                          delete=False, target=target)
+    # 确认证据=部署 SHA 树内身份=target + URL 可读(仅 URL 可读≠新版
+    # 已上线,旧页本就可读;审计 P1-4)
+    if not (_deployed_evidence(ctx, issue_date, target)
+            and ctx.fetch_url_ok(_issue_url(ctx, issue_date))):
         return PublishResult("pending", "push 完成,等待线上恢复")
     confirm_op(conn, issue_date, seq, confirmed_utc=_now())
     with conn:
@@ -496,8 +556,12 @@ def correct(conn, issue_date: str, ctx: PublishContext, *,
     target = hashlib.sha256(data).hexdigest()
     (ctx.workdir / rel).write_bytes(data)
     seq = append_op(conn, issue_date, "correct", target)
-    _push_op(conn, issue_date, ctx, seq, op_name="correct", delete=False)
-    if not ctx.fetch_url_ok(_issue_url(ctx, issue_date)):
+    _push_op(conn, issue_date, ctx, seq, op_name="correct", delete=False,
+             target=target)
+    # 确认证据=部署 SHA 树内身份=target + URL 可读(仅 URL 可读≠修正版
+    # 已部署,旧页本就可读;审计 P1-4)
+    if not (_deployed_evidence(ctx, issue_date, target)
+            and ctx.fetch_url_ok(_issue_url(ctx, issue_date))):
         return PublishResult("pending", "push 完成,等待线上确认")
     confirm_op(conn, issue_date, seq, confirmed_utc=_now())
     return PublishResult("corrected")
@@ -527,8 +591,13 @@ def recover_content_op(conn, issue_date: str,
         if deleted is None:
             raise ManualIntervention(
                 f"证据不足:远端无 {issue_date} 路径删除提交——转人工")
-        if ctx.fetch_url_ok(url):
-            return "waiting"                    # 线上未消失(缓存未过/未部署)
+        if not _is_ancestor(ctx, deleted, f"origin/{ctx.branch}"):
+            raise ManualIntervention(
+                f"证据不足:删除提交 {deleted[:12]} 未被远端接收"
+                "——转人工(不自动重提交)")
+        if (ctx.fetch_url_ok(url)
+                or not _deployed_evidence(ctx, issue_date, None)):
+            return "waiting"        # 线上未消失(缓存未过/部署未吃进删除)
         with conn:
             o2 = _load_ops(conn, issue_date)
             item = next(o for o in o2 if o["seq"] == op["seq"])
@@ -547,7 +616,14 @@ def recover_content_op(conn, issue_date: str,
         raise ManualIntervention(
             f"证据不足:target {op['target_sha256'][:12]} 在远端无内容"
             "匹配的提交——转人工(不自动重提交)")
-    if not ctx.fetch_url_ok(url):
+    if not _is_ancestor(ctx, match, f"origin/{ctx.branch}"):
+        raise ManualIntervention(
+            f"证据不足:目标提交 {match[:12]} 未被远端接收"
+            "——转人工(不自动重提交)")
+    # 确认证据=部署 SHA 树内身份=target + URL 可读(仅 URL 可读≠新版
+    # 已上线;审计 P1-4)
+    if not (_deployed_evidence(ctx, issue_date, op["target_sha256"])
+            and ctx.fetch_url_ok(url)):
         return "waiting"
     confirm_op(conn, issue_date, op["seq"], confirmed_utc=now)
     if op["op"] in ("relist", "relist_corrected"):

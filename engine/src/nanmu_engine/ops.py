@@ -29,7 +29,7 @@ from nanmu_engine.db import connect_db
 
 logger = logging.getLogger(__name__)
 
-_STEPS = ("copy", "set_flag", "verify", "switch")
+_STEPS = ("copy", "set_flag", "verify", "checkpoint", "switch")
 
 
 class OpsCommandError(Exception):
@@ -90,13 +90,14 @@ def restore_backup(backup_path: str | Path, live_path: str | Path, *,
 
     ① 备份恢复到待启用副本路径(不动活动库)→②副本置 pay_paused=1
     (事务+wal_checkpoint(FULL)+关闭)→③**读回校验**:全新连接重开
-    副本,key 存在且='1',失败中止不切换→④原子切换 os.replace(副本
-    替换活动库)→⑤返回核对清单。after_step=每步完成后的回调(崩溃
-    注入点:该步之后恢复序列不再执行)。
+    副本,key 存在且='1',失败中止不切换→④活动库 wal_checkpoint
+    (TRUNCATE)(已提交帧并入主文件,清边车不再丢数据)→原子切换
+    os.replace(副本替换活动库)→⑤返回核对清单。after_step=每步完成
+    后的回调(崩溃注入点:该步之后恢复序列不再执行)。
 
-    各步后崩溃:①②③→活动库未动,可重试(重试①覆盖旧副本,幂等);
-    ④→新活动库已含标志。不变量恒成立:活动库被备份替换 ⇔ 其内
-    pay_paused=1 已先持久化。
+    各步后崩溃:①②③④(checkpoint)→活动库未动,可重试(重试①
+    覆盖旧副本,幂等);切换→新活动库已含标志。不变量恒成立:活动库
+    被备份替换 ⇔ 其内 pay_paused=1 已先持久化。
     """
     backup = Path(backup_path)
     live = Path(live_path)
@@ -135,11 +136,34 @@ def restore_backup(backup_path: str | Path, live_path: str | Path, *,
             "(预期 1),中止切换,活动库未动")
     hook("verify")
 
-    # ④ 原子切换(Windows os.replace=MoveFileEx REPLACE_EXISTING)。
-    # 先清活动库残留 -wal/-shm:硬杀现场(恰是需恢复的典型场景)的
-    # 未 checkpoint 帧会在重开时回放到恢复库上,得到新旧混合态(极端
-    # 情形旧库 pay_paused=0 页面复活,击穿五步不变量);副本侧经
-    # wal_checkpoint(FULL)+close,不带边车
+    # ④-1 活动库 WAL 安全 checkpoint(审计 P1-1):硬杀现场已提交回执
+    # 可驻留 -wal(未 checkpoint 帧)。删除边车不能作为 checkpoint 的
+    # 替代——先 TRUNCATE checkpoint 把已提交帧并入主文件,再清边车再
+    # 切换;此后"checkpoint 后、切换前"中断=旧库主文件自持全部已提交
+    # 事实。活动库打不开/合并受阻=中止不切换(旧库连同边车原样保留,
+    # 留人工处理,不得在完整性未证时切走旧账本)
+    if live.exists():
+        live_conn = sqlite3.connect(str(live))
+        try:
+            row = live_conn.execute(
+                "PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if row is None or row[0] != 0:
+                raise OpsCommandError(
+                    f"活动库 WAL checkpoint 受阻(busy={row})(已提交数据"
+                    f"完整性未证,中止切换,活动库未动)")
+        except sqlite3.Error as exc:
+            raise OpsCommandError(
+                f"活动库 WAL checkpoint 失败(中止切换,活动库未动):{exc}"
+            ) from exc
+        finally:
+            live_conn.close()
+    hook("checkpoint")
+
+    # ④-2 原子切换(Windows os.replace=MoveFileEx REPLACE_EXISTING)。
+    # 先清残留 -wal/-shm:活动库侧已 checkpoint(TRUNCATE),帧已并入主
+    # 文件,清理不再丢已提交数据;硬杀残留边车若不清会在重开时回放到
+    # 恢复库上,得到新旧混合态(极端情形旧库 pay_paused=0 页面复活,
+    # 击穿五步不变量);副本侧经 wal_checkpoint(FULL)+close,不带边车
     for sidecar in (f"{live}-wal", f"{live}-shm",
                     f"{pending}-wal", f"{pending}-shm"):
         try:
@@ -343,9 +367,9 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
     样本直接复用账本结果,零网络零新增付费。
     """
     from nanmu_engine.llm import LLMRequest, call_llm, classify_failure
-    from nanmu_engine.ledger import (_reserved_micro, authorize,
-                                     current_coefficient, request_hash,
-                                     write_calibration_record)
+    from nanmu_engine.ledger import (_logical_key, _reserved_micro,
+                                     authorize, current_coefficient,
+                                     request_hash, write_calibration_record)
     from nanmu_engine.score import (_system_messages, _truncate_user)
     from nanmu_engine.token_count import count_request_tokens
 
@@ -383,7 +407,7 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
                "content_hash": sample.get("content_hash", ""),
                "attemptTag": f"calibration-{i}"}
         rh = request_hash(ctx)
-        logical_key = f"calibration|{model}|{rh}"
+        logical_key = _logical_key("calibration", model, rh)   # 与账本写入同构
 
         replay = conn.execute(
             "SELECT a.usage_json FROM receipt r JOIN receipt_attempt a"
@@ -455,6 +479,16 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
         status = stopped if stopped == "budget_exhausted" \
             else f"gate_rejected:{stopped}"
         return {"status": status, "passed": False, "results": results}
+    if any(r["prompt_tokens"] is None for r in results):
+        # R3:缺 usage.prompt_tokens=未取得计量证据。"没有观察到超量"
+        # 不等于"已取得通过证据"——校准是付费链路授权前置,证据不足
+        # 不得 passed(回执未结算保留未决,人工排查后重校准)
+        write_calibration_record(conn, config, coefficient=coefficient,
+                                 results=results, passed=False)
+        logger.error("stage=calibrate event=missing_usage results=%s",
+                     results)
+        return {"status": "missing_usage", "passed": False,
+                "results": results}
     write_calibration_record(conn, config, coefficient=coefficient,
                              results=results, passed=True)
     logger.info("stage=calibrate event=passed coefficient=%s samples=%d",

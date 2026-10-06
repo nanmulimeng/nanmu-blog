@@ -10,6 +10,7 @@
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -153,9 +154,11 @@ def test_v2_checkpoint_close_reopen_before_switch(tmp_path, kill_at):
     assert _meta(pending) == "1"                         # 副本已持久化
 
 
-@pytest.mark.parametrize("step", ["copy", "set_flag", "verify", "switch"])
+@pytest.mark.parametrize("step", ["copy", "set_flag", "verify", "checkpoint",
+                                  "switch"])
 def test_v2_switch_boundary_crash_states(tmp_path, kill_at, step):
-    # ①③后崩溃 → 活动库未动可重试;④后崩溃 → 新活动库已含标志;
+    # ①③后崩溃 → 活动库未动可重试;checkpoint 后崩溃 → 活动库 WAL 已
+    # 并入主文件,切换未发生仍可重试;④后崩溃 → 新活动库已含标志;
     # 任何中断点:不存在"活动库已启用且付费未暂停";重启重试幂等成功
     live = _make_db(tmp_path / "engine.db")
     backup = _make_db(tmp_path / "backup.db", marker=True)
@@ -167,6 +170,40 @@ def test_v2_switch_boundary_crash_states(tmp_path, kill_at, step):
     restore_backup(backup, live)                 # 重启后重试
     _assert_invariant(live)
     assert _meta(live) == "1" and _marker_in(live)
+
+
+def test_v2_crash_before_switch_preserves_live_wal_committed_data(
+        tmp_path, kill_at):
+    """审计 P1-1:活动库 -wal 内的已提交数据(硬杀现场)在"切换前中断"
+    不得丢失。删除边车不能作为 checkpoint 的替代——必须先对活动库
+    wal_checkpoint(TRUNCATE) 把已提交帧并入主文件,再清边车再切换;
+    checkpoint 后、切换前中断 → 即便边车随后被清,旧库主文件自持全部
+    已提交事实(真实 WAL 已提交窗口,非伪 wal 文件)。"""
+    live = _make_db(tmp_path / "engine.db")
+    backup = _make_db(tmp_path / "backup.db", marker=True)
+    # 硬杀现场模拟(子进程):提交驻留 -wal 后 os._exit 跳过连接清理,
+    # 进程死亡释放文件锁,边车与已提交帧原样残留
+    code = (
+        "import os, sys, sqlite3\n"
+        "c = sqlite3.connect(sys.argv[1])\n"
+        "c.execute('PRAGMA journal_mode=WAL')\n"
+        "with c:\n"
+        "    c.execute(\"INSERT INTO engine_meta (key, value, updated_utc)\"\n"
+        "              \" VALUES ('wal_marker', 'in-wal',"
+        " '2026-10-06T00:00:00Z')\")\n"
+        "os._exit(0)\n"
+    )
+    subprocess.run([sys.executable, "-c", code, str(live)], check=True)
+    assert (tmp_path / "engine.db-wal").stat().st_size > 0
+
+    with pytest.raises(Crash):                    # checkpoint 后、切换前中断
+        restore_backup(backup, live, after_step=kill_at("checkpoint"))
+    # 中断后边车即便被后续清理/再崩溃删除,已提交数据仍在主文件
+    for side in ("engine.db-wal", "engine.db-shm"):
+        p = tmp_path / side
+        if p.exists():
+            p.unlink()
+    assert _meta(live, "wal_marker") == "in-wal"  # 旧库不丢已提交事实
 
 
 def test_v2_bare_restore_key_missing(tmp_path):
