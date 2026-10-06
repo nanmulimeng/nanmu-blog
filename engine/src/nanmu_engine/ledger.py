@@ -559,29 +559,14 @@ def request_hash(identity_ctx: dict) -> str:
 def _passes_e4(purpose: str, response_json: str | None) -> bool:
     """完整 E4 业务验证器分派(与首次消费同一验证器,判定与复用通用)。
 
-    score 分支=Task 13 定稿(score.validate_score_response,design.md
-    错误矩阵为真相源);understand 分支=契约桩,Task 14 落地
-    summarize.py 后回填(回跑 reusable_scores 测试)。
-    """
+    score=Task 13 定稿(score.validate_score_response);understand=Task 14
+    定稿(summarize.validate_understand_response);design.md 错误矩阵为
+    真相源。"""
     if purpose == "score":
         from nanmu_engine.score import validate_score_response
         return validate_score_response(response_json)
-    if not response_json:
-        return False
-    try:
-        envelope = json.loads(response_json)
-    except (ValueError, TypeError):
-        return False
-    if not isinstance(envelope, dict) or envelope.get("finish_reason") != "stop":
-        return False
-    try:
-        payload = json.loads(envelope.get("content") or "")
-    except (ValueError, TypeError):
-        return False
-    if not isinstance(payload, dict):
-        return False
-    return all(isinstance(payload.get(k), str) and payload.get(k)
-               for k in ("title_zh", "summary", "reason"))
+    from nanmu_engine.summarize import validate_understand_response
+    return validate_understand_response(response_json)
 
 
 def reusable_scores(conn: sqlite3.Connection, members: list[dict],

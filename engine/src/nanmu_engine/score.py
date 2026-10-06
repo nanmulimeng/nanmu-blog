@@ -81,17 +81,20 @@ def _score_from_response(response_json: str) -> int:
 
 # ---------- prompt 预算守卫(E1 拒启动)与请求构造 ----------
 
-def _system_messages(config: Config, user_text: str) -> list[dict]:
-    return [{"role": "system", "content": config.prompts.score.text},
+def _system_messages(system_text: str, user_text: str) -> list[dict]:
+    return [{"role": "system", "content": system_text},
             {"role": "user", "content": user_text}]
 
 
-def check_prompt_fits(config: Config) -> None:
+def check_prompt_fits(config: Config, *, purpose: str = "score") -> None:
     """实例化 system + 最小标题空间 ≥ max_input_tokens → ConfigError(E1
-    拒启动;content-editing §3 规则 5);计数不可得同样拒启动。"""
+    拒启动;content-editing §3 规则 5);计数不可得同样拒启动。
+    purpose ∈ {score, understand}(summarize 复用同一守卫)。"""
+    prompt = config.prompts.score if purpose == "score" else config.prompts.understand
     model = config.budget.default_model
     try:
-        count = count_request_tokens(model, _system_messages(config, _MIN_USER))
+        count = count_request_tokens(
+            model, _system_messages(prompt.text, _MIN_USER))
     except TokenizerUnavailable as exc:
         raise ConfigError(
             f"E1.prompt-budget:token 计数不可得,无法验证 prompt 预算({exc})"
@@ -129,13 +132,15 @@ def build_score_ctx(config: Config, member: dict, user_text: str,
     return ctx
 
 
-def _truncate_user(config: Config, title: str, body: str) -> tuple[str, int]:
+def _truncate_user(config: Config, title: str, body: str,
+                   system_text: str) -> tuple[str, int]:
     """迭代截断正文保标题:二分最大可行前缀 + 固定标记([...truncated]),
     直至完整请求计数 ≤ max_input_tokens;只剩标题仍超 → 标题超界。
 
     二分按可行性单调假设;tokenizer 并拼下存在极端非单调,此时取到的
     前缀只会更短(保守方向,授权链仍以最终重数为准)。返回 (实际输入,
-    最终计数)。TokenizerUnavailable 原样上抛(计数不可得不出网)。"""
+    最终计数)。TokenizerUnavailable 原样上抛(计数不可得不出网)。
+    score/understand 共用(输入侧截断策略与 purpose 无关)。"""
     model = config.budget.default_model
     limit = config.budget.max_input_tokens
 
@@ -143,7 +148,7 @@ def _truncate_user(config: Config, title: str, body: str) -> tuple[str, int]:
         text = body if prefix_len == len(body) \
             else body[:prefix_len] + _TRUNCATE_MARK
         return count_request_tokens(
-            model, _system_messages(config, build_user_text(title, text)))
+            model, _system_messages(system_text, build_user_text(title, text)))
 
     if count_with(len(body)) <= limit:          # 常见:全文即 fits
         return build_user_text(title, body), count_with(len(body))
@@ -193,7 +198,8 @@ def _attempt_side(conn: sqlite3.Connection, config: Config, member: dict,
         return _Side(error=f"gate:{ref.reject_reason}")
 
     request = LLMRequest(model=ctx["model"],
-                         messages=_system_messages(config, user_text),
+                         messages=_system_messages(config.prompts.score.text,
+                                                   user_text),
                          max_tokens=ctx["max_tokens"], purpose="score",
                          request_hash=ctx["request_hash"])
     try:
@@ -226,7 +232,8 @@ def score_entry(conn, config: Config, member: dict, *, issue_date: str,
     保留供复用(验收 B:部分补全只补缺失侧)。双分齐 → 单事务业务回写。"""
     try:
         user_text, count = _truncate_user(
-            config, member["title"], member["content_text"] or "")
+            config, member["title"], member["content_text"] or "",
+            config.prompts.score.text)
     except TokenizerUnavailable:
         return ScoreOutcome("rejected", reason="tokenizer_unavailable")
     except ValueError:
