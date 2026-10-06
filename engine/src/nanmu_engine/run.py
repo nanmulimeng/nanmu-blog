@@ -106,14 +106,18 @@ def _fail_issue(conn: sqlite3.Connection, issue_date: str,
 
 def _open_issues(conn: sqlite3.Connection) -> list[tuple[str, str]]:
     """(issue_date, kind):digest_issue draft/submitted 行 + 冻结在而无行
-    (生成中);升序。published/failed 不进(failed 不自动重跑)。"""
+    (生成中);升序。published/failed 不进(failed 不自动重跑——冻结行
+    在但期已终态的,同样不进:评分全挂落 failed 后冻结行仍在是常态)。"""
     status_by_date = dict(conn.execute(
         "SELECT issue_date, status FROM digest_issue"
         " WHERE status IN ('draft','submitted')").fetchall())
+    terminal = {d for (d,) in conn.execute(
+        "SELECT issue_date FROM digest_issue"
+        " WHERE status IN ('published','failed')")}
     out: list[tuple[str, str]] = []
     for (d,) in conn.execute(
             "SELECT issue_date FROM issue_freeze ORDER BY issue_date"):
-        if d not in status_by_date:
+        if d not in status_by_date and d not in terminal:
             out.append((d, "generating"))
     out.extend((d, s) for d, s in sorted(status_by_date.items()))
     out.sort()

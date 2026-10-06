@@ -351,7 +351,8 @@ def test_paused_issue_zero_actions_then_resumes_after_unpause(env):
                       transport=_transport(env["config"]))
     assert conn.execute("SELECT status FROM digest_issue WHERE"
                         " issue_date='2026-10-05'").fetchone()[0] == "published"
-    assert code2 == 3                                # 新期 no_candidates
+    assert code2 == 0              # 2026-10-06 已 failed 不重跑(规则 5),
+                                    # 唯一动作=2026-10-05 published
 
 
 def test_paused_today_issue_skips_generation(env):
@@ -513,3 +514,22 @@ def test_pay_paused_skips_new_paid_but_readonly_recovers(env):
                         " issue_date IN ('2026-10-05','2026-10-06')"
                         ).fetchone()[0] == 0
     assert code == 4
+
+
+def test_failed_issue_with_freeze_not_in_recovery(env):
+    # 评分全挂落 failed 后冻结行仍在(常态)→ 该期不进自动恢复清单:
+    # 零事件零新增 attempt;failed 只经人工 rerun(§3 规则 5)
+    conn = env["conn"]
+    m = _entry(conn, "k-failed1")
+    _freeze(conn, "2026-10-05", [m], frozen="2026-10-05T08:31:00Z")
+    with conn:
+        conn.execute(
+            "INSERT INTO digest_issue (issue_date, entry_ids, status,"
+            " created_utc, fail_reason) VALUES ('2026-10-05', '[]',"
+            " 'failed', '2026-10-05T09:00:00Z', 'E6.all_failed')")
+    events = []
+    _run_once(env, transport=_transport(env["config"]), events=events.append)
+    assert "phase:recover:2026-10-05" not in events      # 不进恢复清单
+    assert _attempts_for(conn, "2026-10-05") == 0        # 零新增 attempt
+    assert conn.execute("SELECT status FROM digest_issue WHERE"
+                        " issue_date='2026-10-05'").fetchone()[0] == "failed"
