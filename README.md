@@ -4,9 +4,9 @@
 
 ## 当前状态(2026-10-06)
 
-**M0 全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》已在 **`https://nanmu.xyz`** 真实发布(发布计时12s;RSS 解析+CommaFeed 真实订阅、明暗主题、文章页/404、持锁回滚演练全部通过)。**当前阶段:M1 本地实施(Task 0-12 批量,已授权)**——替身模型、真实上游只读、不部署不付费;之后 Task 13-24 本地替身端到端,Task 25/26 部署与付费另行授权。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
+**M0 全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》已在 **`https://nanmu.xyz`** 真实发布(发布计时12s;RSS 解析+CommaFeed 真实订阅、明暗主题、文章页/404、持锁回滚演练全部通过)。**当前阶段:M1 本地实施推进中(Task 0-24 已实现,替身端到端绿;2026-10-06 审计 8 项修复完毕,待跨模块核验)**——替身模型、真实上游只读、不部署不付费;Task 25/26 部署与付费须当次授权。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
 
-最新执行证据见[最新交接](docs/sessions/2026-10-06-m0-acceptance.md)(M0 验收全记录);M1 批次规范与给执行 AI 的指令原文见 [resume-implementation](docs/sessions/2026-10-06-resume-implementation.md)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收(已达成)→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
+接手从 [M1 审计修复轮交接](docs/sessions/2026-10-06-m1-audit-fix-round.md)开始(审计 8 项修复全记录与待办);前序实施记录见 [M1 批次实施](docs/sessions/2026-10-06-m1-batch1-implementation.md)与 [M1 开发交接](docs/sessions/2026-10-06-m1-development-handoff.md)。M0 执行证据见 [M0 验收交接](docs/sessions/2026-10-06-m0-acceptance.md)。阶段策略以 [spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md)为准。
 
 ## 开发与部署
 
@@ -24,4 +24,4 @@
 
 仓库根运行`python scripts/check_docs.py`检查链接、代码围栏、schema示例一致性和SQL语法;不安装应用依赖、不访问网络。修改计划中的代码片段时再按文档索引运行`--snippets`。
 
-写作方式见[写作指南](docs/writing.md),部署操作见[部署手册](docs/ops/deploy.md)(手册已实际执行一轮,Task10 复测待做)。
+写作方式见[写作指南](docs/writing.md),部署操作见[部署手册](docs/ops/deploy.md)(Task9 部署与Task10 发布/回滚验收均已执行)。

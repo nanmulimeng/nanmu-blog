@@ -15,13 +15,13 @@
 | [development/design-review.md](development/design-review.md) | 模块详细设计与设计评审规范:可开发八件事、五设计单元、评审结束条件、文档控制约束 | 定稿(约束 M1 起的设计阶段) |
 | [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 总体设计基线(定稿;编码许可以设计评审为准) |
 | [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | **全部完成(2026-10-06 验收通过,tag `m0`)** |
-| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(26任务+两项带入验证任务+逐任务停点) | 已通过第五轮评审(2026-10-05);**实施已恢复,Task 0-12 批量执行中** |
+| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(27任务,Task 0-26+两项带入验证任务+逐任务停点) | 已通过第五轮评审(2026-10-05);**Task 0-24 已实现(替身端到端 294 测试绿),2026-10-06 审计 8 项修复完毕,待跨模块核验;Task 25/26 须当次授权** |
 | [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地与发布流程可用;首篇文章已发布(Task10 验收) |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
 | [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 总体设计基线(模块级编码许可以设计评审为准) |
 | [engine/digest-design.md](engine/digest-design.md) | M1 日报功能详细设计与一期生命周期:功能范围、完整样例、期状态机与窗口冻结、人工维护六场景 | **v3 已收口(2026-10-05 用户确认,第 3 步功能输入基线)** |
-| [engine/units/](engine/units/) | M1 五设计单元详细设计(第 3 步;含 [data-ingestion.md](engine/units/data-ingestion.md):判重/冻结 issue_freeze/预筛的实现层设计) | 五单元已产出并经三轮联合核验修正(最新 model-calls v4);待用户评审收口 |
+| [engine/units/](engine/units/) | M1 五设计单元详细设计(第 3 步;含 [data-ingestion.md](engine/units/data-ingestion.md):判重/冻结 issue_freeze/预筛的实现层设计) | 已通过设计与计划评审;作为 M1 实施基线,运行能力待实施验收 |
 | [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 总体设计基线(期生命周期等设计缺口见design-review) |
 | [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 总体设计基线(权重表样例待设计阶段落盘) |
 | [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 总体设计基线(成本标注文案选择待设计阶段定) |
@@ -58,10 +58,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-06-m0-acceptance.md)(**2026-10-06 M0 验收通过**:首篇文章上线+线上验收+回滚演练+tag `m0` 全记录;M1 批次规范与指令原文见 [resume-implementation](sessions/2026-10-06-resume-implementation.md)),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前阶段=M1 本地实施(Task 0-12 批量已授权):替身模型/真实上游只读/不部署不付费;push(任何 remote)/tag/服务器操作/真实付费仍逐项授权;不再全面设计评审,仅对实现暴露的契约问题局部修订**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 接手当前工作:先读 [M1 审计修复轮交接](sessions/2026-10-06-m1-audit-fix-round.md),再按 [workflow](development/workflow.md)核对 Git/文件与本轮用户指令。**M1 Task 0-24 已实现+审计修复轮完成,待跨模块核验;Task 25/26 部署与付费须用户当次显式授权**。替身模型/上游只读/不部署不付费。前序:[M1 批次实施](sessions/2026-10-06-m1-batch1-implementation.md)、[M1 开发交接](sessions/2026-10-06-m1-development-handoff.md)、[M0 验收记录](sessions/2026-10-06-m0-acceptance.md)。
 - 写文章:writing.md(本地预览与发布流程均可用;发布/推送需授权)。开发博客:spec §4(M0 已完成,tag `m0`)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行两轮(Task9 部署+Task10 发布与回滚演练);M1 前不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提(已满足) → spec §5 → data-source → engine四文档(总体设计基线) → [M1计划](superpowers/plans/2026-10-05-m1-engine-implementation.md)(已通过第五轮评审,27 任务;**实施已恢复,入口=Task 0**)。
+- 开始引擎:先核对spec §9的M0验收前提(已满足) → spec §5 → data-source → engine四文档(总体设计基线) → [M1计划](superpowers/plans/2026-10-05-m1-engine-implementation.md)(已通过第五轮评审,27 任务;**Task 0-24 已实现,审计修复轮完成,待跨模块核验**)。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令

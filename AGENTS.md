@@ -5,10 +5,10 @@
 ## 项目状态快照(2026-10-06)
 
 - M0:**全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》真实发布上线(发布计时12s),线上验收全通过(RSS XML 解析+CommaFeed 真实订阅、明暗主题、文章页/404),持锁回滚演练实操通过(切旧版 c8a4567 确认后切回)。证据见 [M0 验收交接](docs/sessions/2026-10-06-m0-acceptance.md)与 [部署交接](docs/sessions/2026-10-04-m0-deploy.md)
-- **当前阶段:M1 本地实施(Task 0-12 批量,已获授权)**——替身模型、真实上游只读、不部署不付费;Task 0-4 接口稳定后账本侧 5-8 与采集侧 9-12 可并行;Task 1 严格计量依据与停点,不得用字符估算做绿。仅对实现暴露的具体契约问题局部修订文档。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
+- **当前阶段:M1 本地实施推进中(Task 0-24 已实现,审计修复轮完成,待跨模块核验)**——engine/ 已创建并替身端到端绿(全套件 294 passed);200aad0 整分支评审修复轮后用户审计提出 8 项问题,已按模块修复完毕(8d24fbe..9e4d8e0 五提交),待修复后跨模块核验。模型全部替身、上游只读、不部署不付费;Task 25 部署与 Task 26 真实付费须用户当次显式授权。
 - 顺序:M1 Task 0-12→Task 13-24(本地替身端到端)→Task 25 部署/Task 26 分两段授权启用付费;进入条件以spec §9为准(M0 验收已满足)
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-05-m1-engine-implementation.md](docs/superpowers/plans/2026-10-05-m1-engine-implementation.md) 逐任务
-- 最新进度:[2026-10-06 M0 验收通过](docs/sessions/2026-10-06-m0-acceptance.md)(M0 收尾全记录:文章修正 03015b1→发布→线上验收→回滚演练→tag m0;M1 入口与批次规范见 [resume-implementation](docs/sessions/2026-10-06-resume-implementation.md) 含给执行 AI 的指令原文照录);本轮改动提交/推送状态以git log为准,接手时核对
+- 最新接手入口:[2026-10-06 M1 审计修复轮](docs/sessions/2026-10-06-m1-audit-fix-round.md)(审计 8 项修复全记录:账本校准/内容身份运行序/发布恢复/站点产物四组,测试与验收证据);前序:[M1 批次实施](docs/sessions/2026-10-06-m1-batch1-implementation.md)、[M1 开发交接](docs/sessions/2026-10-06-m1-development-handoff.md)。本轮修改/提交/推送状态接手时以 Git 实况核对。
 
 ## Agent接手入口
 
@@ -36,7 +36,7 @@
 ```
 scripts/   已有文档检查工具
 site/      Astro 5 静态站已建(M0 Task 2-8+8a;posts 手写 + digest 生成)
-engine/    尚未创建;AI 引擎(M1,Python + SQLite + systemd timer)
+engine/    AI 引擎已建(M1 Task 0-24,Python + SQLite + systemd timer;src/nanmu_engine + tests,294 测试)
 docs/      specs/plans/decisions/engine/ops/sessions/context
 deploy/    服务器部署工件(已安装并在 Task 9 验收;线上 https://nanmu.xyz)
 ```
@@ -49,7 +49,11 @@ site/下(已创建,verify自Task7起可用):
 
 - `npm run dev` 本地开发
 - `npm run build` 构建
-- `npm run verify` build + 冒烟检查;从Task7起用于site验证,此前用build。工作目录与各类任务要求见quality-gates
+- `npm run verify` build + 冒烟检查 + 夹具临时构建验证;从Task7起用于site验证,此前用build。工作目录与各类任务要求见quality-gates
+
+engine/下(M1 已建):
+
+- `python -m pytest tests -q` 全套件(engine 目录内执行;替身模型+本地 bare repo,零真实网络)
 
 ## 开发流程
 
