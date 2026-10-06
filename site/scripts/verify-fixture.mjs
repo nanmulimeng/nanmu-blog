@@ -3,8 +3,8 @@
 // 副本(node_modules 以 junction 复用,不复制),注入夹具后走真实
 // astro build + smoke.mjs(含 cost_pending 三处口径标注检查)——夹具的
 // 渲染验收用真实构建链,生产构建链(npm run verify)不含夹具。
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync,
-         rmdirSync, symlinkSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync,
+         readdirSync, rmSync, rmdirSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,11 +53,24 @@ try {
     }
   }
 } finally {
-  try {
-    rmdirSync(join(tmp, 'node_modules'));   // 摘联接(rmdir 只删链接本身)
-    rmSync(tmp, { recursive: true, force: true });
-  } catch (e) {
-    console.error(`清理临时目录失败(请手动删除 ${tmp}):`, e.message);
+  // 摘链接分平台两步(交界 C1):Windows junction 用 rmdir(只删链接
+  // 本身);Linux 上 symlinkSync junction 退化为普通符号链接,rmdir 报
+  // ENOTDIR 恒失败,改 rmSync 非递归删链接自身。链接未确认摘除前绝不
+  // rmSync(recursive)——Windows 上会穿过 junction 递归删真实 node_modules
+  const link = join(tmp, 'node_modules');
+  for (const remove of [() => rmdirSync(link), () => rmSync(link)]) {
+    if (!lstatSync(link, { throwIfNoEntry: false })) break;
+    try { remove(); } catch { /* 换下一种摘法 */ }
+  }
+  if (lstatSync(link, { throwIfNoEntry: false })) {
+    console.error(`FIXTURE CLEANUP:链接 ${link} 未能摘除;为保护真实`
+      + ` node_modules 不递归删除 ${tmp},请人工摘除后删除`);
+  } else {
+    try {
+      rmSync(tmp, { recursive: true, force: true });
+    } catch (e) {
+      console.error(`清理临时目录失败(请手动删除 ${tmp}):`, e.message);
+    }
   }
 }
 if (problems.length) {
