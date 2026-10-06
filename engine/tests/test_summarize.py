@@ -202,3 +202,35 @@ def test_understand_truncation_applies_and_prompt_guard(env):
     assert count_request_tokens(
         body["model"], body["messages"]) <= config.budget.max_input_tokens
     assert "[...truncated]" in body["messages"][-1]["content"]
+
+
+def test_understand_retry_goes_through_can_retry_gate(env):
+    # 重发门(model-calls §3 规则 3):understand 同 logical_key 已有失败
+    # 回执时,再发送过 can_retry——503(retryable 类)名额内允许按 retry
+    # 通道补发;传输 unknown 在等待窗内(<30min)拒绝重发零网络
+    from datetime import datetime, timedelta, timezone
+    from nanmu_engine.ledger import _logical_key, request_hash
+    from nanmu_engine.summarize import _build_ctx
+    conn, config = env
+    member = _seed_entry(conn)
+    t0 = datetime.now(timezone.utc)
+
+    def _net_down(request):
+        raise httpx.ConnectError("down", request=request)
+
+    calls = []
+    out1 = understand_entry(conn, config, member, issue_date="2026-10-06",
+                            transport=httpx.MockTransport(_net_down), now=t0)
+    assert out1.status == "unknown"
+
+    out2 = understand_entry(conn, config, member, issue_date="2026-10-06",
+                            transport=_transport([_ok_payload()], calls),
+                            now=t0 + timedelta(minutes=5))
+    assert out2.status == "unknown"            # 窗内:不重发零网络
+    assert calls == []
+
+    out3 = understand_entry(conn, config, member, issue_date="2026-10-06",
+                            transport=_transport([_ok_payload()], calls),
+                            now=t0 + timedelta(minutes=31))
+    assert out3.status == "completed"          # 过窗:unknown_retry 补发
+    assert len(calls) == 1

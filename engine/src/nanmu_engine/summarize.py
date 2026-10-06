@@ -23,6 +23,7 @@ from nanmu_engine.ledger import (
     PROVIDER,
     _logical_key,
     authorize,
+    can_retry,
     record_failure,
     record_response,
     request_hash,
@@ -130,10 +131,21 @@ def understand_entry(conn: sqlite3.Connection, config: Config, member: dict,
         summary_id = _complete_summary(conn, config, member, row[0], payload)
         return _completed(summary_id, row[0], payload)
 
+    # 重发门(model-calls §3 规则 3):与 score._attempt_side 同构——
+    # 同 logical_key 已有回执的再发送过 can_retry 三条件;首发不经此门
+    origin = "initial"
+    if row is not None:
+        verdict = can_retry(conn, config, logical_key, now)
+        if not verdict.allowed:
+            if verdict.reason == "unknown_wait":
+                return SummaryOutcome("unknown", fail_reason="unknown_wait")
+            return SummaryOutcome("failed", fail_reason=verdict.reason)
+        origin = "retry" if verdict.channel == "normal" else verdict.channel
+
     ref = authorize(conn, config, purpose="understand", model=ctx["model"],
                     request_hash=ctx["request_hash"],
                     identity_key=member["identity_key"], token_count=count,
-                    issue_date=issue_date, origin="initial", now=now)
+                    issue_date=issue_date, origin=origin, now=now)
     if ref.status != "reserved":
         return SummaryOutcome("rejected", fail_reason=f"gate:{ref.reject_reason}")
 

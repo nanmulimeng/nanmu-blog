@@ -88,9 +88,11 @@ def _auto_eligible(frozen_utc: str, today: str) -> bool:
 
 
 def _fail_issue(conn: sqlite3.Connection, issue_date: str,
-                reason: str) -> None:
+                reason: str, *, send: Callable[[str, str], str] | None = None
+                ) -> None:
     """落 failed 行(E2 子类/E6 子类/no_candidates/zero_qualified;
-    §3 规则 6 字段映射的失败阶段/原因项)。"""
+    §3 规则 6 字段映射的失败阶段/原因项)+ 失败通知(E2/E6/无合格为
+    两期类:首期抑制由 notify_event 判定,此处只管发)。"""
     now = _now_str()
     with conn:
         conn.execute(
@@ -100,6 +102,9 @@ def _fail_issue(conn: sqlite3.Connection, issue_date: str,
             " ON CONFLICT(issue_date) DO UPDATE SET status='failed',"
             " fail_reason=excluded.fail_reason, updated_utc=excluded.updated_utc",
             (issue_date, now, reason, now))
+    notify_event(conn, reason, issue_date,
+                 f"{issue_date} 期失败:{reason}(退出码非零,人工核对)",
+                 send=send or _log_sender)
 
 
 # ---------- 未完成期清单(自动恢复资格运行时计算,不加列) ----------
@@ -140,7 +145,9 @@ def _final_keys_from_entry_ids(conn: sqlite3.Connection,
 
 def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
                     ctx: PublishContext, *, paid_allowed: bool,
-                    transport, now: datetime) -> int:
+                    transport, now: datetime,
+                    notify_send: Callable[[str, str], str] | None = None
+                    ) -> int:
     """生成中续跑与当天新期共用(冻结在=续跑语义:manifest/回执复用)。
     返回该期退出码。pay_paused 期间:付费调用跳过、期保持生成中(不落
     failed);有合格产物(复用侧齐)仍可组装发布。"""
@@ -152,7 +159,8 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
         return 3
     manifest = json.loads(row[0])
     if not manifest:
-        _fail_issue(conn, issue_date, "no_candidates")
+        _fail_issue(conn, issue_date, "no_candidates",
+                        send=notify_send or _log_sender)
         return 3
 
     occupancy = {k: (s, c) for k, s, c in conn.execute(
@@ -174,13 +182,15 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
                     override_exclude, reuse_snapshot, n_new)
 
     skipped_pay = False
+    statuses: list[str] = []
     for m in [*pre.to_score, *pre.recoverable]:
         snap = reuse_snapshot.get(m["identity_key"], {})
         if not paid_allowed and snap.get("needs"):
             skipped_pay = True            # 新增付费跳过;双分齐者纯复用
             continue
-        score_entry(conn, config, m, issue_date=issue_date,
-                    transport=transport, now=now)
+        statuses.append(score_entry(
+            conn, config, m, issue_date=issue_date,
+            transport=transport, now=now).status)
 
     entry_ids = [m["entry_id"] for m in manifest]
     ph = ",".join("?" * len(entry_ids))
@@ -195,8 +205,12 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
     if not analysis_rows:
         if skipped_pay:
             return 4                       # 留待解除后继续(不落 failed)
+        if "unknown" in statuses:
+            return 4                       # unknown 预占保留,等待窗口/名额
+                                           # 后下轮续接,不忙等不落 failed
         if pre.to_score or pre.recoverable:
-            _fail_issue(conn, issue_date, "E6.all_failed")
+            _fail_issue(conn, issue_date, "E6.all_failed",
+                        send=notify_send or _log_sender)
             return 3
         return 4                           # 全被排除/占用:转人工
 
@@ -242,7 +256,8 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
     if fsr.zero_qualified:
         if skipped_pay:
             return 4
-        _fail_issue(conn, issue_date, "zero_qualified")
+        _fail_issue(conn, issue_date, "zero_qualified",
+                        send=notify_send or _log_sender)
         return 3
 
     try:
@@ -265,13 +280,15 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
 
 def _recover_issue(conn: sqlite3.Connection, config: Config,
                    ctx: PublishContext, issue_date: str, kind: str, *,
-                   paid_allowed: bool, transport, now: datetime) -> int:
+                   paid_allowed: bool, transport, now: datetime,
+                   notify_send: Callable[[str, str], str] | None = None
+                   ) -> int:
     """期内顺序:submitted 只读线上确认→draft 发布恢复→生成中续跑
     (单期恢复消费恢复预算;单窗口单步由 recover_issue 保证)。"""
     if kind == "generating":
         return _generate_issue(conn, config, issue_date, ctx,
                                paid_allowed=paid_allowed, transport=transport,
-                               now=now)
+                               now=now, notify_send=notify_send)
     if kind == "submitted":
         out = recover_issue(conn, issue_date, ctx)   # W4 只读,零费用
         return 0 if out.status == "published" else 4
@@ -343,7 +360,8 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         try:
             codes.append(_recover_issue(conn, config, publish_ctx, issue_date,
                                         kind, paid_allowed=paid_allowed,
-                                        transport=transport, now=now))
+                                        transport=transport, now=now,
+                                        notify_send=notify_send))
         except ManualIntervention as exc:
             logger.error("stage=run event=manual_intervention issue=%s"
                          " message=%s", issue_date, exc)
@@ -367,11 +385,13 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
             collect_once(conn, upstream_path, config, today, now)
             codes.append(_generate_issue(conn, config, today, publish_ctx,
                                          paid_allowed=paid_allowed,
-                                         transport=transport, now=now))
+                                         transport=transport, now=now,
+                                         notify_send=notify_send))
         except CollectError as exc:
             logger.error("stage=run event=E2 issue=%s message=%s",
                          today, exc)
-            _fail_issue(conn, today, "E2.upstream")
+            _fail_issue(conn, today, "E2.upstream",
+                        send=notify_send or _log_sender)
             codes.append(3)
 
     # 汇总记账:核清后过期期巡检(提示不自动更新)

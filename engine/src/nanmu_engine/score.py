@@ -23,6 +23,7 @@ from nanmu_engine.ledger import (
     PROVIDER,
     _logical_key,
     authorize,
+    can_retry,
     record_failure,
     record_response,
     request_hash,
@@ -190,10 +191,22 @@ def _attempt_side(conn: sqlite3.Connection, config: Config, member: dict,
         return _Side(score=_score_from_response(row[2]), receipt_id=row[0],
                      reused=True)
 
+    # 重发门(model-calls §3 规则 3):此前发过(同 logical_key 有回执)
+    # 的再发送一律过 can_retry 三条件——错误类别/硬上限/unknown 专属等待
+    # (≥30min)与名额;首发无回执不经此门。
+    origin = "initial"
+    if row is not None:
+        verdict = can_retry(conn, config, logical_key, now)
+        if not verdict.allowed:
+            if verdict.reason == "unknown_wait":
+                return _Side(error="unknown_wait", receipt_id=row[0])
+            return _Side(error="no_retry", receipt_id=row[0])
+        origin = "retry" if verdict.channel == "normal" else verdict.channel
+
     ref = authorize(conn, config, purpose="score", model=ctx["model"],
                     request_hash=ctx["request_hash"],
                     identity_key=member["identity_key"], token_count=count,
-                    issue_date=issue_date, origin="initial", now=now)
+                    issue_date=issue_date, origin=origin, now=now)
     if ref.status != "reserved":
         return _Side(error=f"gate:{ref.reject_reason}")
 
@@ -255,7 +268,8 @@ def score_entry(conn, config: Config, member: dict, *, issue_date: str,
                             receipt_ids=(sides[0].receipt_id, sides[1].receipt_id))
     errors = [s.error for s in sides if s.score is None]
     outcome = {"no_retry": "failed", "E4.parse": "retryable",
-               "retryable": "retryable", "unknown": "unknown"}
+               "retryable": "retryable", "unknown": "unknown",
+               "unknown_wait": "unknown"}
     status = "failed" if "no_retry" in errors else next(
         (outcome[e] for e in errors if e in outcome), "failed")
     return ScoreOutcome(status, score_1=sides[0].score, score_2=sides[1].score,

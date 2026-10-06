@@ -285,8 +285,11 @@ def test_deadline_d2_excludes_notifies_once_then_dedups(env):
 
     code2 = _run_once(env, today="2026-10-06",      # D+3 再跑:去重
                       transport=_transport(env["config"]))
-    assert len(env["sent"]) == 1
-    assert conn.execute("SELECT COUNT(*) FROM notify_sent").fetchone()[0] == 1
+    # auto_expire 去重保持 1 封;no_candidates 连续第 2 期(10-05 首期
+    # 抑制)→二期通知发出(规则 7)
+    assert [k for k, _ in env["sent"]] == ["auto_expire:2026-10-03",
+                                           "no_candidates:2026-10-06"]
+    assert conn.execute("SELECT COUNT(*) FROM notify_sent").fetchone()[0] == 2
     assert code2 == 4
 
 
