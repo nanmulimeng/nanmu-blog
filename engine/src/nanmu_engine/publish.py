@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from nanmu_engine.assemble import safe_source_url
 from nanmu_engine.select import _settle_published_sql
 
 
@@ -134,7 +135,14 @@ def _sync_workdir(ctx: PublishContext, issue_date: str) -> None:
     if head == origin:
         return                                  # 已同步
     if base == head:                            # 本地落后 → ff 同步
-        _git(ctx, "merge", "--ff-only", f"origin/{ctx.branch}")
+        try:
+            _git(ctx, "merge", "--ff-only", f"origin/{ctx.branch}")
+        except RuntimeError as exc:
+            # 交界 B-边缘:重叠暂存/工作区改动使 ff merge 拒绝——转人工,
+            # 不让 RuntimeError 逃逸 run_once 异常协议(无 fail 行/无 E8)
+            raise ManualIntervention(
+                f"sync:工作副本与远端同步失败({exc})——本地改动与远端"
+                "更新重叠,转人工清理后重试") from exc
     elif base == origin:
         return          # 本地领先(未推送提交已过隔离核对)→等本次 push 带出
     else:                                       # 双向分叉 → E8
@@ -198,12 +206,18 @@ def _online_evidence(ctx: PublishContext, issue_date: str,
 def _deployed_evidence(ctx: PublishContext, issue_date: str,
                        expected: str | None) -> bool:
     """部署证据(审计 P1-4):线上部署 SHA(fetch_release_sha)树内该路径
-    身份=expected(expected=None 表示路径应已不存在)。部署 SHA 不可得或
-    树内身份不符=部署未吃进该版本,证据不足;URL 可读/不可读只是辅助
-    信号(旧页本就可读、404 也可能是站点故障)。"""
+    身份=expected(expected=None 表示路径应已不存在)。部署 SHA 不可得、
+    本地不可解析(交界 B-缝D:不可解析≠"路径已消失",None==None 会把
+    无法验证误判为已删除)或树内身份不符=部署未吃进该版本,证据不足;
+    URL 可读/不可读只是辅助信号(旧页本就可读、404 也可能是站点故障)。"""
     deployed = ctx.fetch_release_sha()
     if not deployed:
         return False
+    r = subprocess.run(
+        ["git", "cat-file", "-e", f"{deployed}^{{commit}}"],
+        cwd=str(ctx.workdir), capture_output=True)
+    if r.returncode != 0:
+        return False                           # SHA 在本地对象库不可解析
     return _blob_sha(ctx, deployed, _digest_rel(ctx, issue_date)) == expected
 
 
@@ -284,16 +298,25 @@ def recover_issue(conn, issue_date: str,
                 "——转人工(人工确认未提交后可重组装,评分/摘要全复用)")
         commit = commits[0]                             # 该路径最新提交
         blob_sha = _blob_sha(ctx, commit, rel)
-        # 期成员从 claim 反查(审计 P1-4):entry_ids='[]' 会让后续 published
-        # 清算把已进产物成员置 rejected+claim 清空,丢"已发布使用"事实;
-        # 反查不到成员=成员事实无法重建→不写行,转人工
-        ids = [r[0] for r in conn.execute(
-            "SELECT id FROM entry WHERE claim_issue=? ORDER BY id",
-            (issue_date,)).fetchall()]
-        if not ids:
+        # 期成员口径=最终产物成员(交界 B-缝A):claim 全集≠产物成员
+        # (裁剪/安全剔除后未进产物),以产物 markdown 内容反解——成员
+        # safe_source_url 出现在产物文本=进产物;被剔除成员不得借 W4
+        # 清算置 used(丧失后续期再入选资格)
+        rows = conn.execute(
+            "SELECT id, url FROM entry WHERE claim_issue=? ORDER BY id",
+            (issue_date,)).fetchall()
+        if not rows:
             raise ManualIntervention(
                 f"证据不足:{issue_date} 无 claim 成员可回填 entry_ids"
                 "——转人工(不得以空成员清单落库)")
+        text = (_git_bytes(ctx, "show", f"{commit}:{rel}")
+                or b"").decode("utf-8", errors="replace")
+        ids = [eid for eid, url in rows
+               if (s := safe_source_url(url)) is not None and s in text]
+        if not ids:
+            raise ManualIntervention(
+                f"证据不足:{issue_date} claim 成员无一出现在产物内容"
+                "——转人工(成员事实无法重建,不得以空清单落库)")
         with conn:
             conn.execute(
                 "INSERT INTO digest_issue (issue_date, entry_ids,"
@@ -418,6 +441,24 @@ def visible_status(conn, issue_date: str) -> str:
 
 # ---------- 撤回/重新上线/纠错(规则 5/6/7;均零模型调用) ----------
 
+def _assert_remote_consistent(ctx: PublishContext, issue_date: str,
+                              *, expect_present: bool) -> None:
+    """线上自洽校验(交界 B-缝C):库内认知(在线/已撤回)须与远端尖端
+    树内事实一致,不一致(典型=restore 回退 ops_json/撤回事实后库认知
+    退回旧时点)→转人工——不得基于回退认知重建文件(已撤回内容以纠错
+    名义重新上线)或再删在线文件。"""
+    _git(ctx, "fetch", "origin")
+    rel = _digest_rel(ctx, issue_date)
+    present = _blob_sha(
+        ctx, _git(ctx, "rev-parse", f"origin/{ctx.branch}"), rel) is not None
+    if present != expect_present:
+        state = "应在线但远端尖端已无该路径" if expect_present \
+            else "库记已撤回但远端尖端仍在线"
+        raise ManualIntervention(
+            f"线上自洽校验失败:{issue_date} {state}({rel})——库内认知与"
+            "远端分歧(可能 restore 回退),转人工核对后再操作")
+
+
 def _issue_url(ctx: PublishContext, issue_date: str) -> str:
     return f"{ctx.site_base}/digest/{issue_date}/"
 
@@ -475,6 +516,7 @@ def withdraw(conn, issue_date: str, ctx: PublishContext, *,
     if vis not in ("published", "relisted"):
         raise ManualIntervention(
             f"withdraw 前置失败:{issue_date} 当前可见状态={vis}(须在线)")
+    _assert_remote_consistent(ctx, issue_date, expect_present=True)
     _set_paused(conn, issue_date, True, reason)
     seq = append_op(conn, issue_date, "withdraw", "ABSENT")
     commit_sha = _push_op(conn, issue_date, ctx, seq, op_name="withdraw",
@@ -506,6 +548,7 @@ def relist(conn, issue_date: str, ctx: PublishContext, *, mode: str,
     if visible_status(conn, issue_date) != "withdrawn":
         raise ManualIntervention(
             f"relist 前置失败:{issue_date} 非撤回态")
+    _assert_remote_consistent(ctx, issue_date, expect_present=False)
     rel = _digest_rel(ctx, issue_date)
     if mode == "verbatim":
         w_commit = conn.execute(
@@ -551,6 +594,7 @@ def correct(conn, issue_date: str, ctx: PublishContext, *,
     if visible_status(conn, issue_date) != "published":
         raise ManualIntervention(
             f"correct 前置失败:{issue_date} 当前可见状态须为在线")
+    _assert_remote_consistent(ctx, issue_date, expect_present=True)
     rel = _digest_rel(ctx, issue_date)
     data = new_content.encode("utf-8")
     target = hashlib.sha256(data).hexdigest()

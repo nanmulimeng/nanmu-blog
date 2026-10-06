@@ -98,13 +98,13 @@ def _make_draft(conn, work, issue_date="2026-10-06", entry_ids=(100,)):
 
 
 def _seed_claim(conn, key, *, status="selected", claim="2026-10-06",
-                entry_id=None):
+                entry_id=None, url="https://e.com"):
     cur = conn.execute(
         "INSERT INTO entry (identity_key, url, title, source_name,"
         " source_tier, discovered_utc, content_text, status, claim_issue)"
-        " VALUES (?, 'https://e.com', 't', 'src', 'T1',"
+        " VALUES (?, ?, 't', 'src', 'T1',"
         " '2026-10-06T00:00:00Z', 'b', ?, ?)",
-        (key, status, claim))
+        (key, url, status, claim))
     conn.commit()
     return entry_id or cur.lastrowid
 
@@ -181,7 +181,9 @@ def test_w1_commit_without_db_row_backfills_draft(env):
     conn, config, ctx, work, state = env
     before = _attempts(conn)
     eid = _seed_claim(conn, "in1")                 # 期成员(claim 在)
-    sha = _commit_file(work, "2026-10-06")         # commit 成功、DB 未记 draft
+    # 产物含成员来源 URL(回填以产物内容为事实,见 B-缝A)
+    sha = _commit_file(work, "2026-10-06",
+                       content=f"# 2026-10-06\n\n- [t](https://e.com)——p\n")
     out = recover_issue(conn, "2026-10-06", ctx)
     assert out.status == "draft"
     row = conn.execute(
@@ -601,7 +603,8 @@ def test_w1_backfills_members_then_w4_settles_used(env):
     # 成员结算 used(不是 '[]' → 全员 rejected 丢"已发布使用"事实)
     conn, config, ctx, work, state = env
     in1 = _seed_claim(conn, "in1")
-    sha = _commit_file(work, "2026-10-06")
+    sha = _commit_file(work, "2026-10-06",
+                       content=f"# 2026-10-06\n\n- [t](https://e.com)——p\n")
     _run(["push", "origin", "main"], work)
     out = recover_issue(conn, "2026-10-06", ctx)   # W1
     assert out.status == "draft"
@@ -642,3 +645,90 @@ def test_content_op_unpushed_target_goes_manual(env):
     state["url_ok"] = True                          # 旧页可读≠新版本已上线
     with pytest.raises(ManualIntervention, match="证据不足"):
         recover_content_op(conn, "2026-10-06", ctx)
+
+
+# ==================== 交界核验轮(发布×账本/恢复) ====================
+
+def test_w1_backfills_only_members_in_artifact(env):
+    # 交界 B-缝A:W1 回填口径=最终产物成员(产物 markdown 内含其来源
+    # URL),不是 claim 全集——被剔除成员不得借 W4 清算置 used(丧失
+    # 后续期再入选资格)
+    conn, config, ctx, work, state = env
+    in_id = _seed_claim(conn, "in1", url="https://e.com/in")
+    _seed_claim(conn, "out1", url="https://e.com/out")   # claim 在但未进产物
+    md = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+          "entry_count: 1\ncost_cny: 0.01\ncost_pending: false\n---\n"
+          "\n## 值得一瞥(压线入选)\n\n- [t](https://e.com/in)"
+          "(s · 展示分 71)——p\n")
+    sha = _commit_file(work, "2026-10-06", content=md)
+    _run(["push", "origin", "main"], work)
+    out = recover_issue(conn, "2026-10-06", ctx)        # W1
+    assert out.status == "draft"
+    ids = json.loads(conn.execute(
+        "SELECT entry_ids FROM digest_issue WHERE issue_date='2026-10-06'"
+        ).fetchone()[0])
+    assert ids == [in_id]                       # 只回填产物内成员
+    with conn:
+        conn.execute("UPDATE digest_issue SET git_commit=?, status="
+                     " 'submitted' WHERE issue_date='2026-10-06'", (sha,))
+    out2 = recover_issue(conn, "2026-10-06", ctx)       # W4
+    assert out2.status == "published"
+    assert _entry_states(conn) == [("in1", "used", None),
+                                   ("out1", "rejected", None)]
+
+
+def test_correct_refuses_when_ledger_diverges_from_remote(env):
+    # 交界 B-缝C:restore 回退 ops_json/撤回事实后,库说 published 但远端
+    # 尖端已无该路径(撤回已 push)——correct 不得基于回退认知重建文件
+    # (已撤回内容以纠错名义重新上线);线上自洽校验转人工
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    _withdraw_confirmed(conn, ctx, work, state)
+    with conn:                                   # 模拟 restore 回退到备份时点
+        conn.execute(
+            "UPDATE digest_issue SET ops_json=NULL, withdrawn_utc=NULL,"
+            " withdraw_commit=NULL WHERE issue_date='2026-10-06'")
+        conn.execute("DELETE FROM issue_freeze WHERE issue_date="
+                     "'2026-10-06'")
+    fixed = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+             "entry_count: 1\ncost_cny: 0.01\ncost_pending: false\n---\n"
+             "\n## 值得一瞥\n\n- [x](https://e.com)(s · 展示分 71)——p\n")
+    with pytest.raises(ManualIntervention, match="线上|自洽|核对"):
+        correct(conn, "2026-10-06", ctx, new_content=fixed)
+    tip = _run(["rev-parse", "origin/main"], work)
+    assert _run(["ls-tree", tip, f"{DIGEST_DIR}/2026-10-06.md"], work) == ""
+
+
+def test_withdraw_not_confirmed_when_release_sha_unresolvable(env):
+    # 交界 B-缝D:部署 SHA 本地不可解析 ≠ "路径已消失"——撤回确认须部署
+    # 证据可验证;不可解析=证据不足保持 pending,不落 withdrawn 终态
+    conn, config, ctx, work, state = env
+    _publish_ok(conn, ctx, work)
+    ctx.fetch_release_sha = lambda: "deadbeef" * 5    # 对象库不可达 SHA
+    state["url_ok"] = False
+    res = withdraw(conn, "2026-10-06", ctx, reason="内容有误")
+    assert res.status == "pending"
+    row = conn.execute("SELECT withdrawn_utc FROM digest_issue WHERE"
+                       " issue_date='2026-10-06'").fetchone()
+    assert row[0] is None
+
+
+def test_ff_merge_overlapping_staged_goes_manual(env, tmp_path):
+    # 交界 B-边缘:暂存遗留与远端更新重叠→ff merge 拒绝→转人工,而非
+    # RuntimeError 逃逸 run_once 异常协议(无 fail 行/无 E8 通知)
+    conn, config, ctx, work, state = env
+    _make_draft(conn, work)
+    _seed_claim(conn, "in1")
+    (work / "README.md").write_text("local staged change", encoding="utf-8")
+    _run(["add", "README.md"], work)                 # 暂存遗留
+    other = tmp_path / "other"
+    _run(["clone", ctx.remote_url, str(other)], tmp_path)
+    _run(["config", "user.email", "t@t"], other)
+    _run(["config", "user.name", "t"], other)
+    (other / "README.md").write_text("remote moved on", encoding="utf-8")
+    _run(["add", "."], other)
+    _run(["commit", "-m", "elsewhere", "-q"], other)
+    _run(["push", "origin", "main"], other)          # 同文件远端前进→重叠
+
+    with pytest.raises(ManualIntervention, match="同步|sync|工作副本"):
+        publish_issue(conn, "2026-10-06", ctx, final_keys=["in1"])
