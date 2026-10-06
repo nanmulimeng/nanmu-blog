@@ -266,3 +266,25 @@ def test_understand_e4_business_invalid_retries_within_quota(env):
                             transport=tr, now=t)
     assert out2.status == "completed"
     assert len(calls) == 2
+
+
+def test_summary_new_row_when_content_changes(env):
+    """R2(P1-2b):同 entry 换正文=新请求身份 → 新 summary 行;
+    不得按 entry+prompt_version+model 复用旧输入的摘要。"""
+    conn, config = env
+    member = _seed_entry(conn, body="旧正文")
+    out1 = understand_entry(conn, config, member, issue_date="2026-10-06",
+                            transport=_transport([_ok_payload(summary="旧摘要")]))
+    assert out1.status == "completed"
+
+    member2 = dict(member, content_text="换后的正文", content_hash="chash-new2")
+    out2 = understand_entry(conn, config, member2, issue_date="2026-10-07",
+                            transport=_transport([
+                                _ok_payload(summary="新摘要")]))
+    assert out2.status == "completed"
+    assert out2.summary == "新摘要"
+
+    rows = conn.execute(
+        "SELECT summary FROM summary WHERE entry_id=? ORDER BY id",
+        (member["entry_id"],)).fetchall()
+    assert [r[0] for r in rows] == ["旧摘要", "新摘要"]

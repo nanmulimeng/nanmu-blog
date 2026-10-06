@@ -197,26 +197,34 @@ def _completed(summary_id: int, receipt_id: int, payload: dict) -> SummaryOutcom
 def _complete_summary(conn: sqlite3.Connection, config: Config, member: dict,
                       receipt_id: int, payload: dict) -> int:
     """单事务业务回写(规则 8):receipt completed + summary 行。重放幂等:
-    先查同身份(entry+prompt_version+model)已有行。"""
+    查重键=entry+prompt_version+model+**receipt_ids 与本次一致**(R2:同
+    entry 换正文=新请求身份,旧输入的 summary 行不得被复用)。"""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with conn:
         conn.execute(
             "UPDATE receipt SET status='completed', completed_utc=?"
             " WHERE id=? AND status!='completed'", (now, receipt_id))
-        existing = conn.execute(
-            "SELECT id FROM summary WHERE entry_id=? AND prompt_version=?"
-            " AND model=?",
-            (member["entry_id"], config.prompts.understand.version,
-             config.budget.default_model)).fetchone()
-        if existing is not None:
-            return existing[0]
-        cur = conn.execute(
-            "INSERT INTO summary (entry_id, prompt_version, model, title_zh,"
-            " summary, reason, tags_json, receipt_ids, created_utc)"
-            " VALUES (?,?,?,?,?,?,?,?,?)",
-            (member["entry_id"], config.prompts.understand.version,
-             config.budget.default_model, payload["title_zh"],
-             payload["summary"], payload["reason"],
-             json.dumps(_normalize_tags(payload), ensure_ascii=False),
-             json.dumps([receipt_id]), now))
-        return cur.lastrowid
+        summary_id = None
+        for sid, rids_json in conn.execute(
+                "SELECT id, receipt_ids FROM summary WHERE entry_id=?"
+                " AND prompt_version=? AND model=?",
+                (member["entry_id"], config.prompts.understand.version,
+                 config.budget.default_model)).fetchall():
+            try:
+                if json.loads(rids_json or "[]") == [receipt_id]:
+                    summary_id = sid
+                    break
+            except ValueError:
+                continue
+        if summary_id is None:
+            cur = conn.execute(
+                "INSERT INTO summary (entry_id, prompt_version, model,"
+                " title_zh, summary, reason, tags_json, receipt_ids,"
+                " created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+                (member["entry_id"], config.prompts.understand.version,
+                 config.budget.default_model, payload["title_zh"],
+                 payload["summary"], payload["reason"],
+                 json.dumps(_normalize_tags(payload), ensure_ascii=False),
+                 json.dumps([receipt_id]), now))
+            summary_id = cur.lastrowid
+        return summary_id

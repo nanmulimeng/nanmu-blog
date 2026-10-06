@@ -79,9 +79,11 @@ def env(tmp_path):
             "sender": sender, "tmp_path": tmp_path}
 
 
-def _transport(config, *, score=80, score_fail_marker=None):
+def _transport(config, *, score=80, score_fail_marker=None,
+               score_fail_status=500):
     """替身:understand 按 system prompt 区分;评分按序返回 score;
-    user 内容含 score_fail_marker 的评分请求返回 500(E3.http)。"""
+    user 内容含 score_fail_marker 的评分请求返回指定 HTTP 状态
+    (500=E3.http 可重试;400=E1.request no_retry)。"""
     understand_head = config.prompts.understand.text[:40]
     seq = itertools.count(1)
 
@@ -98,7 +100,7 @@ def _transport(config, *, score=80, score_fail_marker=None):
                      "reason": "推荐理由。", "tags": ["标签"]}, ensure_ascii=False)}}],
                 "usage": _USAGE})
         if score_fail_marker and score_fail_marker in user:
-            return httpx.Response(500, json={"error": "boom"})
+            return httpx.Response(score_fail_status, json={"error": "boom"})
         return httpx.Response(200, json={
             "id": f"r{n}", "choices": [{"finish_reason": "stop",
              "message": {"content": json.dumps({"attentionScore": score})}}],
@@ -252,11 +254,13 @@ def test_recovery_budget_exhausted_spares_new_issue(env):
     # 钟替身:t0=0;10-04 开始前=400(放行);10-05 开始前=800(预算尽)
     clock = iter(itertools.count(0, 400))
 
-    code = _run_once(env, transport=_transport(env["config"],
-                                               score_fail_marker="OLDFAIL"),
-                     monotonic=lambda: next(clock))
+    code = _run_once(env, transport=_transport(
+        env["config"], score_fail_marker="OLDFAIL", score_fail_status=400),
+        monotonic=lambda: next(clock))
 
-    # 旧期 10-04 评分全失败→E6 failed;10-05 预算耗尽未开始(保存状态)
+    # 旧期 10-04 评分 no_retry 全失败→E6 failed(可重试失败现在保存
+    # 进度不落 failed,P1-6;此处用 400 保 E6 路径);10-05 预算耗尽
+    # 未开始(保存状态)
     assert conn.execute("SELECT status, fail_reason FROM digest_issue WHERE"
                         " issue_date='2026-10-04'").fetchone()[1].startswith("E6")
     assert conn.execute("SELECT COUNT(*) FROM digest_issue WHERE"
@@ -387,29 +391,24 @@ def test_rerun_failed_reuses_freeze_and_receipts(env):
     frozen_before = conn.execute(
         "SELECT frozen_utc FROM issue_freeze WHERE issue_date='2026-10-05'"
     ).fetchone()[0]
-    # 第一次:score-1 成功、score-2 失败(按调用序)→双分不齐→E6 failed
-    seq = itertools.count(1)
-
-    def half(request: httpx.Request) -> httpx.Response:
-        n = next(seq)
-        if n >= 2:
-            return httpx.Response(500, json={"error": "boom"})
-        return httpx.Response(200, json={
-            "id": f"r{n}", "choices": [{"finish_reason": "stop",
-             "message": {"content": json.dumps({"attentionScore": 80})}}],
-            "usage": _USAGE})
+    # 第一次:双分成功但低于阈值→zero_qualified failed(P1-6 后可重试
+    # 失败保存进度不落 failed,failed 落库走内容性失败路径)
     code = _run_once(env, today="2026-10-05",
-                     transport=httpx.MockTransport(half))
+                     transport=_transport(env["config"], score=10))
     row = conn.execute("SELECT status, fail_reason FROM digest_issue WHERE"
                        " issue_date='2026-10-05'").fetchone()
-    assert row[0] == "failed" and row[1].startswith("E6")
+    assert row[0] == "failed" and row[1] == "zero_qualified"
     assert code == 3
 
+    # 人工核对后 force_include → 重跑:续跑语义,冻结不重建
+    with conn:
+        conn.execute("INSERT INTO override (identity_key, action, created_utc)"
+                     " VALUES ('k-rerun', 'force_include', ?)",
+                     (NOW.strftime("%Y-%m-%dT%H:%M:%SZ"),))
     code2 = rerun_issue(conn, env["config"], "2026-10-05",
                         publish_ctx=env["ctx"],
                         transport=_transport(env["config"]), now=NOW)
-    # 续跑:冻结不重建;published;score-1 复用零新增 attempt、
-    # score-2 第二次 attempt 成功;摘要 1 次
+    # published;两条评分回执复用零新增 attempt;摘要 1 次
     assert conn.execute("SELECT frozen_utc FROM issue_freeze WHERE"
                         " issue_date='2026-10-05'").fetchone()[0] == \
         frozen_before
@@ -419,7 +418,7 @@ def test_rerun_failed_reuses_freeze_and_receipts(env):
         "SELECT r.purpose, COUNT(*) FROM receipt r JOIN receipt_attempt a"
         " ON a.receipt_id=r.id WHERE a.issue_date='2026-10-05'"
         " GROUP BY r.purpose ORDER BY r.purpose").fetchall()
-    assert rows == [("score", 3), ("understand", 1)]
+    assert rows == [("score", 2), ("understand", 1)]
     assert code2 == 0
 
 
@@ -582,3 +581,104 @@ def test_monthly_warning_fires_once_when_over_threshold(env):
              publish_ctx=env["ctx"], transport=_transport(env["config"]),
              now=NOW, today="2026-10-06", notify_send=env["sender"])
     assert len(env["sent"]) == 1
+
+
+# ---------- R2(P1-2/P1-6):身份贯穿/续跑语义/单条隔离 ----------
+
+def test_zero_n_new_run_publishes_from_pure_reuse(env):
+    """R2:评分+摘要回执齐后崩溃,续跑日预算停用(compute_n_new=0)——
+    完整请求身份贯穿复用判定,纯复用照常发布,零新增付费调用。"""
+    from nanmu_engine.score import score_entry
+    from nanmu_engine.summarize import understand_entry
+    conn = env["conn"]
+    c = _entry(conn, "k-reuse")
+    _freeze(conn, "2026-10-05", [c], frozen="2026-10-05T08:31:00Z")
+    score_entry(conn, env["config"], c, issue_date="2026-10-05",
+                transport=_transport(env["config"]), now=NOW)
+    understand_entry(conn, env["config"], c, issue_date="2026-10-05",
+                     transport=_transport(env["config"]), now=NOW)
+    n_before = _attempts_for(conn, "2026-10-05")
+    assert n_before == 3                        # score×2 + understand×1
+
+    disabled = dataclasses.replace(env["config"], budget=dataclasses.replace(
+        env["config"].budget, monthly_micro_cny=0))   # 合法停用→N_new=0
+    from nanmu_engine.ledger import compute_n_new
+    assert compute_n_new(conn, disabled, "2026-10-06", now=NOW) == 0
+
+    code = run_once(conn, disabled, upstream_path=env["upstream_path"],
+                    publish_ctx=env["ctx"], transport=_transport(env["config"]),
+                    now=NOW, today="2026-10-06", notify_send=env["sender"])
+    assert conn.execute("SELECT status FROM digest_issue WHERE"
+                        " issue_date='2026-10-05'").fetchone()[0] == "published"
+    assert _attempts_for(conn, "2026-10-05") == n_before   # 零新增
+    assert code == 3                            # 当天新期 no_candidates
+
+
+def test_retryable_failures_save_progress_not_failed(env):
+    """R2:候选两次评分均为可重试失败(E3.http 500)且名额未尽——保存
+    进度留待下次调度续跑,不落 failed(failed 不自动恢复会冻结重试承诺)。"""
+    conn = env["conn"]
+    c = _entry(conn, "k-retry")
+    _freeze(conn, "2026-10-05", [c], frozen="2026-10-05T08:31:00Z")
+    fail_all = httpx.MockTransport(
+        lambda req: httpx.Response(500, json={"error": "boom"}))
+
+    code = _run_once(env, transport=fail_all)
+    assert conn.execute("SELECT COUNT(*) FROM digest_issue WHERE"
+                        " issue_date='2026-10-05'").fetchone()[0] == 0
+    assert code == 4                            # 保存续接,非期失败
+    assert _attempts_for(conn, "2026-10-05") == 2
+
+    code2 = _run_once(env, transport=_transport(env["config"]))
+    assert conn.execute("SELECT status FROM digest_issue WHERE"
+                        " issue_date='2026-10-05'").fetchone()[0] == "published"
+    # score 每侧重试 1 次(2+2)+ understand 1 次 = 5
+    assert _attempts_for(conn, "2026-10-05") == 5
+
+
+def test_title_too_long_member_isolated(env):
+    """R2:超长标题成员在预筛前截断即抛 title_too_long——按单条规则剔除
+    该成员,不中断整期(正常成员照常发布)。"""
+    conn = env["conn"]
+    bad = _entry(conn, "k-longtitle", title="超" * 5000)
+    ok = _entry(conn, "k-oktitle")
+    _freeze(conn, "2026-10-05", [bad, ok], frozen="2026-10-05T08:31:00Z")
+
+    code = _run_once(env, transport=_transport(env["config"]))
+    assert code == 3                            # 当天新期 no_candidates
+    assert conn.execute("SELECT status FROM digest_issue WHERE"
+                        " issue_date='2026-10-05'").fetchone()[0] == "published"
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='k-oktitle'").fetchone()[0] == "used"
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='k-longtitle'").fetchone()[0] == "pending"
+    # 超长标题零付费调用;正常成员 score×2+understand×1
+    assert _attempts_for(conn, "2026-10-05") == 3
+
+
+def test_changed_entry_body_rescored_not_reusing_old_analysis(env):
+    """R2:上游重抓同身份条目正文变化 → 新请求身份重评分;运行层不得
+    借旧 analysis 行读旧分数(高分洗白/重复入围旧输入)。"""
+    conn = env["conn"]
+    from nanmu_engine.score import score_entry
+    c = _entry(conn, "k-chg", body="旧正文内容")
+    score_entry(conn, env["config"], c, issue_date="2026-10-05",
+                transport=_transport(env["config"], score=90), now=NOW)
+
+    # 上游重抓:同 url 新正文 → 2026-10-06 新期按新输入评分(替身返回 10)
+    _add_item(env["up_conn"], env["up_sid"], c["url"], "重抓条目",
+              fetched=datetime(2026, 10, 5, 7, 0, tzinfo=timezone.utc),
+              content="旧正文内容")
+    with env["up_conn"]:
+        env["up_conn"].execute(
+            "UPDATE item SET content_text=?, fetched_utc=? WHERE url=?",
+            ("重抓后的全新正文", "2026-10-06T07:00:00Z", c["url"]))
+
+    code = _run_once(env, transport=_transport(env["config"], score=10))
+    row = conn.execute("SELECT status, fail_reason FROM digest_issue WHERE"
+                       " issue_date='2026-10-06'").fetchone()
+    assert row[0] == "failed" and row[1] == "zero_qualified"   # 新分 10<T1 60
+    assert conn.execute("SELECT status FROM entry WHERE"
+                        " identity_key='k-chg'").fetchone()[0] != "used"
+    rows = conn.execute("SELECT score_1 FROM analysis ORDER BY id").fetchall()
+    assert [r[0] for r in rows] == [90, 10]     # 新输入=新行,旧行保留

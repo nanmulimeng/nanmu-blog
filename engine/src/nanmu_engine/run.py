@@ -33,7 +33,9 @@ from nanmu_engine.prescreen import prescreen
 from nanmu_engine.publish import (ManualIntervention, PublishContext,
                                   publish_issue, recover_issue,
                                   stale_cost_issues)
-from nanmu_engine.score import _truncate_user, check_prompt_fits, score_entry
+from nanmu_engine.score import (_truncate_user, build_score_ctx,
+                                 check_prompt_fits, score_entry,
+                                 score_reuse_ctx)
 from nanmu_engine.select import (apply_selection, check_claim_invariant,
                                  compute_final_set, decide_selection,
                                  release_abandoned_issue)
@@ -170,16 +172,24 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
         "SELECT identity_key, action FROM override").fetchall())
     override_exclude = {k for k, a in overrides.items() if a == "exclude"}
 
+    usable: list[dict] = []
     for m in manifest:      # 复用判定与实际请求同身份(截断后输入入哈希)
-        m["user_text"], _count = _truncate_user(
-            config, m["title"], m["content_text"] or "",
-            config.prompts.score.text)
-    identity_ctx = {"purpose": "score",
-                    "model": config.budget.default_model,
-                    "prompt_version": config.prompts.score.version}
-    reuse_snapshot = reusable_scores(conn, manifest, identity_ctx)
+        try:
+            m["user_text"], _count = _truncate_user(
+                config, m["title"], m["content_text"] or "",
+                config.prompts.score.text)
+        except ValueError:      # title_too_long:单条剔除,不中断整期
+            logger.warning("stage=run event=member_excluded key=%s"
+                           " reason=title_too_long", m["identity_key"])
+            continue
+        except TokenizerUnavailable as exc:   # 计数不可得=E1 拒启动
+            logger.error("stage=run event=E1.tokenizer message=%s", exc)
+            return 2
+        usable.append(m)
+    identity_ctx = score_reuse_ctx(config)   # 与 score 请求同一身份构造
+    reuse_snapshot = reusable_scores(conn, usable, identity_ctx)
     n_new = compute_n_new(conn, config, issue_date, now=now)
-    pre = prescreen(manifest, config, issue_date, occupancy,
+    pre = prescreen(usable, config, issue_date, occupancy,
                     override_exclude, reuse_snapshot, n_new)
 
     skipped_pay = False
@@ -193,30 +203,53 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
             conn, config, m, issue_date=issue_date,
             transport=transport, now=now).status)
 
-    # 入选候选=通过预筛四去向的成员(to_score+recoverable)且评分身份
-    # 与当前 identity_ctx 一致——已发布/被排除/被他期占用/被截断的成员
-    # 不得借旧 analysis 行绕过预筛重新入选(重复发布,spec §5.2)
+    # 入选候选=通过预筛四去向的成员(to_score+recoverable)且 analysis 行
+    # 关联回执就是当前请求身份——已发布/被排除/被他期占用/被截断的成员
+    # 不得借旧 analysis 行绕过预筛重新入选(重复发布,spec §5.2);同
+    # entry 换正文(上游重抓)不得沿用旧输入的分数(R2:按 receipt_ids→
+    # request_hash 与当前 score-1/score-2 身份比对过滤)
     entry_ids = [m["entry_id"] for m in [*pre.to_score, *pre.recoverable]]
-    ph = ",".join("?" * len(entry_ids))
-    analysis_rows = [
-        {"identity_key": k, "entry_id": eid, "score_1": s1,
-         "score_2": s2, "source_tier": tier}
-        for k, eid, s1, s2, tier in (
-            conn.execute(
+    expected_hashes = {
+        m["identity_key"]: {
+            build_score_ctx(config, m, m["user_text"], tag)["request_hash"]
+            for tag in ("score-1", "score-2")}
+        for m in [*pre.to_score, *pre.recoverable]}
+    analysis_rows = []
+    if entry_ids:
+        ph = ",".join("?" * len(entry_ids))
+        for k, eid, s1, s2, tier, rids in conn.execute(
                 f"SELECT e.identity_key, a.entry_id, a.score_1, a.score_2,"
-                f" e.source_tier FROM analysis a JOIN entry e"
+                f" e.source_tier, a.receipt_ids FROM analysis a JOIN entry e"
                 f" ON e.id=a.entry_id WHERE a.entry_id IN ({ph})"
                 " AND a.prompt_version=? AND a.model=?"
                 " AND a.score_1 IS NOT NULL AND a.score_2 IS NOT NULL",
                 [*entry_ids, config.prompts.score.version,
-                 config.budget.default_model]).fetchall()
-            if entry_ids else [])]
+                 config.budget.default_model]).fetchall():
+            try:
+                rid_list = json.loads(rids or "[]")
+            except ValueError:
+                continue
+            if not rid_list:
+                continue
+            qmarks = ",".join("?" * len(rid_list))
+            got = {r[0] for r in conn.execute(
+                f"SELECT request_hash FROM receipt WHERE id IN ({qmarks})",
+                rid_list)}
+            if got == expected_hashes.get(k):
+                analysis_rows.append(
+                    {"identity_key": k, "entry_id": eid, "score_1": s1,
+                     "score_2": s2, "source_tier": tier})
     if not analysis_rows:
         if skipped_pay:
             return 4                       # 留待解除后继续(不落 failed)
-        if "unknown" in statuses:
-            return 4                       # unknown 预占保留,等待窗口/名额
-                                           # 后下轮续接,不忙等不落 failed
+        if "unknown" in statuses or "retryable" in statuses:
+            return 4                       # 可重试失败:保存进度,名额由
+                                           # ledger 跨运行持有,下轮续接
+                                           # (R2:failed 不自动恢复,提前落
+                                           # failed 会冻结重试承诺)
+        if "rejected" in statuses:
+            return 4                       # 环境性闸门拒(预算/窗口):非
+                                           # 内容失败,不落 E6 不触发两期通知
         if pre.to_score or pre.recoverable:
             _fail_issue(conn, issue_date, "E6.all_failed",
                         send=notify_send or _log_sender)

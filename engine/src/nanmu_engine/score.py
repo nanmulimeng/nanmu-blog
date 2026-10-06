@@ -111,25 +111,32 @@ def build_user_text(title: str, body: str) -> str:
     return f"标题:{title}\n\n正文:\n{body}"
 
 
-def build_score_ctx(config: Config, member: dict, user_text: str,
-                    attempt_tag: str) -> dict:
-    """identity_ctx(与 Task 8 复用判定同构同键):attemptTag/正文一字节
-    之差均改变 request_hash——截断后实际输入入身份,旧回执不可复用。"""
-    ctx = {
+def score_reuse_ctx(config: Config) -> dict:
+    """复用判定与实际请求共用的身份公共部分(R2:运行层复用快照必须
+    与 score._attempt_side 构造同一 logical_key,缺 system/参数字段即查
+    不到既有回执——本可复用的成果被误判 needs 后遭 N_new 截断)。"""
+    return {
         "provider": PROVIDER,
         "endpoint": ENDPOINT,
         "purpose": "score",
         "model": config.budget.default_model,
         "prompt_version": config.prompts.score.version,
         "system_text": config.prompts.score.text,
-        "user_text": user_text,
         "max_tokens": config.budget.max_output_tokens,
         "thinking": config.budget.thinking,
         "response_format": "json_object" if config.budget.json_output else "text",
-        "identity_key": member["identity_key"],
-        "content_hash": member["content_hash"],
-        "attemptTag": attempt_tag,
     }
+
+
+def build_score_ctx(config: Config, member: dict, user_text: str,
+                    attempt_tag: str) -> dict:
+    """identity_ctx(与 Task 8 复用判定同构同键):attemptTag/正文一字节
+    之差均改变 request_hash——截断后实际输入入身份,旧回执不可复用。"""
+    ctx = dict(score_reuse_ctx(config),
+               user_text=user_text,
+               identity_key=member["identity_key"],
+               content_hash=member["content_hash"],
+               attemptTag=attempt_tag)
     ctx["request_hash"] = request_hash(ctx)
     return ctx
 
@@ -288,22 +295,29 @@ def score_entry(conn, config: Config, member: dict, *, issue_date: str,
 def _complete_analysis(conn, config: Config, member: dict,
                        sides: list[_Side]) -> int:
     """单事务业务回写(规则 8):receipt×2 completed + analysis 行 +
-    entry→scored。重放幂等:先查同身份(entry+prompt_version+model)已有
-    analysis 行——崩溃在 received 之后本事务之前,续跑复用响应重放本事务。"""
+    entry→scored。重放幂等:查重键=entry+prompt_version+model+**receipt_ids
+    与本次两侧一致**(R2:同 entry 换正文=新请求身份=新回执,旧输入的
+    analysis 行不得被复用——否则新正文沿用旧分)。"""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with conn:
         for side in sides:
             conn.execute(
                 "UPDATE receipt SET status='completed', completed_utc=?"
                 " WHERE id=? AND status!='completed'", (now, side.receipt_id))
-        existing = conn.execute(
-            "SELECT id FROM analysis WHERE entry_id=? AND prompt_version=?"
-            " AND model=?",
-            (member["entry_id"], config.prompts.score.version,
-             config.budget.default_model)).fetchone()
-        if existing is not None:
-            analysis_id = existing[0]
-        else:
+        cur_ids = sorted(s.receipt_id for s in sides)
+        analysis_id = None
+        for aid, rids_json in conn.execute(
+                "SELECT id, receipt_ids FROM analysis WHERE entry_id=?"
+                " AND prompt_version=? AND model=?",
+                (member["entry_id"], config.prompts.score.version,
+                 config.budget.default_model)).fetchall():
+            try:
+                if sorted(json.loads(rids_json or "[]")) == cur_ids:
+                    analysis_id = aid
+                    break
+            except ValueError:
+                continue
+        if analysis_id is None:
             cur = conn.execute(
                 "INSERT INTO analysis (entry_id, prompt_version, model,"
                 " score_1, score_2, selected, receipt_ids, created_utc)"

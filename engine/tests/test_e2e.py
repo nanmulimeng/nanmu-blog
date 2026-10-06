@@ -49,8 +49,10 @@ def _net_down():
 
 
 def _fail_all():
+    # 400=E1.request no_retry(P1-6 后可重试失败保存进度不落 E6,
+    # E6 通知语义用不可重试失败覆盖)
     def handler(request):
-        return httpx.Response(500, json={"error": "down"})
+        return httpx.Response(400, json={"error": "bad request"})
     return httpx.MockTransport(handler)
 
 

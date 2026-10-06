@@ -409,3 +409,26 @@ def test_e4_business_invalid_retries_within_quota(env):
                        transport=httpx.MockTransport(handler), now=t)
     assert out2.status == "completed"        # retry 通道补发过验证
     assert len(calls) == 3                   # 坏1+好1+补发1
+
+
+def test_analysis_new_row_when_content_changes(env):
+    """R2(P1-2b):同 entry 换正文=新请求身份 → 新回执/新 analysis 行;
+    不得按 entry+prompt_version+model 复用旧输入的业务结果(旧分洗白)。"""
+    conn, config = env
+    member = _seed_entry(conn, body="旧正文")
+    out1 = score_entry(conn, config, member, issue_date="2026-10-06",
+                       transport=_transport([90, 90]))
+    assert out1.status == "completed"
+    assert (out1.score_1, out1.score_2) == (90, 90)
+
+    member2 = dict(member, content_text="完全不同的新正文",
+                   content_hash="chash-new-input")
+    out2 = score_entry(conn, config, member2, issue_date="2026-10-07",
+                       transport=_transport([10, 10]))
+    assert out2.status == "completed"
+    assert (out2.score_1, out2.score_2) == (10, 10)
+
+    rows = conn.execute(
+        "SELECT score_1, score_2 FROM analysis WHERE entry_id=?"
+        " ORDER BY id", (member["entry_id"],)).fetchall()
+    assert rows == [(90, 90), (10, 10)]     # 两个输入身份各一行
