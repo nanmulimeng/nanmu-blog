@@ -2,17 +2,17 @@
 
 个人博客:手写文章 + AI 日报 + 自用 RAG。博客先上线,AI 按里程碑叠加,已发布博客不依赖 AI 运行。
 
-## 当前状态(2026-10-04)
+## 当前状态(2026-10-06)
 
-M0:Task1-9已完成——site/(Astro5.18.2)、部署工件与服务器链路均已验收,**线上 `https://nanmu.xyz`**(常态发布计时13s,韧性实测5项通过)。**当前阶段(2026-10-06 用户恢复实施):实施阶段**——设计审查已收口;第一批 M0 Task 10(首篇文章+本地验证)执行中,发布与 m0 验收待授权;随后 M1 Task 0-12 批量本地实现(替身模型,不部署不付费)。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
+**M0 全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》已在 **`https://nanmu.xyz`** 真实发布(发布计时12s;RSS 解析+CommaFeed 真实订阅、明暗主题、文章页/404、持锁回滚演练全部通过)。**当前阶段:M1 本地实施(Task 0-12 批量,已授权)**——替身模型、真实上游只读、不部署不付费;之后 Task 13-24 本地替身端到端,Task 25/26 部署与付费另行授权。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
 
-背景审查依据见[审查记录](docs/reviews/2026-10-02-documentation-audit.md);最新执行证据见[最新交接](docs/sessions/2026-10-06-resume-implementation.md)(恢复实施指示:两批结构=M0 Task 10 真实文章发布验收→M1 Task 0-12 批量本地实现;含给执行 AI 的指令原文)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
+最新执行证据见[最新交接](docs/sessions/2026-10-06-m0-acceptance.md)(M0 验收全记录);M1 批次规范与给执行 AI 的指令原文见 [resume-implementation](docs/sessions/2026-10-06-resume-implementation.md)。开发策略统一在[spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md):M0独立上线验收(已达成)→M1独立日报与成本治理→M2自用检索问答,M3仅记录候选。
 
 ## 开发与部署
 
-本地:`cd site && npm install && npm run dev` 开发;`npm run verify`(build + 冒烟)自 Task 7 起是提交门槛。服务器自动发布链路已在 Task 9 验收(push→线上13s);首篇文章走完整链路在 Task 10(挂起中)。
+本地:`cd site && npm install && npm run dev` 开发;`npm run verify`(build + 冒烟)自 Task 7 起是提交门槛。服务器自动发布链路已在 Task 9 验收;首篇文章走完整链路发布+回滚演练已在 Task 10 验收(tag `m0`)。
 
-写作流:Markdown → git push main → 后台构建与冒烟 → 原子静态发布(已验收)。当前文档阶段不执行发布类操作。
+写作流:Markdown → git push main → 后台构建与冒烟 → 原子静态发布(已验收,首篇文章已真实走通)。发布类操作(push/tag)仍需授权。
 
 ## 从哪里读
 

@@ -14,9 +14,9 @@
 | [development/quality-gates.md](development/quality-gates.md) | 分阶段验证矩阵、证据口径、四类活动门禁、未来测试清单 | 定稿 |
 | [development/design-review.md](development/design-review.md) | 模块详细设计与设计评审规范:可开发八件事、五设计单元、评审结束条件、文档控制约束 | 定稿(约束 M1 起的设计阶段) |
 | [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 总体设计基线(定稿;编码许可以设计评审为准) |
-| [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | Task1-9已实施(线上https://nanmu.xyz);Task10挂起(文档阶段指示) |
-| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(26任务+两项带入验证任务+逐任务停点) | **待评审稿**(评审通过≠自动恢复编码) |
-| [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地与发布流程可用(Task9已验收);首篇正式文章待Task10 |
+| [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | **全部完成(2026-10-06 验收通过,tag `m0`)** |
+| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(26任务+两项带入验证任务+逐任务停点) | 已通过第五轮评审(2026-10-05);**实施已恢复,Task 0-12 批量执行中** |
+| [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地与发布流程可用;首篇文章已发布(Task10 验收) |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |
 | [engine/design.md](engine/design.md) | 引擎实施契约层:模块I/O、配置格式与校验、判重规则、错误分类与退出码、日志与观测 | 总体设计基线(模块级编码许可以设计评审为准) |
@@ -25,7 +25,7 @@
 | [engine/pipeline.md](engine/pipeline.md) | 日报管线各阶段说明 | 总体设计基线(期生命周期等设计缺口见design-review) |
 | [engine/selection.md](engine/selection.md) | 精选标准/门槛/调整记录(编辑策略) | 总体设计基线(权重表样例待设计阶段落盘) |
 | [engine/budget.md](engine/budget.md) | 成本治理与月度成本台账 | 总体设计基线(成本标注文案选择待设计阶段定) |
-| [ops/deploy.md](ops/deploy.md) | SSH/目录/权限/Caddy/上线确认/回滚操作 | 已实际执行一轮(Task9);Task10复测待做 |
+| [ops/deploy.md](ops/deploy.md) | SSH/目录/权限/Caddy/上线确认/回滚操作 | 已实际执行两轮(Task9 部署+Task10 发布与回滚演练) |
 | [ops/runbook.md](ops/runbook.md) | 巡检/回滚/故障处理 | 定稿 |
 | [reviews/2026-10-02-documentation-audit.md](reviews/2026-10-02-documentation-audit.md) | 文档审查依据、已修订问题与实施前核查 | 本轮审查完成,运行项待对应阶段验证 |
 | [reviews/2026-10-04-documentation-audit-2.md](reviews/2026-10-04-documentation-audit-2.md) | 第二轮全量复审:Task8a/9 后状态漂移修复、事实回填、状态同步清单 | 本轮审查完成;ADR 逐字复核留下一轮 |
@@ -58,10 +58,10 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先看[最新交接](sessions/2026-10-06-resume-implementation.md)(**2026-10-06 用户恢复实施**:两批结构=M0 Task 10 首篇文章成稿与本地验证→查看成果后按清单取得发布授权;M1 Task 0-12 批量本地实现,替身模型/真实上游只读/不部署不付费;含指令原文与调研事项处理位置;收口背景见 [review-closure](sessions/2026-10-06-m1-review-closure.md)),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前阶段=实施恢复(2026-10-06):M0 Task 10 执行中;push/tag/服务器操作仍逐项授权;不再全面设计评审,仅对实现暴露的契约问题局部修订**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
-- 写文章:writing.md(本地预览与发布流程均可用;当前文档阶段不执行发布)。开发博客:spec §4 → Task10(挂起中)。
-- 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行一轮;当前阶段不新增服务器操作。
-- 开始引擎:先核对spec §9的M0验收前提 → spec §5 → data-source → engine四文档(总体设计基线) → [设计评审规范](development/design-review.md):完整日报样例→一期流程→五单元设计→场景评审(前两步已收口 [digest-design.md](engine/digest-design.md) v3;第 3 步五单元设计经四轮核验修正,单元文档现状见 [units/](engine/units/))→ M1计划(**已经第五轮评审通过(27 任务)** [plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md);实施入口=用户明确解除暂停后 M1 Task 0,前置 M0 Task 10 收尾)。
+- 接手当前工作:先看[最新交接](sessions/2026-10-06-m0-acceptance.md)(**2026-10-06 M0 验收通过**:首篇文章上线+线上验收+回滚演练+tag `m0` 全记录;M1 批次规范与指令原文见 [resume-implementation](sessions/2026-10-06-resume-implementation.md)),再按[工作流](development/workflow.md)核对目标、Git与工作区。**当前阶段=M1 本地实施(Task 0-12 批量已授权):替身模型/真实上游只读/不部署不付费;push(任何 remote)/tag/服务器操作/真实付费仍逐项授权;不再全面设计评审,仅对实现暴露的契约问题局部修订**。交接格式见[模板](sessions/_template.md),初次进入才补读背景链。
+- 写文章:writing.md(本地预览与发布流程均可用;发布/推送需授权)。开发博客:spec §4(M0 已完成,tag `m0`)。
+- 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行两轮(Task9 部署+Task10 发布与回滚演练);M1 前不新增服务器操作。
+- 开始引擎:先核对spec §9的M0验收前提(已满足) → spec §5 → data-source → engine四文档(总体设计基线) → [M1计划](superpowers/plans/2026-10-05-m1-engine-implementation.md)(已通过第五轮评审,27 任务;**实施已恢复,入口=Task 0**)。
 - 开始RAG:先核对spec §9的M1验收前提 → spec §6 → quality-gates的M2项 → 目标环境探针与固定问题集 → 编写M2计划。
 
 ## 文档验证命令

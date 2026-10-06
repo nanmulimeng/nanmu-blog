@@ -2,13 +2,13 @@
 
 **一句话**:极简静态博客(手写文章)+ AI 引擎自动日报(读 topic-digest 数据)+ 自用 RAG。博客先上线,AI 是渐进叠加层,**任何一层挂掉博客都在线**。
 
-## 项目状态快照(2026-10-04)
+## 项目状态快照(2026-10-06)
 
-- M0:Task1-9已实施——site/(Astro5.18.2)、部署工件与服务器链路已验收(线上 `https://nanmu.xyz`,常态发布计时13s、韧性实测5项、Caddy接管apex域名),证据见[部署交接](docs/sessions/2026-10-04-m0-deploy.md)。Task10(首篇文章+tag m0)未做
-- **当前阶段(2026-10-06 用户恢复实施):实施阶段**——设计审查已收口(不再全面文档评审),转入实施。第一批=M0 Task 10(首篇文章成稿+本地验证执行中;发布/线上验收/回滚/tag m0 待用户查看成果后授权);第二批=M1 Task 0-12 批量本地实现(替身模型、真实上游只读、不部署不付费)。仅对实现暴露的具体契约问题局部修订文档。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
-- 顺序:M0 Task 10 发布授权与验收→M1 Task 0-12(账本侧 5-8 与采集侧 9-12 可并行,Task 1 严格计量依据与停点)→Task 13-24(本地替身端到端)→Task 25 部署/Task 26 分两段授权启用付费;进入条件以spec §9为准
-- 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-02-m0-blog-launch.md](docs/superpowers/plans/2026-10-02-m0-blog-launch.md) 逐任务
-- 最新进度:[2026-10-06 恢复实施指示(两批结构)](docs/sessions/2026-10-06-resume-implementation.md)(用户恢复实施,含给执行 AI 的指令原文照录;第一批 M0 Task 10=首篇文章成稿+本地验证+发布准备,文章限定三部分内容+删"一个月零故障"类未复核绝对表述+不把计划能力写成已实现,成果供查看后按清单取得发布授权;第二批 M1 Task 0-12 批量,并行结构/Task 1 停点纪律/替身与只读边界;调研事项处理位置四条不改主线;收口背景见 [review-closure](docs/sessions/2026-10-06-m1-review-closure.md));本轮改动提交/推送状态以git log为准,接手时核对
+- M0:**全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》真实发布上线(发布计时12s),线上验收全通过(RSS XML 解析+CommaFeed 真实订阅、明暗主题、文章页/404),持锁回滚演练实操通过(切旧版 c8a4567 确认后切回)。证据见 [M0 验收交接](docs/sessions/2026-10-06-m0-acceptance.md)与 [部署交接](docs/sessions/2026-10-04-m0-deploy.md)
+- **当前阶段:M1 本地实施(Task 0-12 批量,已获授权)**——替身模型、真实上游只读、不部署不付费;Task 0-4 接口稳定后账本侧 5-8 与采集侧 9-12 可并行;Task 1 严格计量依据与停点,不得用字符估算做绿。仅对实现暴露的具体契约问题局部修订文档。发现的 skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复
+- 顺序:M1 Task 0-12→Task 13-24(本地替身端到端)→Task 25 部署/Task 26 分两段授权启用付费;进入条件以spec §9为准(M0 验收已满足)
+- 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-05-m1-engine-implementation.md](docs/superpowers/plans/2026-10-05-m1-engine-implementation.md) 逐任务
+- 最新进度:[2026-10-06 M0 验收通过](docs/sessions/2026-10-06-m0-acceptance.md)(M0 收尾全记录:文章修正 03015b1→发布→线上验收→回滚演练→tag m0;M1 入口与批次规范见 [resume-implementation](docs/sessions/2026-10-06-resume-implementation.md) 含给执行 AI 的指令原文照录);本轮改动提交/推送状态以git log为准,接手时核对
 
 ## Agent接手入口
 
