@@ -46,7 +46,7 @@ def _utc_now() -> str:
 
 
 def _logical_key(purpose: str, model: str, request_hash: str) -> str:
-    return f"{PROVIDER}/{ENDPOINT}/{purpose}/{model}/{request_hash}"
+    return f"{PROVIDER}{ENDPOINT}/{purpose}/{model}/{request_hash}"
 
 
 def sync_budget_limits(conn: sqlite3.Connection, config: Config) -> None:
@@ -188,6 +188,11 @@ def authorize(conn: sqlite3.Connection, config: Config, *, purpose: str,
             (receipt_id, attempt_no, issue_date, _utc_now(), origin,
              reserved, pricing_version))
         attempt_id = cur.lastrowid
+        if origin == "unknown_retry":
+            # 与 receipt.unknown_retry_used 同事务双写(判定读标志、审计按行重算)
+            conn.execute(
+                "UPDATE receipt SET unknown_retry_used=1 WHERE id=?",
+                (receipt_id,))
         conn.execute("COMMIT")
         return AuthorizeResult("reserved", None, receipt_id=receipt_id,
                                attempt_id=attempt_id, attempt_no=attempt_no,
@@ -198,3 +203,112 @@ def authorize(conn: sqlite3.Connection, config: Config, *, purpose: str,
         except sqlite3.Error:
             pass
         raise
+
+
+# ---------- 失败持久化与再发送三条件(Task 6;model-calls §3 规则 5) ----------
+
+@dataclass(frozen=True)
+class RetryVerdict:
+    allowed: bool
+    channel: str | None     # 'normal' | 'unknown_retry' | None
+    reason: str | None
+
+
+def _pricing_for(config: Config, model: str):
+    for row in config.budget.pricing:
+        if row.model == model:
+            return row
+    raise KeyError(f"价目缺失:{model}")
+
+
+def _settle_micro_cny(config: Config, model: str, usage: dict) -> int:
+    """按价目结算整数微元:命中×缓存价+未命中×输入价+补全×输出价,向上取整。"""
+    price = _pricing_for(config, model)
+    hit = usage.get("prompt_cache_hit_tokens", 0) or 0
+    miss = usage.get("prompt_cache_miss_tokens", 0) or 0
+    if not hit and not miss:
+        miss = usage.get("prompt_tokens", 0) or 0  # 缺分项保守按未缓存全量
+    completion = usage.get("completion_tokens", 0) or 0
+    micro = (hit * price.cached_input_per_mtok_micro_cny
+             + miss * price.input_per_mtok_micro_cny
+             + completion * price.output_per_mtok_micro_cny)
+    return math.ceil(micro / _MICRO_PER_MILLION)
+
+
+def record_failure(conn: sqlite3.Connection, config: Config,
+                   ref: AuthorizeResult, error_class: str,
+                   fail_detail: dict, usage: dict | None = None) -> None:
+    """单事务失败落库:attempt→failed/unknown + error_class + fail_detail_json
+    同事务写;有 usage 先结算。**不触碰 attempt_origin(预占后不可改写)**。"""
+    status = "unknown" if error_class == "unknown" else "failed"
+    detail_json = json.dumps(fail_detail, ensure_ascii=False, sort_keys=True)
+    with conn:
+        if usage:
+            conn.execute(
+                "UPDATE receipt_attempt SET status=?, error_class=?,"
+                " fail_detail_json=?, usage_json=?, actual_micro_cny=?"
+                " WHERE id=?",
+                (status, error_class, detail_json, json.dumps(usage),
+                 _settle_micro_cny(config, _attempt_model(conn, ref), usage),
+                 ref.attempt_id))
+        else:
+            conn.execute(
+                "UPDATE receipt_attempt SET status=?, error_class=?,"
+                " fail_detail_json=? WHERE id=?",
+                (status, error_class, detail_json, ref.attempt_id))
+
+
+def _attempt_model(conn: sqlite3.Connection, ref: AuthorizeResult) -> str:
+    return conn.execute(
+        "SELECT model FROM receipt WHERE id=?", (ref.receipt_id,)).fetchone()[0]
+
+
+def can_retry(conn: sqlite3.Connection, config: Config, logical_key: str,
+              now_utc: datetime) -> RetryVerdict:
+    """再发送三条件判定,输入全部来自持久化列(落库重放,无内存依赖)。
+
+    判定序:在途/已收到 → error_class=no_retry 硬停 → 硬上限(总行数
+    < max_attempts+1)→ 最新 unknown 的专属通道(used=0 且 ≥30min)→
+    普通通道(origin∈{initial,retry} 行数 < max_attempts,不按
+    error_class 过滤;两类不互借)。
+    """
+    receipt = conn.execute(
+        "SELECT id, unknown_retry_used FROM receipt WHERE logical_key=?",
+        (logical_key,)).fetchone()
+    if receipt is None:
+        return RetryVerdict(False, None, "unknown_logical_key")
+    receipt_id, unknown_used = receipt
+
+    rows = conn.execute(
+        "SELECT id, attempt_no, status, attempt_origin, error_class,"
+        " started_utc FROM receipt_attempt WHERE receipt_id=?"
+        " ORDER BY attempt_no", (receipt_id,)).fetchall()
+    if not rows:
+        return RetryVerdict(False, None, "no_attempts")
+    latest = rows[-1]
+
+    if latest[2] == "pending":
+        return RetryVerdict(False, None, "attempt_in_flight")
+    if latest[2] == "received":
+        return RetryVerdict(False, None, "already_received")
+    if latest[4] == "no_retry":
+        return RetryVerdict(False, None, "error_class_no_retry")
+
+    max_attempts = config.budget.max_attempts
+    hard_cap = max_attempts + 1
+    if len(rows) >= hard_cap:
+        return RetryVerdict(False, None, "hard_cap")
+
+    if latest[4] == "unknown":
+        if unknown_used:
+            return RetryVerdict(False, None, "unknown_retry_used")
+        started = datetime.strptime(latest[5], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc)
+        if now_utc - started < timedelta(minutes=config.budget.unknown_retry_after_min):
+            return RetryVerdict(False, None, "unknown_wait")
+        return RetryVerdict(True, "unknown_retry", None)
+
+    normal_used = sum(1 for r in rows if r[3] in ("initial", "retry"))
+    if normal_used >= max_attempts:
+        return RetryVerdict(False, None, "normal_quota_exhausted")
+    return RetryVerdict(True, "normal", None)

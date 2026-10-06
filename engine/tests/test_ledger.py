@@ -211,3 +211,160 @@ def test_sync_budget_limits_writes_rows(tmp_path):
     ).fetchone()
     assert row == (10, 100, 400)
     conn.close()
+
+
+# ---------- Task 6:record_failure + can_retry(验收 7/7b/7c/7d) ----------
+
+import datetime as dt
+
+from nanmu_engine.ledger import can_retry, record_failure
+
+
+def _run_attempt(conn, config, *, origin="initial", error_class="retryable",
+                 fail_detail=None, request_hash="h" * 64, usage=None):
+    """授权→失败落库,返回 (result, attempt 行)。"""
+    result = _authorize(conn, config, origin=origin,
+                        request_hash=request_hash)
+    assert result.status == "reserved", result
+    record_failure(conn, config, result, error_class,
+                   fail_detail or {"http_status": None, "matrix_code": "x",
+                                   "message": "m"}, usage=usage)
+    row = conn.execute(
+        "SELECT attempt_no, status, attempt_origin, error_class"
+        " FROM receipt_attempt WHERE id=?", (result.attempt_id,)).fetchone()
+    return result, row
+
+
+def _started_of(conn, attempt_id):
+    return conn.execute(
+        "SELECT started_utc FROM receipt_attempt WHERE id=?",
+        (attempt_id,)).fetchone()[0]
+
+
+def test_7d_replay_from_disk_after_close(env, tmp_path):
+    conn, config = env
+    result, row = _run_attempt(conn, config, error_class="no_retry")  # HTTP 400
+    assert row[1] == "failed"
+    conn.close()
+
+    conn2 = connect_db(str(tmp_path / "engine.db"))  # 仅凭落库行数据重放
+    verdict = can_retry(conn2, config, "deepseek/chat/completions/score/deepseek-flash/" + "h" * 64,
+                        now_utc=dt.datetime.now(dt.timezone.utc))
+    assert verdict.allowed is False and verdict.reason == "error_class_no_retry"
+    conn2.close()
+
+
+def test_7d_503_counts_against_normal_quota(env):
+    conn, config = env
+    _run_attempt(conn, config, error_class="retryable")            # initial
+    _run_attempt(conn, config, origin="retry", error_class="retryable")  # retry
+    key = "deepseek/chat/completions/score/deepseek-flash/" + "h" * 64
+    verdict = can_retry(conn, config, key, dt.datetime.now(dt.timezone.utc))
+    assert verdict.allowed is False
+    assert verdict.reason == "normal_quota_exhausted"
+
+
+def test_7d_normal_exhausted_unknown_unused_still_rejects(env):
+    conn, config = env
+    # 普通耗尽 + unknown_retry_used=0 → 仍拒(两类不互借)
+    _run_attempt(conn, config, error_class="retryable")
+    _run_attempt(conn, config, origin="retry", error_class="retryable")
+    key = "deepseek/chat/completions/score/deepseek-flash/" + "h" * 64
+    used = conn.execute("SELECT unknown_retry_used FROM receipt").fetchone()[0]
+    assert used == 0
+    verdict = can_retry(conn, config, key, dt.datetime.now(dt.timezone.utc))
+    assert verdict.allowed is False
+    assert verdict.reason == "normal_quota_exhausted"
+
+
+def test_7d_origin_immutable_unknown_channel_returns_503(env):
+    conn, config = env
+    # 序列:attempt1 initial/超时未知 → ≥30min 后 unknown 通道 attempt2 返回 503
+    r1, row1 = _run_attempt(conn, config, error_class="unknown")
+    assert row1[1] == "unknown"
+    key = "deepseek/chat/completions/score/deepseek-flash/" + "h" * 64
+
+    started1 = dt.datetime.fromisoformat(_started_of(conn, r1.attempt_id))
+    not_due = can_retry(conn, config, key, started1 + dt.timedelta(minutes=10))
+    assert not_due.allowed is False and not_due.reason == "unknown_wait"
+    due = can_retry(conn, config, key, started1 + dt.timedelta(minutes=31))
+    assert due.allowed is True and due.channel == "unknown_retry"
+
+    # unknown 通道授权:同事务置 unknown_retry_used=1
+    r2, row2 = _run_attempt(conn, config, origin="unknown_retry",
+                            error_class="retryable")  # 返回 503
+    assert row2[2] == "unknown_retry"           # origin 保持,不因返回类型改写
+    assert row2[3] == "retryable"
+    used = conn.execute("SELECT unknown_retry_used FROM receipt").fetchone()[0]
+    assert used == 1
+
+    # 普通名额仍有剩余(attempt1 initial 占 1;unknown_retry 不占)→ attempt3 走普通
+    verdict = can_retry(conn, config, key, dt.datetime.now(dt.timezone.utc))
+    assert verdict.allowed is True and verdict.channel == "normal"
+    r3, row3 = _run_attempt(conn, config, origin="retry",
+                            error_class="retryable")
+    assert row3[2] == "retry"
+    normal_used = conn.execute(
+        "SELECT COUNT(*) FROM receipt_attempt"
+        " WHERE attempt_origin IN ('initial','retry')").fetchone()[0]
+    assert normal_used == 2  # attempt3 计入普通尝试已用数
+    # 总行数 3 = max_attempts+1 → 硬上限拒
+    final = can_retry(conn, config, key, dt.datetime.now(dt.timezone.utc))
+    assert final.allowed is False and final.reason == "hard_cap"
+
+
+def test_6_quota_counts_attempts_not_error_classes(env):
+    conn, config = env
+    key = "deepseek/chat/completions/score/deepseek-flash/" + "h" * 64
+    # A:initial+unknown → 30min 窗口内等待 unknown 通道,不立即普通重发;
+    #    失败更新不改写 attempt_origin(initial 保持)
+    r1, row1 = _run_attempt(conn, config, error_class="unknown")
+    assert row1[2] == "initial"
+    verdict = can_retry(conn, config, key, dt.datetime.now(dt.timezone.utc))
+    assert verdict.allowed is False and verdict.reason == "unknown_wait"
+
+    # B:独立 key,initial+retryable → 立即经普通通道(已用 1 < max_attempts=2)
+    key_b = "deepseek/chat/completions/score/deepseek-flash/" + "g" * 64
+    _run_attempt(conn, config, error_class="retryable",
+                 request_hash="g" * 64)
+    verdict_b = can_retry(conn, config, key_b, dt.datetime.now(dt.timezone.utc))
+    assert verdict_b.allowed is True and verdict_b.channel == "normal"
+    # 普通已用数=origin 计数(不按 error_class):B 场景再发后 2=max_attempts → 拒
+    _run_attempt(conn, config, origin="retry", error_class="retryable",
+                 request_hash="g" * 64)
+    verdict_b2 = can_retry(conn, config, key_b, dt.datetime.now(dt.timezone.utc))
+    assert verdict_b2.allowed is False
+    assert verdict_b2.reason == "normal_quota_exhausted"
+
+
+def test_7c_max2_two_normal_failures_no_send_after_restart(env, tmp_path):
+    conn, config = env
+    _run_attempt(conn, config, error_class="retryable")
+    _run_attempt(conn, config, origin="retry", error_class="retryable")
+    conn.close()
+
+    conn2 = connect_db(str(tmp_path / "engine.db"))
+    key = "deepseek/chat/completions/score/deepseek-flash/" + "h" * 64
+    verdict = can_retry(conn2, config, key, dt.datetime.now(dt.timezone.utc))
+    # 普通已用 2=max_attempts,总数 2<3 不构成许可(重启不重置)
+    assert verdict.allowed is False
+    assert verdict.reason == "normal_quota_exhausted"
+    conn2.close()
+
+
+def test_record_failure_settles_usage(env):
+    conn, config = env
+    result = _authorize(conn, config)
+    usage = {"prompt_tokens": 1_000_000, "prompt_cache_hit_tokens": 0,
+             "prompt_cache_miss_tokens": 1_000_000, "completion_tokens": 50}
+    record_failure(conn, config, result, "no_retry",
+                   {"http_status": 400, "matrix_code": "E1.request",
+                    "message": "bad"}, usage=usage)
+    row = conn.execute(
+        "SELECT status, error_class, actual_micro_cny, usage_json"
+        " FROM receipt_attempt WHERE id=?", (result.attempt_id,)).fetchone()
+    assert row[0] == "failed" and row[1] == "no_retry"
+    # 1M×2 + 50×8 = 2_000_400 微元(有 usage 先结算)
+    assert row[2] == 2_000_400
+    import json as _json
+    assert _json.loads(row[3])["prompt_tokens"] == 1_000_000
