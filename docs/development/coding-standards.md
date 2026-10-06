@@ -50,7 +50,7 @@ engine/
 
 ### 依赖纪律
 
-- stdlib优先。运行依赖白名单:`httpx`、`PyYAML`(M2追加:`sqlite-vec`、`fastapi`、`uvicorn`);测试依赖:`pytest`、`pytest-mock`,部署安装与测试环境分开列出
+- stdlib优先。运行依赖白名单:`httpx`、`PyYAML`、`tokenizers`(Task 1 选定,HF Rust 轻量库,`Tokenizer.from_file` 消费锁定版 tokenizer.json,不引入 transformers/torch;M2追加:`sqlite-vec`、`fastapi`、`uvicorn`);测试依赖:`pytest`、`pytest-mock`,部署安装与测试环境分开列出
 - **LLM/embedding 的 API key 只从环境变量读**;真实key只放服务器 `/etc/nanmu-blog.env`,经systemd `EnvironmentFile`提供。本地单测只用假值与mock,config与代码里只有变量名;`.env`被gitignore不是存储真实凭据的授权
 
 ### SQLite 约定
