@@ -337,3 +337,40 @@ def test_r0_invalid_url_skipped_with_log(env, caplog):
                  "2026-10-06", T0)
     assert r.manifest == []
     assert any("invalid_url" in r.message for r in caplog.records)
+
+
+# ---------- Task 25:部署形态快照输入(nanmu 无 td data/ -shm 写权) ----------
+
+def test_collect_once_with_snapshot_dir_reads_snapshot(env):
+    """snapshot_dir 给定时先快照再读:数据经快照落 entry,快照目录
+    只留主库文件(交付契约),源文件不动。"""
+    conn, config, tmp_path = env
+    up, path = _make_upstream(tmp_path)
+    sid = _add_source(up, "src-a")
+    _add_item(up, sid, "https://example.com/a", "title-A",
+              fetched=T0 - timedelta(hours=1), content="body")
+    up.close()  # 干净关闭:无 sidecar(服务器实测形态)
+
+    snap = tmp_path / "snap-root"
+    result = collect_once(conn, path, config, "2026-10-06", T0,
+                          snapshot_dir=snap)
+
+    assert result.status == "frozen"
+    assert (snap / "upstream.db").exists()
+    assert [p.name for p in sorted(snap.iterdir())] == ["upstream.db"]
+    assert conn.execute(
+        "SELECT identity_key FROM entry WHERE identity_key LIKE '%example.com/a%'"
+    ).fetchone() is not None
+
+
+def test_collect_once_snapshot_missing_source_is_e2(env, caplog):
+    """快照源缺失=上游读失败 E2(CollectError),不裸抛 FileNotFoundError
+    ——CLI 全链路保持 exit 3 与 failed 行语义(test_cli 回归)。"""
+    conn, config, tmp_path = env
+    with caplog.at_level("ERROR", logger="nanmu_engine.collect"):
+        with pytest.raises(CollectError):
+            collect_once(conn, str(tmp_path / "missing.db"), config,
+                         "2026-10-06", T0, snapshot_dir=tmp_path / "snap-root")
+    assert any("collect_failed" in r.message and "E2" in r.message
+               for r in caplog.records)
+    assert conn.execute("SELECT COUNT(*) FROM issue_freeze").fetchone()[0] == 0

@@ -683,3 +683,83 @@ def test_changed_entry_body_rescored_not_reusing_old_analysis(env):
                         " identity_key='k-chg'").fetchone()[0] != "used"
     rows = conn.execute("SELECT score_1 FROM analysis ORDER BY id").fetchall()
     assert [r[0] for r in rows] == [90, 10]     # 新输入=新行,旧行保留
+
+
+# ==================== Task 25 部署接线(发布上下文经环境变量注入) ====================
+
+class _FakeResp:
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def test_publish_ctx_from_env_wires_deployment(tmp_path, monkeypatch):
+    """Task 25:NANMU_PUBLISH_REMOTE/SITE_BASE/RELEASE_TXT 三变量装配
+    发布上下文——服务器路径不写死在代码。"""
+    from nanmu_engine.run import _publish_ctx_from_env
+    release = tmp_path / "release.txt"
+    release.write_text("a" * 40, encoding="utf-8")
+    monkeypatch.setenv("NANMU_PUBLISH_REMOTE", "/opt/git/nanmu-blog.git")
+    monkeypatch.setenv("NANMU_SITE_BASE", "https://nanmu.xyz")
+    monkeypatch.setenv("NANMU_RELEASE_TXT", str(release))
+    ctx = _publish_ctx_from_env(tmp_path)
+    assert ctx.remote_url == "/opt/git/nanmu-blog.git"
+    assert ctx.site_base == "https://nanmu.xyz"
+    assert ctx.fetch_release_sha() == "a" * 40
+
+
+def test_publish_ctx_env_defaults_keep_stub_behavior(tmp_path, monkeypatch):
+    """未设 env(本地替身)→ 与现状一致:空远端/无证据/URL 不确认,
+    既有替身测试零改动。"""
+    from nanmu_engine.run import _publish_ctx_from_env
+    for k in ("NANMU_PUBLISH_REMOTE", "NANMU_SITE_BASE", "NANMU_RELEASE_TXT"):
+        monkeypatch.delenv(k, raising=False)
+    ctx = _publish_ctx_from_env(tmp_path)
+    assert ctx.remote_url == ""
+    assert ctx.site_base == ""
+    assert ctx.fetch_release_sha() is None
+    assert ctx.fetch_url_ok("https://x.example/") is False
+
+
+def test_publish_ctx_release_txt_missing_is_insufficient(tmp_path,
+                                                         monkeypatch):
+    """release.txt 配了但文件缺失(部署切换窗口/路径错)=证据不足
+    返回 None,不抛异常(误判语义由 publish 层消费)。"""
+    from nanmu_engine.run import _publish_ctx_from_env
+    monkeypatch.setenv("NANMU_RELEASE_TXT", str(tmp_path / "nope.txt"))
+    ctx = _publish_ctx_from_env(tmp_path)
+    assert ctx.fetch_release_sha() is None
+
+
+def test_publish_ctx_http_check_real_result(tmp_path, monkeypatch):
+    """URL 确认走真实 HTTP 结果:2xx=True;网络失败=False 不抛。"""
+    from nanmu_engine.run import _publish_ctx_from_env
+    monkeypatch.setenv("NANMU_SITE_BASE", "https://nanmu.xyz")
+    ctx = _publish_ctx_from_env(tmp_path)
+    monkeypatch.setattr("urllib.request.urlopen",
+                        lambda url, timeout: _FakeResp())
+    assert ctx.fetch_url_ok("https://nanmu.xyz/digest/2026-10-07/") is True
+
+    def _boom(url, timeout):
+        raise OSError("net down")
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom)
+    assert ctx.fetch_url_ok("https://nanmu.xyz/digest/2026-10-07/") is False
+
+
+def test_upstream_db_env_override(tmp_path, monkeypatch):
+    """Task 25 部署接线:上游库真实路径经 NANMU_UPSTREAM_DB 注入——
+    不用 symlink 指向真实库(SQLite 按**打开路径**推 -wal/-shm 侧车
+    名,symlink 会让只读连接找不到真实 WAL,读到旧快照丢当日数据);
+    未设=现状 root/topic-digest.db(替身测试零改动)。"""
+    from nanmu_engine.run import _upstream_path_from_env
+    monkeypatch.delenv("NANMU_UPSTREAM_DB", raising=False)
+    assert _upstream_path_from_env(tmp_path) == str(
+        tmp_path / "topic-digest.db")
+    monkeypatch.setenv("NANMU_UPSTREAM_DB", "/srv/topic-digest/data.db")
+    assert _upstream_path_from_env(tmp_path) == "/srv/topic-digest/data.db"
+

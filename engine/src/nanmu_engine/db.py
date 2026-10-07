@@ -8,6 +8,7 @@ PRAGMA,不迁移)。迁移按 PRAGMA user_version 版本化:未知较新版本�
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -183,6 +184,41 @@ def connect_readonly(path: str) -> sqlite3.Connection:
     """topic-digest 上游只读连接(mode=ro;不执行写 PRAGMA,不迁移)。"""
     uri = Path(path).resolve().as_uri().replace("file:///", "file:/")
     return sqlite3.connect(uri + "?mode=ro", uri=True)
+
+
+def snapshot_upstream(src: str, dest_dir: Path) -> Path:
+    """把上游主库文件拷成本项目快照并 quick_check,返回快照路径。
+
+    服务器实测(nanmu,sqlite 3.26.0):td 上游是 WAL 模式库,data/ 目录
+    0755 td:td,nanmu 无权创建/写 -shm,ro 读者碰任何数据页即
+    SQLITE_READONLY;immutable 直读活库又有并发检查点撕裂风险。改为拷
+    主库文件(WAL 模式下主库文件总是最近一次 checkpoint 的一致快照,
+    sidecar 有意不拷)到自有可写目录,quick_check 通过才供
+    connect_readonly 读取;失败抛 RuntimeError,上层中止运行并告警。
+    dest_dir 每次整体重建,清除可能污染新快照的陈旧 -wal/-shm。
+    """
+    dest_dir = Path(dest_dir)
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    dest_dir.mkdir(parents=True)
+    dest = dest_dir / "upstream.db"
+    shutil.copyfile(src, dest)
+    ro = connect_readonly(str(dest))
+    try:
+        rows = ro.execute("PRAGMA quick_check").fetchall()
+    except sqlite3.DatabaseError as exc:  # 撕裂严重到 quick_check 自身即报
+        raise RuntimeError(
+            f"上游快照完整性校验失败(疑似拷贝窗口内有并发检查点):{exc} 源={src}"
+        ) from exc
+    finally:
+        ro.close()
+    if len(rows) != 1 or rows[0][0] != "ok":
+        raise RuntimeError(f"上游快照完整性校验失败(疑似拷贝窗口内有并发检查点):{rows[:3]} 源={src}")
+    for suffix in ("-wal", "-shm"):  # 校验连接可能建的 sidecar,交付前清除
+        side = dest.parent / (dest.name + suffix)
+        if side.exists():
+            side.unlink()
+    return dest
 
 
 def migrate(conn: sqlite3.Connection) -> None:

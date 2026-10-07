@@ -362,7 +362,8 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
              recover_budget_s: float = RECOVER_BUDGET_S,
              monotonic: Callable[[], float] | None = None,
              notify_send: Callable[[str, str], str] | None = None,
-             events: Callable[[str], None] | None = None) -> int:
+             events: Callable[[str], None] | None = None,
+             snapshot_dir: "Path | None" = None) -> int:
     """一次完整运行(编排;main() 为其 CLI 装配薄层)。返回聚合退出码。"""
     now = now or datetime.now(timezone.utc)
     today = today or _shanghai_today(now)
@@ -441,7 +442,8 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         events(f"phase:new:{today}")
         touched.add(today)
         try:
-            collect_once(conn, upstream_path, config, today, now)
+            collect_once(conn, upstream_path, config, today, now,
+                         snapshot_dir=snapshot_dir)
             codes.append(_generate_issue(conn, config, today, publish_ctx,
                                          paid_allowed=paid_allowed,
                                          transport=transport, now=now,
@@ -527,11 +529,59 @@ def abandon_issue(conn: sqlite3.Connection, issue_date: str, *,
                      " WHERE issue_date=?", (_now_str(), issue_date))
 
 
+def _upstream_path_from_env(root: Path) -> str:
+    """Task 25 部署接线:上游 topic-digest 库路径经 NANMU_UPSTREAM_DB
+    注入。不用 symlink 指向真实库——SQLite 按打开路径推 -wal/-shm 侧车
+    名,symlink 会让只读连接找不到真实 WAL(读到旧快照丢当日数据)。
+    未设=现状 root/topic-digest.db(本地替身测试零改动)。"""
+    import os
+    return os.environ.get("NANMU_UPSTREAM_DB",
+                          str(root / "topic-digest.db"))
+
+
+def _publish_ctx_from_env(root: Path) -> PublishContext:
+    """部署接线(Task 25):发布上下文经环境变量注入,服务器路径不写死
+    在代码——NANMU_PUBLISH_REMOTE(专用副本远端 git URL)、
+    NANMU_SITE_BASE(线上基址,构造期页 URL)、NANMU_RELEASE_TXT
+    (部署 SHA 文件路径,如 current/dist/release.txt)。未设=本地替身
+    现状(空远端/无部署证据/URL 不确认),既有替身测试零改动;
+    release.txt 读不到=证据不足返回 None(URL/SHA 误判语义由
+    publish 层消费,此处不抛)。"""
+    import os
+    import urllib.request
+
+    remote = os.environ.get("NANMU_PUBLISH_REMOTE", "")
+    site_base = os.environ.get("NANMU_SITE_BASE", "")
+    release_txt = os.environ.get("NANMU_RELEASE_TXT", "")
+
+    def _sha() -> str | None:
+        if not release_txt:
+            return None
+        try:
+            return Path(release_txt).read_text(encoding="utf-8").strip()
+        except OSError:
+            return None                     # 部署切换窗口/路径错=证据不足
+
+    def _ok(url: str) -> bool:
+        if not site_base:
+            return False
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                return 200 <= resp.status < 300
+        except OSError:
+            return False
+
+    return PublishContext(workdir=root / "site-work", remote_url=remote,
+                          branch="main", site_base=site_base,
+                          fetch_release_sha=_sha, fetch_url_ok=_ok)
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI 装配薄层(锁→config→DB→PublishContext→run_once);单实例
     flock 由本层持有(Windows msvcrt/POSIX fcntl 各取其一)。
     PublishContext 的真实远端/工作副本装配属 Task 25(部署);M1 骨架
-    remote_url 留空,发布前须由部署配置补齐。"""
+    remote_url 留空;真实部署经环境变量注入(NANMU_PUBLISH_REMOTE 等,
+    见 _publish_ctx_from_env)。"""
     import argparse
 
     from nanmu_engine.config import load_config
@@ -570,11 +620,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         conn = connect_db(str(root / "engine.db"))
         migrate(conn)
-        ctx = PublishContext(workdir=root / "site-work", remote_url="",
-                             branch="main")
+        ctx = _publish_ctx_from_env(root)
         return run_once(conn, config,
-                        upstream_path=str(root / "topic-digest.db"),
-                        publish_ctx=ctx)
+                        upstream_path=_upstream_path_from_env(root),
+                        publish_ctx=ctx, snapshot_dir=root / "upstream-snap")
     finally:
         lock.close()
 

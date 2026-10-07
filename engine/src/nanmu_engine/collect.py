@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from nanmu_engine.config import Config
-from nanmu_engine.db import connect_readonly
+from nanmu_engine.db import connect_readonly, snapshot_upstream
 from nanmu_engine.normalize import identity_key
 
 logger = logging.getLogger(__name__)
@@ -92,8 +92,14 @@ def _parse_utc(text: str) -> datetime | None:
 
 def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
                  config: Config, issue_date: str,
-                 now_utc: datetime) -> CollectResult:
+                 now_utc: datetime,
+                 snapshot_dir: "Path | None" = None) -> CollectResult:
     """采集→判重合并→entry 落库→冻结(单事务);幂等入口=已冻结直接返回。
+
+    snapshot_dir 给定时(Task 25 部署形态)先拷主库快照再读——nanmu 对
+    td data/ 无 -shm 写权,WAL 库 ro 直读一律 SQLITE_READONLY;快照源
+    IO/完整性失败均归 E2(根因见 db.snapshot_upstream)。None=现状直读
+    (本地替身测试零改动)。
 
     R0 invalid 与上游异常格式 fetched_utc 跳过记日志;多源同 key 平局
     tier→priority→name→item.id 升序,选择依据写日志;新键 discovered_utc=
@@ -107,6 +113,14 @@ def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
                              manifest=json.loads(frozen[0]))
 
     # 1) 只读窗口查询(规模护栏:行数与耗时)
+    if snapshot_dir is not None:
+        try:
+            upstream_path = str(
+                snapshot_upstream(upstream_path, snapshot_dir))
+        except (RuntimeError, OSError) as exc:
+            logger.error("stage=collect event=collect_failed error_class=E2"
+                         " upstream=%s message=%s", upstream_path, exc)
+            raise CollectError(f"E2 上游读取失败:{exc}") from exc
     try:
         upstream = connect_readonly(upstream_path)
         cutoff = (now_utc - timedelta(hours=_WINDOW_HOURS)).strftime(
