@@ -15,7 +15,7 @@
 | [development/design-review.md](development/design-review.md) | 模块详细设计与设计评审规范:可开发八件事、五设计单元、评审结束条件、文档控制约束 | 定稿(约束 M1 起的设计阶段) |
 | [superpowers/specs/2026-10-02-nanmu-blog-design.md](superpowers/specs/2026-10-02-nanmu-blog-design.md) | 设计文档(唯一设计真相源,§2 八条铁律) | 总体设计基线(定稿;编码许可以设计评审为准) |
 | [superpowers/plans/2026-10-02-m0-blog-launch.md](superpowers/plans/2026-10-02-m0-blog-launch.md) | M0实施计划(10主任务+Task8a边界补验) | **全部完成(2026-10-06 验收通过,tag `m0`)** |
-| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(27任务,Task 0-26+两项带入验证任务+逐任务停点) | 已通过第五轮评审(2026-10-05);**Task 0-24 已实现(替身端到端 304 测试绿),2026-10-06 审计 8 项+跨模块核验 8 处交界缝修复+2026-10-07 复核轮三处修复完毕;Task 25/26 须当次授权** |
+| [superpowers/plans/2026-10-05-m1-engine-implementation.md](superpowers/plans/2026-10-05-m1-engine-implementation.md) | M1实施计划(27任务,Task 0-26+两项带入验证任务+逐任务停点) | 已通过第五轮评审(2026-10-05);**Task 0-24 已实现(315 测试绿),审计/核验/复核轮修复完毕;Task 25 部署对接已完成(2026-10-07,timer 未启用,见 [Task 25 交接](../sessions/2026-10-07-task25-deploy.md));Task 26 须当次授权** |
 | [writing.md](writing.md) | 新建文章/草稿/同步/发布/撤回/图片与URL | 本地与发布流程可用;首篇文章已发布(Task10 验收) |
 | [architecture.md](architecture.md) | 三件套架构与数据流 | 定稿 |
 | [decisions/](decisions/) | ADR 架构决策记录(0001-0009;模板 `_template.md`) | 持续追加 |

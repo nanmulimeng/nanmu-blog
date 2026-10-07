@@ -5,7 +5,7 @@
 ## 项目状态快照(2026-10-06)
 
 - M0:**全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》真实发布上线(发布计时12s),线上验收全通过(RSS XML 解析+CommaFeed 真实订阅、明暗主题、文章页/404),持锁回滚演练实操通过(切旧版 c8a4567 确认后切回)。证据见 [M0 验收交接](docs/sessions/2026-10-06-m0-acceptance.md)与 [部署交接](docs/sessions/2026-10-04-m0-deploy.md)
-- **当前阶段:M1 本地实施推进中(Task 0-24 已实现,审计修复轮+跨模块核验与交界缝修复+复核轮三处修复完成)**——engine/ 已创建并替身端到端绿(全套件 304 passed);用户审计 8 项(8d24fbe..9e4d8e0)、跨模块核验 8 处交界缝(9075620..a68cae2)与复核轮三处(校准 replay 有效性/校准累计预占预算/W1 精确成员恢复,10b10b8..3b74a5d)均已按模块修复完毕,修复证据见交接文档。模型全部替身、上游只读、不部署不付费;Task 25 部署与 Task 26 真实付费须用户当次显式授权。
+- **当前阶段:M1 部署对接完成,待真实校准授权(2026-10-07)**——engine 全套件 315 passed;Task 25 已执行:服务器前置核查(上游 WAL/shm 权限根因→快照读取裁决)、引擎部署(timer 保持 disabled)、零付费验证(隔离全链/暂停闸门/备份恢复/OnFailure/site verify)、两次 push server main 构建切换验证,证据见[Task 25 交接](docs/sessions/2026-10-07-task25-deploy.md)。真实模型调用与 timer 启用归 Task 26,须用户当次显式授权。
 - 顺序:M1 Task 0-12→Task 13-24(本地替身端到端)→Task 25 部署/Task 26 分两段授权启用付费;进入条件以spec §9为准(M0 验收已满足)
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-05-m1-engine-implementation.md](docs/superpowers/plans/2026-10-05-m1-engine-implementation.md) 逐任务
 - 最新接手入口:[2026-10-06 M1 审计修复轮+跨模块核验+复核轮](docs/sessions/2026-10-06-m1-audit-fix-round.md)(审计 8 项+交界缝 8 处+复核轮三处修复全记录:账本校准/内容身份运行序/发布恢复/站点产物四组,测试与验收证据);前序:[M1 批次实施](docs/sessions/2026-10-06-m1-batch1-implementation.md)、[M1 开发交接](docs/sessions/2026-10-06-m1-development-handoff.md)。本轮修改/提交/推送状态接手时以 Git 实况核对。
@@ -36,7 +36,7 @@
 ```
 scripts/   已有文档检查工具
 site/      Astro 5 静态站已建(M0 Task 2-8+8a;posts 手写 + digest 生成)
-engine/    AI 引擎已建(M1 Task 0-24,Python + SQLite + systemd timer;src/nanmu_engine + tests,304 测试)
+engine/    AI 引擎已建(M1 Task 0-24,Python + SQLite + systemd timer;src/nanmu_engine + tests,315 测试;服务器已部署 /opt/nanmu-blog,timer 未启用)
 docs/      specs/plans/decisions/engine/ops/sessions/context
 deploy/    服务器部署工件(已安装并在 Task 9 验收;线上 https://nanmu.xyz)
 ```
