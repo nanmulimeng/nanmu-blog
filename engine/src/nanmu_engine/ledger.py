@@ -76,12 +76,14 @@ CALIBRATION_COUNTING = "full_request_messages_v1"
 def calibration_fingerprint(config: Config) -> dict:
     """校准记录绑定的配置指纹(model/tokenizer 资源与版本/计数方式;
     model-calls §3 规则 11:任一项变化即失效须重校准,不得跨配置沿用)。
-    R3:tokenizer 字段取**实际加载源**(token_count.TOKENIZER_MAP)而非
-    config 声明——计数行为由实际加载决定,声明改动而加载未变不构成
-    计数语义变化;资源/版本真变(加载源变)即指纹变。"""
-    from nanmu_engine.token_count import TOKENIZER_MAP
+    R3:tokenizer 字段取**实际加载源**而非 config 声明——计数行为由
+    实际加载决定,声明改动而加载未变不构成计数语义变化;资源真变即
+    指纹变。P1 修正(2026-10-07):version 改由 token_count.
+    tokenizer_identity() 按文件实算(旧实现读 TOKENIZER_MAP 硬编码
+    副本,资源更换后指纹不变,旧校准无法失效)。"""
+    from nanmu_engine.token_count import tokenizer_identity
     model = config.budget.default_model
-    tok = TOKENIZER_MAP.get(model)
+    tok = tokenizer_identity(model)
     return {"model": model,
             "tokenizer_resource": tok["resource"] if tok else None,
             "tokenizer_version": tok["version"] if tok else None,

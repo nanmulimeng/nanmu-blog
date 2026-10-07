@@ -474,3 +474,59 @@ def test_calibrate_cli_lock_busy(tmp_path):
 def test_calibrate_cli_config_error(tmp_path):
     import nanmu_engine.calibrate as cli
     assert cli.main(["--root", str(tmp_path)]) == 2
+
+
+# ---------- P1 修正(2026-10-07 复核):指纹取实际加载文件版本 ----------
+
+def _insert_record_with_fingerprint(conn, fingerprint):
+    """模拟历史校准记录(含遗留旧指纹),绕过 write 的当前指纹。"""
+    conn.execute(
+        "INSERT INTO engine_meta (key, value, updated_utc)"
+        " VALUES ('calibration', ?, ?)"
+        " ON CONFLICT(key) DO UPDATE SET value=excluded.value,"
+        " updated_utc=excluded.updated_utc",
+        (json.dumps({"fingerprint": fingerprint, "coefficient": 1.0,
+                     "results": [], "passed": True,
+                     "decided_at": "2026-10-07T00:00:00Z"}),
+         "2026-10-07T00:00:00Z"))
+    conn.commit()
+
+
+def test_stale_tokenizer_version_record_invalidates(env):
+    """P1:资源文件已换官方件(54d830b2…),TOKENIZER_MAP 曾停留旧 blob
+    (628e3364…)——按旧 version 写的校准记录必须对当前资源失效
+    (不得因声明副本漂移沿用旧校准)。"""
+    conn, config = env
+    legacy = dict(calibration_fingerprint(config),
+                  tokenizer_version="628e3364caad11bdf9e67cea06eae7878122811d")
+    _insert_record_with_fingerprint(conn, legacy)
+    assert calibration_effective(conn, config) is False
+    assert _authorize(conn, config).status == "rejected"  # not_calibrated
+
+
+def test_calibration_writes_actual_tokenizer_blob_version(env):
+    """P1:新校准记录的 tokenizer_version=按 git blob 算法从**实际加载
+    文件**计算的值(当前官方件 54d830b2…),非任何声明副本。"""
+    conn, config = env
+    out = calibrate(conn, config, transport=_transport(10), now=NOW)
+    assert out["passed"] is True
+    rec = json.loads(_meta(conn, "calibration"))
+    assert rec["fingerprint"]["tokenizer_version"]         == "54d830b20a171d6737eb7091db77837dfa572203"
+    assert calibration_effective(conn, config) is True
+
+
+def test_calibration_effective_survives_restart_and_cache_reset(
+        env, tmp_path):
+    """P1:重启语义=新进程(版本缓存清空)+新连接;指纹从实际文件重算,
+    判定与重启前一致(不随缓存生命周期漂移)。"""
+    import nanmu_engine.token_count as tc
+    conn, config = env
+    assert calibrate(conn, config, transport=_transport(10),
+                     now=NOW)["passed"] is True
+    assert calibration_effective(conn, config) is True
+    conn.close()
+    if hasattr(tc, "_version_cache"):
+        tc._version_cache.clear()
+    conn2 = connect_db(str(tmp_path / "engine.db"))
+    assert calibration_effective(conn2, config) is True
+    conn2.close()

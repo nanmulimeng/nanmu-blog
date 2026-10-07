@@ -31,13 +31,16 @@ class TokenizerUnavailable(Exception):
     """token 计数不可得(映射缺失/资源加载失败/消息形态不支持)。"""
 
 
-# model → 资源映射(Task 2 起由 config 提供并接管;version = tokenizer.json
-# 的 git blob 哈希,内容寻址,与 HF 发布渠道 blobId 同构可验)。
+# model → 资源映射(Task 2 起由 config 提供并接管;path = tokenizer.json
+# 相对 _RESOURCE_DIR;version 不在此声明——由 tokenizer_identity() 按
+# git blob 算法从**实际加载文件**实算。P1 修正(2026-10-07 复核):此前
+# 此处硬编码 version 副本停留旧值(628e3364…),资源文件已换官方件
+# (54d830b2…)而校准指纹不变,旧校准记录无法失效;现真相源=文件本身,
+# 与 config 加载校验同构,副本不再可能漂移)。
 TOKENIZER_MAP: dict[str, dict[str, str]] = {
     "deepseek-flash": {
         "resource": "deepseek-ai/DeepSeek-V4-Flash",
         "path": "deepseek-v4-flash/tokenizer.json",
-        "version": "628e3364caad11bdf9e67cea06eae7878122811d",
     },
 }
 
@@ -48,6 +51,30 @@ _ASSISTANT = "<｜Assistant｜>"
 _THINK_END = "</think>"  # chat 模式:<｜Assistant｜> 后立即闭合 think 块
 
 _tokenizer_cache: dict[str, Tokenizer] = {}
+_version_cache: dict[str, str] = {}   # model → 实算 blob 哈希(进程内稳定)
+
+
+def tokenizer_identity(model: str) -> dict | None:
+    """实际加载源身份(resource/version);version=按 git blob 算法
+    (sha1("blob <len>\\x00" + bytes),与 config._parse_budget 校验同构)
+    从实际文件计算并按进程缓存。映射缺失=None;文件读不得=version
+    None(指纹不与任何正常记录相等——而正常校准根本走不到写记录:
+    计数先经 load_tokenizer 失败,TokenizerUnavailable)。"""
+    entry = TOKENIZER_MAP.get(model)
+    if entry is None:
+        return None
+    if model not in _version_cache:
+        try:
+            blob = (_RESOURCE_DIR / entry["path"]).read_bytes()
+        except OSError:
+            return {"resource": entry["resource"],
+                    "path": entry["path"], "version": None}
+        import hashlib
+        _version_cache[model] = hashlib.sha1(
+            b"blob %d\x00" % len(blob) + blob).hexdigest()
+    return {"resource": entry["resource"], "path": entry["path"],
+            "version": _version_cache[model]}
+
 
 
 def load_tokenizer(model: str) -> Tokenizer:
