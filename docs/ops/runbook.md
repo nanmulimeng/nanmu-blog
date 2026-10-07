@@ -24,7 +24,7 @@
 | push成功但未更新 | 对比远端main、release.txt与部署日志 | push只代表接收;按部署手册§8带锁重跑,原样push可能无更新不触发hook |
 | 日报未出 | engine journal、digest_issue、receipt_attempt | 区分生成失败/预算停止/提交冲突/已提交未发布;复用产物,不重复付费 |
 | 成本异常 | 查看实际+未决预占、请求/价目版本与供应商用量 | budget调0立即禁止新调用,unknown费用不得当零处理 |
-| 上游读失败 | 实际路径/快照 quick_check/WAL shm 权限/schema | 只修本项目读取方式,不改上游数据与服务。现行机制=每轮拷主库到 `root/upstream-snap` + quick_check 后读(quick_check 失败=中止并 OnFailure 告警;不要改成 immutable 直读活库——并发检查点有撕裂风险) |
+| 上游读失败 | 实际路径/WAL shm 权限/schema | 只修本项目读取方式,不改上游数据与服务。现行机制=mode=ro 直读(`connect_readonly`;2026-10-07 审计撤回拷主库+quick_check 方案——复制中途 checkpoint 可得旧新混合行且 quick_check 仍 ok,WAL 内已提交数据也会被漏,不构成一致性保证)。readonly 报错=nanmu 无上游 data/ 的 -shm/-wal 创建写权,E2 中止并在日志报最小权限缺口(须上游授权或暴露一致快照,人工裁决);不得退回文件拷贝或 immutable 直读 |
 | 内存不足 | free、journal、构建与RAG实测峰值 | 保持旧站,停止失败增强任务;RAG MemoryMax=200M只是限制,不是性能保证 |
 
 M0部署完成后的带锁手动重跑使用[部署手册](deploy.md)§8,再按§6核对线上SHA与实际页面。此处不另存一份命令,避免路径、日志或超时参数漂移。

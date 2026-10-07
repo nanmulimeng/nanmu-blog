@@ -8,7 +8,7 @@ import sqlite3
 
 import pytest
 
-from nanmu_engine.db import connect_db, connect_readonly, migrate, snapshot_upstream
+from nanmu_engine.db import connect_db, connect_readonly, migrate
 
 EXPECTED_TABLES = {
     "entry", "receipt", "receipt_attempt", "budget", "analysis",
@@ -135,63 +135,3 @@ def test_migrate_interrupted_leaves_empty_db_and_reentrant(tmp_path):
         "SELECT value FROM engine_meta WHERE key='pay_paused'"
     ).fetchone()[0] == "0"
     conn2.close()
-
-
-# ---------- Task 25:上游 WAL 库快照读取 ----------
-# 服务器实测(nanmu@checkmate,sqlite 3.26.0):td 上游库 WAL 模式,data/
-# 目录 td:td 0755,nanmu 无权创建/写 -shm → ro 读者碰任何数据页即
-# SQLITE_READONLY;immutable 直读活库有并发检查点撕裂风险。改为主库文件
-# 拷贝(WAL 下主库=最近 checkpoint 的一致快照)+ quick_check 后读快照。
-
-def _make_upstream_wal(tmp_path, rows=50):
-    """构造无 sidecar 的 WAL 模式源库(模拟 td 干净关闭后的形态)。"""
-    src = tmp_path / "up" / "topic-digest.db"
-    src.parent.mkdir()
-    conn = sqlite3.connect(str(src))
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("CREATE TABLE item (id INTEGER PRIMARY KEY, v TEXT)")
-    conn.executemany("INSERT INTO item (v) VALUES (?)", [(f"v{i}",) for i in range(rows)])
-    conn.commit()
-    conn.close()  # 干净关闭删除 sidecar,仅剩主库文件
-    return src
-
-
-def test_snapshot_upstream_copies_and_reads(tmp_path):
-    src = _make_upstream_wal(tmp_path)
-
-    dest_dir = tmp_path / "snap"
-    out = snapshot_upstream(str(src), dest_dir)
-
-    assert out == dest_dir / "upstream.db"
-    # 函数返回时快照目录只含主库文件(sidecar 由后续打开决定)
-    assert [p.name for p in sorted(dest_dir.iterdir())] == ["upstream.db"]
-    ro = connect_readonly(str(out))
-    assert ro.execute("SELECT COUNT(*) FROM item").fetchone()[0] == 50
-    ro.close()
-    # 源保持原样
-    assert src.exists()
-
-
-def test_snapshot_upstream_rejects_torn_source(tmp_path):
-    src = _make_upstream_wal(tmp_path)
-    with open(src, "r+b") as f:  # 截断模拟检查点中撕裂
-        f.truncate(300)
-
-    with pytest.raises(RuntimeError, match="完整性"):
-        snapshot_upstream(str(src), tmp_path / "snap")
-
-
-def test_snapshot_upstream_rebuilds_dest_dir(tmp_path):
-    src = _make_upstream_wal(tmp_path)
-    dest_dir = tmp_path / "snap"
-    dest_dir.mkdir()
-    stale = dest_dir / "upstream.db-wal"  # 陈旧 sidecar 必须被清,防污染新快照
-    stale.write_bytes(b"garbage")
-    (dest_dir / "upstream.db").write_bytes(b"old")
-
-    out = snapshot_upstream(str(src), dest_dir)
-
-    assert [p.name for p in sorted(dest_dir.iterdir())] == ["upstream.db"]
-    ro = connect_readonly(str(out))
-    assert ro.execute("SELECT COUNT(*) FROM item").fetchone()[0] == 50
-    ro.close()

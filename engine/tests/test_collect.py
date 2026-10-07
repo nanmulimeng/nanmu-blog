@@ -339,38 +339,22 @@ def test_r0_invalid_url_skipped_with_log(env, caplog):
     assert any("invalid_url" in r.message for r in caplog.records)
 
 
-# ---------- Task 25:部署形态快照输入(nanmu 无 td data/ -shm 写权) ----------
+# ---------- 审计修正(2026-10-07):ro 直读 readonly 失败的权限缺口诊断 ----------
 
-def test_collect_once_with_snapshot_dir_reads_snapshot(env):
-    """snapshot_dir 给定时先快照再读:数据经快照落 entry,快照目录
-    只留主库文件(交付契约),源文件不动。"""
+def test_e2_readonly_error_reports_permission_gap(env, monkeypatch, caplog):
+    """审计修正①:快照方案撤回(裸拷+quick_check 不构成一致性保证,
+    WAL 内已提交数据亦漏)。nanmu 无上游 data/ 的 -shm 写权时 ro 直读
+    报 readonly——E2 信息须带最小权限缺口说明(供用户裁决),引擎
+    不擅改上游、不降级读取。"""
     conn, config, tmp_path = env
-    up, path = _make_upstream(tmp_path)
-    sid = _add_source(up, "src-a")
-    _add_item(up, sid, "https://example.com/a", "title-A",
-              fetched=T0 - timedelta(hours=1), content="body")
-    up.close()  # 干净关闭:无 sidecar(服务器实测形态)
 
-    snap = tmp_path / "snap-root"
-    result = collect_once(conn, path, config, "2026-10-06", T0,
-                          snapshot_dir=snap)
+    def fake_ro(path):
+        raise sqlite3.OperationalError(
+            "attempt to write a readonly database")
 
-    assert result.status == "frozen"
-    assert (snap / "upstream.db").exists()
-    assert [p.name for p in sorted(snap.iterdir())] == ["upstream.db"]
-    assert conn.execute(
-        "SELECT identity_key FROM entry WHERE identity_key LIKE '%example.com/a%'"
-    ).fetchone() is not None
-
-
-def test_collect_once_snapshot_missing_source_is_e2(env, caplog):
-    """快照源缺失=上游读失败 E2(CollectError),不裸抛 FileNotFoundError
-    ——CLI 全链路保持 exit 3 与 failed 行语义(test_cli 回归)。"""
-    conn, config, tmp_path = env
+    monkeypatch.setattr(collect_mod, "connect_readonly", fake_ro)
     with caplog.at_level("ERROR", logger="nanmu_engine.collect"):
-        with pytest.raises(CollectError):
-            collect_once(conn, str(tmp_path / "missing.db"), config,
-                         "2026-10-06", T0, snapshot_dir=tmp_path / "snap-root")
-    assert any("collect_failed" in r.message and "E2" in r.message
-               for r in caplog.records)
-    assert conn.execute("SELECT COUNT(*) FROM issue_freeze").fetchone()[0] == 0
+        with pytest.raises(CollectError, match="shm"):
+            collect_once(conn, str(tmp_path / "x.db"), config,
+                         "2026-10-06", T0)
+    assert any("collect_failed" in r.message for r in caplog.records)

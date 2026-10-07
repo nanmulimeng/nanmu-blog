@@ -762,4 +762,3 @@ def test_upstream_db_env_override(tmp_path, monkeypatch):
         tmp_path / "topic-digest.db")
     monkeypatch.setenv("NANMU_UPSTREAM_DB", "/srv/topic-digest/data.db")
     assert _upstream_path_from_env(tmp_path) == "/srv/topic-digest/data.db"
-

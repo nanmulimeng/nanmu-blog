@@ -11408,66 +11408,66 @@
     },
     {
       "id": 129264,
-      "content": "<｜image2｜>",
+      "content": "<image>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129265,
-      "content": "<｜/table>｜",
+      "content": "</table>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129266,
-      "content": "<｜table｜>",
+      "content": "<table>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129267,
-      "content": "<｜/td｜>",
+      "content": "</td>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129268,
-      "content": "<｜td｜>",
+      "content": "<td>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129269,
-      "content": "<｜/tr｜>",
+      "content": "</tr>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129270,
-      "content": "<｜tr｜>",
+      "content": "<tr>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
       "normalized": false,
-      "special": false
+      "special": true
     },
     {
       "id": 129271,

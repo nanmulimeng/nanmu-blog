@@ -421,3 +421,56 @@ def test_calibration_resend_goes_through_can_retry(env):
         " ON r.id=a.receipt_id WHERE r.purpose='calibration'"
         " AND a.attempt_no=2 ORDER BY a.id LIMIT 1").fetchone()[0]
     assert origin == "unknown_retry"            # 通道如实记录
+
+
+# ---------- 审计修正③:校准 CLI 执行入口(python -m nanmu_engine.calibrate) ----------
+
+def _hold_lock(path):
+    """跨平台持有 run.lock(Windows msvcrt / POSIX fcntl)。"""
+    f = open(path, "a")
+    try:
+        import msvcrt
+        msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        return f, lambda: msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+    except ImportError:
+        import fcntl
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return f, lambda: fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+def _engine_root_env(tmp_path):
+    import shutil
+    shutil.copytree(ENGINE_ROOT / "config", tmp_path / "config")
+    shutil.copytree(ENGINE_ROOT / "resources", tmp_path / "resources")
+    return tmp_path
+
+
+def test_calibrate_cli_pass_with_stub(tmp_path):
+    """CLI 全链(锁→config→engine.db→ops.calibrate)替身验证:退出 0,
+    校准记录生效绑定指纹。零真实网络。"""
+    import nanmu_engine.calibrate as cli
+    root = _engine_root_env(tmp_path)
+    rc = cli.main(["--root", str(root)], transport=_transport(10))
+    assert rc == 0, "校准通过应退出 0"
+    conn = connect_db(str(root / "engine.db"))
+    assert calibration_effective(conn, load_config(ENGINE_ROOT)) is True
+    assert _cal_attempts(conn) == 4
+    conn.close()
+
+
+def test_calibrate_cli_lock_busy(tmp_path):
+    """与引擎共用 run.lock:另一实例持锁→退出 1,不建库不校准。"""
+    import nanmu_engine.calibrate as cli
+    lock, unlock = _hold_lock(tmp_path / "run.lock")
+    try:
+        assert cli.main(["--root", str(tmp_path)],
+                        transport=_transport(10)) == 1
+        assert not (tmp_path / "engine.db").exists()
+    finally:
+        unlock()
+        lock.close()
+
+
+def test_calibrate_cli_config_error(tmp_path):
+    import nanmu_engine.calibrate as cli
+    assert cli.main(["--root", str(tmp_path)]) == 2

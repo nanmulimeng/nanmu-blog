@@ -362,8 +362,7 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
              recover_budget_s: float = RECOVER_BUDGET_S,
              monotonic: Callable[[], float] | None = None,
              notify_send: Callable[[str, str], str] | None = None,
-             events: Callable[[str], None] | None = None,
-             snapshot_dir: "Path | None" = None) -> int:
+             events: Callable[[str], None] | None = None) -> int:
     """一次完整运行(编排;main() 为其 CLI 装配薄层)。返回聚合退出码。"""
     now = now or datetime.now(timezone.utc)
     today = today or _shanghai_today(now)
@@ -442,8 +441,7 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         events(f"phase:new:{today}")
         touched.add(today)
         try:
-            collect_once(conn, upstream_path, config, today, now,
-                         snapshot_dir=snapshot_dir)
+            collect_once(conn, upstream_path, config, today, now)
             codes.append(_generate_issue(conn, config, today, publish_ctx,
                                          paid_allowed=paid_allowed,
                                          transport=transport, now=now,
@@ -576,9 +574,29 @@ def _publish_ctx_from_env(root: Path) -> PublishContext:
                           fetch_release_sha=_sha, fetch_url_ok=_ok)
 
 
+def acquire_instance_lock(lock_path: Path):
+    """单实例锁(Windows msvcrt/POSIX fcntl 各取其一);与校准 CLI
+    (nanmu_engine.calibrate)共用 root/run.lock,防校准与运行并发写
+    engine.db。成功返回**已锁**的文件对象(close 即解锁);获取失败
+    返回 None,由调用方记日志并退出。"""
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock = open(lock_path, "a")
+    try:
+        try:
+            import msvcrt
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        except ImportError:                  # POSIX 部署目标(Task 25)
+            import fcntl
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        return None
+    return lock
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI 装配薄层(锁→config→DB→PublishContext→run_once);单实例
-    flock 由本层持有(Windows msvcrt/POSIX fcntl 各取其一)。
+    flock 由本层持有(acquire_instance_lock,与校准 CLI 互斥)。
     PublishContext 的真实远端/工作副本装配属 Task 25(部署);M1 骨架
     remote_url 留空;真实部署经环境变量注入(NANMU_PUBLISH_REMOTE 等,
     见 _publish_ctx_from_env)。"""
@@ -593,28 +611,13 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
-    try:
-        import msvcrt
-
-        def _acquire(lock_file):
-            msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
-    except ImportError:                      # POSIX 部署目标(Task 25)
-        import fcntl
-
-        def _acquire(lock_file):
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-
     parser = argparse.ArgumentParser(prog="nanmu-run")
     parser.add_argument("--root", default=".", help="engine 根目录")
     args = parser.parse_args(argv)
     root = Path(args.root)
 
-    lock_path = root / "run.lock"
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    lock = open(lock_path, "a")
-    try:
-        _acquire(lock)
-    except OSError:
+    lock = acquire_instance_lock(root / "run.lock")
+    if lock is None:
         logger.error("stage=run event=lock_busy 另一实例运行中,退出")
         return 1
 
@@ -629,7 +632,7 @@ def main(argv: list[str] | None = None) -> int:
         ctx = _publish_ctx_from_env(root)
         return run_once(conn, config,
                         upstream_path=_upstream_path_from_env(root),
-                        publish_ctx=ctx, snapshot_dir=root / "upstream-snap")
+                        publish_ctx=ctx)
     finally:
         lock.close()
 

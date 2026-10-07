@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from nanmu_engine.config import Config
-from nanmu_engine.db import connect_readonly, snapshot_upstream
+from nanmu_engine.db import connect_readonly
 from nanmu_engine.normalize import identity_key
 
 logger = logging.getLogger(__name__)
@@ -92,14 +92,14 @@ def _parse_utc(text: str) -> datetime | None:
 
 def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
                  config: Config, issue_date: str,
-                 now_utc: datetime,
-                 snapshot_dir: "Path | None" = None) -> CollectResult:
+                 now_utc: datetime) -> CollectResult:
     """采集→判重合并→entry 落库→冻结(单事务);幂等入口=已冻结直接返回。
 
-    snapshot_dir 给定时(Task 25 部署形态)先拷主库快照再读——nanmu 对
-    td data/ 无 -shm 写权,WAL 库 ro 直读一律 SQLITE_READONLY;快照源
-    IO/完整性失败均归 E2(根因见 db.snapshot_upstream)。None=现状直读
-    (本地替身测试零改动)。
+    上游经 connect_readonly(mode=ro)直读。审计修正(2026-10-07):文件级
+    快照方案撤回——裸拷主库+quick_check 不构成一致性保证(checkpoint 中途
+    撕裂结构合法不可检),且漏 WAL 内已提交数据;无 -shm 写权即无法参与
+    SQLite 锁协议,既有权限下无安全读法,此时 E2 停止并在错误信息中报告
+    最小权限缺口,不擅改上游、不降级读取。
 
     R0 invalid 与上游异常格式 fetched_utc 跳过记日志;多源同 key 平局
     tier→priority→name→item.id 升序,选择依据写日志;新键 discovered_utc=
@@ -113,14 +113,6 @@ def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
                              manifest=json.loads(frozen[0]))
 
     # 1) 只读窗口查询(规模护栏:行数与耗时)
-    if snapshot_dir is not None:
-        try:
-            upstream_path = str(
-                snapshot_upstream(upstream_path, snapshot_dir))
-        except (RuntimeError, OSError) as exc:
-            logger.error("stage=collect event=collect_failed error_class=E2"
-                         " upstream=%s message=%s", upstream_path, exc)
-            raise CollectError(f"E2 上游读取失败:{exc}") from exc
     try:
         upstream = connect_readonly(upstream_path)
         cutoff = (now_utc - timedelta(hours=_WINDOW_HOURS)).strftime(
@@ -130,9 +122,14 @@ def collect_once(engine_conn: sqlite3.Connection, upstream_path: str,
         query_ms = int((time.perf_counter() - started) * 1000)
         upstream.close()
     except sqlite3.Error as exc:
+        detail = str(exc)
+        if "readonly" in detail.lower():
+            detail += (";最小权限缺口:上游 WAL 库的 mode=ro 读者须能在上游"
+                       "数据目录创建/写 -shm/-wal(当前用户无此权限),或由上游"
+                       "暴露一致快照;未获授权不修改上游,引擎 E2 停止")
         logger.error("stage=collect event=collect_failed error_class=E2"
-                     " upstream=%s message=%s", upstream_path, exc)
-        raise CollectError(f"E2 上游读取失败:{exc}") from exc
+                     " upstream=%s message=%s", upstream_path, detail)
+        raise CollectError(f"E2 上游读取失败:{detail}") from exc
     if len(rows) > _SCALE_ITEMS_WARN or query_ms > _SCALE_QUERY_MS_WARN:
         logger.warning("stage=collect event=scale_guard item_total=%d"
                        " query_ms=%d", len(rows), query_ms)

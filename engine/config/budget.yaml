@@ -25,9 +25,15 @@ llm:
   json_output: true                      # score/understand 用 response_format json_object
 tokenizers:                              # Task 1 选定资源;version=tokenizer.json 的 git blob 哈希(内容寻址锚定)
   deepseek-flash:
-    resource: 'deepseek-ai/DeepSeek-V4-Flash'
+    resource: 'deepseek-ai/DeepSeek-V4-Flash'   # API 端 deepseek-flash=DeepSeek-V4.1-Flash(legacy v4 别名同服务同价,api-docs pricing,2026-10-07 核实);V4.1 沿用 V4 tokenizer(官方 cdn deepseek_v4_tokenizer.zip 与本件 vocab/模板组件全同)
     path: 'resources/tokenizers/deepseek-v4-flash/tokenizer.json'
-    version: '628e3364caad11bdf9e67cea06eae7878122811d'
+    version: '54d830b20a171d6737eb7091db77837dfa572203'   # 官方 zip 版(2026-10-07 替换:旧件 129264-129270 七个 <table>/<image> 系标记内容破损 mojibake,计数偏保守;新件与官方逐字节一致)
+# 初始校准系数 1.0 的依据:本地计数=完整消息渲染(system+user+generation
+# prompt,add_special_tokens=False,按官方 encoding_dsv4.py thinking_mode=
+# "chat" 语义,与 llm.py 顶层显式 thinking:disabled 配对);官方未公开
+# per-request 计费公式,唯一真相=响应 usage.prompt_tokens(api-docs
+# token_usage 原话)。1.0 是待验证假设,Task 26 校准以真实 usage 裁定:
+# 全部样本 usage≤ceil(计数×系数) 则生效,否则 pay_paused+人工上调。
 pricing:                                 # 价目快照版本;来源与时点见 budget.md,不含密钥
   - pricing_version: 'deepseek-2026-10-02'
     model: 'deepseek-flash'
