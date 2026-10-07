@@ -1,4 +1,4 @@
-# 2026-10-06 M1 审计修复轮(8 项)+ 跨模块核验与交界缝修复轮 交接
+# 2026-10-06 M1 审计修复轮(8 项)+ 跨模块核验与交界缝修复轮 + 复核轮三处修复 交接
 
 ## 背景与授权
 
@@ -58,9 +58,27 @@
 | B-缝B 清算口径 | 发布主链 final_keys=fsr.final 全员 vs 恢复路径 entry_ids(ready)双口径 | b1155c4 |
 | C1 Linux 清理 | symlinkSync junction 在 Linux 退化为普通 symlink,rmdir 恒 ENOTDIR→每次部署残留 /tmp 副本 | a68cae2 |
 
-机制要点:A1 replay 取最新 `usage_json IS NOT NULL` attempt;A2 同构 `score._attempt_side`(recover_stale_pending+can_retry,unknown_wait 单列状态);缝A 以产物 markdown 内容反解成员(成员 `safe_source_url` 出现在产物文本=进产物);缝C `_assert_remote_consistent`(withdraw/correct 期望在线、relist 期望已消失,不一致转人工);缝D `git cat-file -e deployed^{commit}` 前置;缝B `final_keys` 排除 `draft.safety_excluded`;C1 摘链接两步制(rmdir→rmSync 非递归),链接未摘除绝不 `rmSync(recursive)`。
+机制要点:A1 replay 取最新带 usage 的 attempt(2026-10-07 复核轮已修正为仅 `status='received'`,见下节);A2 同构 `score._attempt_side`(recover_stale_pending+can_retry,unknown_wait 单列状态);缝A 以产物 markdown 内容反解成员(成员 `safe_source_url` 出现在产物文本=进产物;复核轮已改链接目标精确匹配,见下节);缝C `_assert_remote_consistent`(withdraw/correct 期望在线、relist 期望已消失,不一致转人工);缝D `git cat-file -e deployed^{commit}` 前置;缝B `final_keys` 排除 `draft.safety_excluded`;C1 摘链接两步制(rmdir→rmSync 非递归),链接未摘除绝不 `rmSync(recursive)`。
 
 - **B-缝B 可达性说明**:采集侧 normalize R0 scheme 白名单本就把 javascript URL 挡在 entry 表外(正常链路 safety_excluded 几乎不可达);该修复属防御性口径统一,e2e 测试用直插 entry 构造。
 - **C1 验证边界**:Linux 分支行为在 Windows 开发机不可复现,验证=Windows `npm run verify` 全链回归绿+tmp 零残留+清理逻辑推演(Ruling 在台账);服务器首跑可观察。
 - 验证:engine 全套件 **301 passed**(192s,含 7 个新交界测试);site `npm run verify` 全链绿。
 - C 路核验另附 5 处 P3 deferred(台账 "Cross-module round: minor (deferred)" 各行:夹具日期撞车误报窗、杂散合规 .md 无清单校验、崩溃路径 tmp 残留、人工删除提示未警告活链接、探针 dotfile/并发 flaky)。
+
+
+---
+
+## 复核轮(2026-10-07,用户复核 00950e8 后限定三处)
+
+用户复核结论:`00950e8` 主要修复成立、301 测试实跑通过,但 2 个 P1+1 个 P2 未闭合,暂不进入正式部署与真实付费;本轮只修三处,不重开总体设计与已关闭项。三项全部 TDD 修复(RED→GREEN→全套件),本地替身环境完成,零网络零付费:
+
+| 项 | 缺陷 | 修复 | 测试(RED→GREEN) | 提交 |
+|---|---|---|---|---|
+| P1 校准 replay 有效性 | replay 只查 `usage_json IS NOT NULL`——HTTP 400 body 带 usage 时 `record_failure` 也写 usage_json,带 usage 的失败回执被当通过证据,重跑直接 passed+`calibration_effective=true`(一次失败请求变成正式付费链路的校准许可) | replay 加 `a.status='received'`:通过证据=成功 attempt 且带 usage,与首次消费条件统一;失败回执仍是费用证据(usage_json 保留)但不作通过样本,重走 can_retry(no_retry 拒,stopped=`resend_error_class_no_retry`) | `test_calibration_failed_attempt_with_usage_not_pass_evidence`(400+usage 首发拒;重跑零网络+attempt 不增+不 passed;关连接重开判定一致) | 10b10b8 |
+| P1 校准预算口径 | `_calibration_spent_micro`="已结算取 actual"——每样本实付极低(如 240 微元)时 6000 预算下累计预占 11606 仍 passed,违反契约"按预占值批准的调用量上限" | 改 `SUM(reserved_micro_cny)` 全部 calibration attempt:授权口径=已批准预占累计,不因结算回落(model-calls.md §3 规则 11) | `test_calibration_budget_limits_approved_reservations`(6000 微元→`budget_exhausted`,0<attempt<4,累计预占≤上限) | 10b10b8 |
+| P2 W1 URL 子串反解 | `safe_source_url(url) in text` 子串匹配——A url=`https://e.com/a` 是 B url=`https://e.com/ab` 的前缀,产物只含 B 但恢复 [A,B],W4 后 A/B 均 used | 提取产物全部 `](url)` 链接目标集合(`re.findall`),成员 safe_url 精确集合成员判定;`len(ids)`!=`len(links)` 转人工(无法唯一确认成员清单不以部分命中回填;不扩建版本表或恢复平台) | `test_w1_backfills_only_members_in_artifact` 改造前缀陷阱(A rejected/B used);`test_w1_member_count_mismatch_with_artifact_links_goes_manual`(链接 2/命中 1→转人工且无行落库) | 3b74a5d |
+
+- 验证:engine 全套件 **304 passed**(301+3 新增,259.82s,2026-10-07 实跑);RED 阶段四测试均按预期失败且失败点=缺陷本身(重跑误 passed / 预算全放行 passed / 子串恢复 [A,B] / 无数量校验 DID NOT RAISE)。
+- 既有测试兼容:A1 轮 `test_calibration_replay_uses_latest_settled_attempt` 的 attempt_no=2 是 received 不受 status 条件影响;两预算测试(probe reserved/极小上限 1)在 SUM(reserved) 口径下语义不变,均实跑确认仍绿。
+- 上节"机制要点"A1/缝A 两处描述已按本轮实现更正(勘误括注)。
+- 接手不变:Task 25/26 须用户当次显式授权;Linux 清理分支留 Task 25 现场验证;台账追加 "Review round:" 四行。

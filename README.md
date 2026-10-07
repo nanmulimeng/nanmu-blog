@@ -4,7 +4,7 @@
 
 ## 当前状态(2026-10-06)
 
-**M0 全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》已在 **`https://nanmu.xyz`** 真实发布(发布计时12s;RSS 解析+CommaFeed 真实订阅、明暗主题、文章页/404、持锁回滚演练全部通过)。**当前阶段:M1 本地实施推进中(Task 0-24 已实现,替身端到端绿 301 测试;2026-10-06 审计 8 项修复+跨模块核验 8 处交界缝修复完毕)**——替身模型、真实上游只读、不部署不付费;Task 25/26 部署与付费须当次授权。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
+**M0 全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》已在 **`https://nanmu.xyz`** 真实发布(发布计时12s;RSS 解析+CommaFeed 真实订阅、明暗主题、文章页/404、持锁回滚演练全部通过)。**当前阶段:M1 本地实施推进中(Task 0-24 已实现,替身端到端绿 304 测试;2026-10-06 审计 8 项修复+跨模块核验 8 处交界缝修复完毕,2026-10-07 复核轮三处修复完成)**——替身模型、真实上游只读、不部署不付费;Task 25/26 部署与付费须当次授权。skills.nanmu.xyz DNS 记录消失待用户在DNS控制台恢复。engine/ 设计文档(digest-design v3 + design/pipeline/budget + units/ 五单元)评审通过,为实施基线。
 
 接手从 [M1 审计修复轮交接](docs/sessions/2026-10-06-m1-audit-fix-round.md)开始(审计 8 项修复全记录与待办);前序实施记录见 [M1 批次实施](docs/sessions/2026-10-06-m1-batch1-implementation.md)与 [M1 开发交接](docs/sessions/2026-10-06-m1-development-handoff.md)。M0 执行证据见 [M0 验收交接](docs/sessions/2026-10-06-m0-acceptance.md)。阶段策略以 [spec §9](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md)为准。
 
