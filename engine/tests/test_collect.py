@@ -348,7 +348,7 @@ def test_e2_readonly_error_reports_permission_gap(env, monkeypatch, caplog):
     不擅改上游、不降级读取。"""
     conn, config, tmp_path = env
 
-    def fake_ro(path):
+    def fake_ro(path, *, immutable=False):
         raise sqlite3.OperationalError(
             "attempt to write a readonly database")
 
@@ -358,3 +358,171 @@ def test_e2_readonly_error_reports_permission_gap(env, monkeypatch, caplog):
             collect_once(conn, str(tmp_path / "x.db"), config,
                          "2026-10-06", T0)
     assert any("collect_failed" in r.message for r in caplog.records)
+
+
+# ---------- 方案 A(2026-10-07):快照完成识别与时效(docs/sessions/ ----------
+# ---------- 2026-10-07-plan-a-snapshot-rules.md 规则 1/2)----------
+
+def _write_snapshot(d, stamp, *, rows=1, break_tail=False, mtime_shift_s=0,
+                    empty_schema=False, name=None):
+    """造 td 风格备份件(名字时戳=mtime=内容时点,真实备份语义)。
+    break_tail=截半模拟 backup 写一半;mtime_shift_s=事后改写错位;
+    empty_schema=无关库(quick_check ok 但无窗口 schema)。"""
+    import os
+    p = d / (name or f"topic-digest-{stamp:%Y%m%dT%H%M%S}.db")
+    c = sqlite3.connect(p)
+    if not empty_schema:
+        c.executescript(_UPSTREAM_DDL)
+        sid = _add_source(c, "snap-src")
+        for i in range(rows):
+            _add_item(c, sid, f"https://example.com/s{i}", f"t{i}",
+                      fetched=stamp - timedelta(hours=1), content="c")
+    c.close()
+    if break_tail:
+        data = p.read_bytes()
+        p.write_bytes(data[: len(data) // 2])
+    os.utime(p, (stamp.timestamp() + mtime_shift_s,) * 2)
+    return p
+
+
+def _journal(*rounds):
+    """合成 journalctl 输出(时间正序)。每轮=dict(path=..., ok=...,
+    still_running=...);ok/running 二选一,默认 ok=True。"""
+    lines = []
+    host = "srv systemd[1]"
+    for r in rounds:
+        path = r.get("path")
+        lines.append(f"2026-10-07T03:35:01+0800 {host}: Starting topic-digest nightly db backup...")
+        if path:
+            lines.append(f"2026-10-07T03:35:02+0800 srv python[9]: backup -> {path}; pruned 1")
+        if r.get("still_running"):
+            continue                       # stdout 已打印,进程未结束
+        lines.append(f"2026-10-07T03:35:02+0800 {host}: topic-digest-backup.service: "
+                     + ("Succeeded." if r.get("ok", True)
+                        else "Failed with result 'exit-code'."))
+    return "\n".join(lines) + "\n"
+
+
+# 场景 3:有效已完成备份——journal 成功行+文件防线全过 → 选中并留痕
+def test_resolve_picks_journal_success_file(env, caplog):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    snap = _write_snapshot(d, T0 - timedelta(hours=5))
+    text = _journal(dict(path=str(snap)))
+    with caplog.at_level("INFO", logger="nanmu_engine.collect"):
+        got = collect_mod.resolve_upstream_snapshot(d, T0,
+                                                    journal_text=text)
+    assert got == str(snap)
+    assert "snapshot_resolved" in caplog.text
+    assert any("snapshot_resolved" in r.message for r in caplog.records)
+
+
+# 场景 1:备份仍在生成(stdout 已打印但 invocation 未结束)→ 跳过,用上一份成功件
+def test_resolve_skips_running_backup_uses_previous(env):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    prev = _write_snapshot(d, T0 - timedelta(hours=29))
+    running = _write_snapshot(d, T0 - timedelta(hours=1), rows=1)
+    text = _journal(dict(path=str(prev)),
+                    dict(path=str(running), still_running=True))
+    assert collect_mod.resolve_upstream_snapshot(d, T0,
+                                                 journal_text=text) == str(prev)
+
+
+# 场景 2:最新备份失败且残留文件名字最新 → 不取残留,回退上一份成功件
+def test_resolve_ignores_failed_backup_leftover(env):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    good = _write_snapshot(d, T0 - timedelta(hours=29))
+    leftover = _write_snapshot(d, T0 - timedelta(hours=1), break_tail=True)
+    assert leftover.name > good.name      # 残留件名字更新——不得"取目录最新"
+    text = _journal(dict(path=str(good)),
+                    dict(path=str(leftover), ok=False))
+    assert collect_mod.resolve_upstream_snapshot(d, T0,
+                                                 journal_text=text) == str(good)
+
+
+# 场景 4:快照过旧(最近成功件年龄>48h)→ E2 停止
+def test_resolve_stops_when_snapshot_stale(env):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    snap = _write_snapshot(d, T0 - timedelta(hours=49))
+    text = _journal(dict(path=str(snap)))
+    with pytest.raises(CollectError, match="过旧"):
+        collect_mod.resolve_upstream_snapshot(d, T0, journal_text=text)
+
+
+# 场景 5a:无成功完成的备份任务 → 证据不足停止
+def test_resolve_stops_when_no_success_record(env):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    _write_snapshot(d, T0 - timedelta(hours=1))   # 文件在也没用:无任务背书
+    for text in ("", _journal(dict(path=None, ok=False)),
+                 _journal(dict(path=str(d / "nonexistent.db")))):
+        with pytest.raises(CollectError, match="证据不足"):
+            collect_mod.resolve_upstream_snapshot(d, T0, journal_text=text)
+
+
+# 防线:journal 说成功但文件侧不过(截断/错位/无 schema/目录外)→ 停,不倒退
+@pytest.mark.parametrize("kw,why", [
+    (dict(break_tail=True), "截断"),
+    (dict(mtime_shift_s=3600), "错位"),
+    (dict(empty_schema=True), "schema"),
+])
+def test_resolve_stops_when_file_guard_fails(env, kw, why):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    snap = _write_snapshot(d, T0 - timedelta(hours=5), **kw)
+    text = _journal(dict(path=str(snap)))
+    with pytest.raises(CollectError, match="防线"):
+        collect_mod.resolve_upstream_snapshot(d, T0, journal_text=text)
+
+
+def test_resolve_stops_when_file_outside_dir(env):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    snap = _write_snapshot(other, T0 - timedelta(hours=5))
+    text = _journal(dict(path=str(snap)))
+    with pytest.raises(CollectError, match="证据不足"):
+        collect_mod.resolve_upstream_snapshot(d, T0, journal_text=text)
+
+
+# 纯函数:journal 解析配对(倒序最近成功 invocation 的 backup-> 行)
+def test_parse_journal_pairs_latest_success():
+    parse = collect_mod._parse_backup_journal
+    name = lambda tag: f"/opt/topic-digest/backups/topic-digest-{tag}.db"
+    text = _journal(dict(path=name("20261005T193501")),
+                    dict(path=name("20261006T193001"), ok=False),
+                    dict(path=name("20261006T193501")))
+    assert parse(text) == (name("20261006T193501"),
+                           "2026-10-07T03:35:02+0800")
+    assert parse("") is None
+
+
+# 集成:collect_once 收快照目录,通道经 monkeypatch 注入
+def test_collect_once_reads_snapshot_dir_end_to_end(
+        env, monkeypatch, caplog):
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+    _write_snapshot(d, T0 - timedelta(hours=25), rows=1)
+    snap = _write_snapshot(d, T0 - timedelta(hours=5), rows=2)
+    monkeypatch.setattr(collect_mod, "_fetch_backup_journal",
+                        lambda: _journal(dict(path=str(snap))))
+    with caplog.at_level("INFO", logger="nanmu_engine.collect"):
+        out = collect_once(conn, str(d), config, "2026-10-06", T0)
+    assert out.status == "frozen" and len(out.manifest) == 2
+    assert "snapshot_resolved" in caplog.text
+
+
+def test_collect_once_snapshot_channel_unreadable_e2(env, monkeypatch):
+    """证据通道(journalctl)不可读=权限缺口,E2 停止并说明,不改上游。"""
+    conn, config, tmp_path = env
+    d = tmp_path / "backups"; d.mkdir()
+
+    def boom(*args, **kwargs):
+        raise OSError("permission denied")
+    monkeypatch.setattr("subprocess.run", boom)   # 通道层失败,_fetch 转换
+    with pytest.raises(CollectError, match="证据通道"):
+        collect_once(conn, str(d), config, "2026-10-06", T0)

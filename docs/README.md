@@ -58,7 +58,7 @@
 
 ## 按目标选择文档
 
-- 接手当前工作:先读 [Task 25 交接(含 2026-10-07 审计更正块)](sessions/2026-10-07-task25-deploy.md),再按 [workflow](development/workflow.md)核对 Git/文件与本轮用户指令。**M1 Task 0-24 已实现+审计修复轮+Task 25 部署在位(timer 未启用);上游只读存权限缺口待用户裁决;真实校准入口=python -m nanmu_engine.calibrate;Task 26 付费须用户当次显式授权**。替身模型/上游只读/不部署不付费。前序:[M1 批次实施](sessions/2026-10-06-m1-batch1-implementation.md)、[M1 开发交接](sessions/2026-10-06-m1-development-handoff.md)、[M0 验收记录](sessions/2026-10-06-m0-acceptance.md)。
+- 接手当前工作:先读 [方案 A 规则](sessions/2026-10-07-plan-a-snapshot-rules.md) 与 [Task 25 交接(含审计更正块)](sessions/2026-10-07-task25-deploy.md),再按 [workflow](development/workflow.md)核对 Git/文件与本轮用户指令。**校准指纹与 CLI 已通过复核,待用户授权独立真实校准;上游采集待方案 A 完成识别与时效规则的服务器现场验证,生产日报及 timer 暂不启用**。替身模型/上游只读/不部署不付费。前序:[M1 批次实施](sessions/2026-10-06-m1-batch1-implementation.md)、[M1 开发交接](sessions/2026-10-06-m1-development-handoff.md)、[M0 验收记录](sessions/2026-10-06-m0-acceptance.md)。
 - 写文章:writing.md(本地预览与发布流程均可用;发布/推送需授权)。开发博客:spec §4(M0 已完成,tag `m0`)。
 - 上服务器:server-environment.md → ops/deploy.md → ops/runbook.md。手册已实际执行两轮(Task9 部署+Task10 发布与回滚演练);M1 前不新增服务器操作。
 - 开始引擎:先核对spec §9的M0验收前提(已满足) → spec §5 → data-source → engine四文档(总体设计基线) → [M1计划](superpowers/plans/2026-10-05-m1-engine-implementation.md)(已通过第五轮评审,27 任务;**Task 0-24 已实现,审计+跨模块核验+复核轮修复完成**)。

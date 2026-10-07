@@ -528,11 +528,17 @@ def abandon_issue(conn: sqlite3.Connection, issue_date: str, *,
 
 
 def _upstream_path_from_env(root: Path) -> str:
-    """Task 25 部署接线:上游 topic-digest 库路径经 NANMU_UPSTREAM_DB
-    注入。不用 symlink 指向真实库——SQLite 按打开路径推 -wal/-shm 侧车
-    名,symlink 会让只读连接找不到真实 WAL(读到旧快照丢当日数据)。
-    未设=现状 root/topic-digest.db(本地替身测试零改动)。"""
+    """部署接线:上游输入经环境变量注入。方案 A(2026-10-07):
+    NANMU_UPSTREAM_SNAPSHOT_DIR(td Online Backup 备份目录)优先——
+    collect 侧解析证据齐全的最新快照件并 immutable 读;NANMU_UPSTREAM_DB
+    (单库路径)保持兼容。不用 symlink 指向真实库——SQLite 按打开路径
+    推 -wal/-shm 侧车名,symlink 会让只读连接找不到真实 WAL(读到旧
+    快照丢当日数据)。未设=现状 root/topic-digest.db(本地替身测试
+    零改动)。"""
     import os
+    snap_dir = os.environ.get("NANMU_UPSTREAM_SNAPSHOT_DIR")
+    if snap_dir:
+        return snap_dir
     return os.environ.get("NANMU_UPSTREAM_DB",
                           str(root / "topic-digest.db"))
 

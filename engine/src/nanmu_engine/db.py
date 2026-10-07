@@ -179,15 +179,22 @@ def connect_db(path: str) -> sqlite3.Connection:
     return conn
 
 
-def connect_readonly(path: str) -> sqlite3.Connection:
+def connect_readonly(path: str, *, immutable: bool = False
+                     ) -> sqlite3.Connection:
     """topic-digest 上游只读连接(mode=ro;不执行写 PRAGMA,不迁移)。
 
     WAL 库的 ro 读者须能在库所在目录创建/写 -shm;无此权限时打开后
     首次访问数据页报 SQLITE_READONLY——collect 层将其转 E2 并附最小
     权限缺口说明(审计修正 2026-10-07:文件级快照不构成一致性保证,
-    已撤回;详见 collect_once docstring)。"""
+    已撤回;详见 collect_once docstring)。
+
+    immutable=True:声明文件**永不变化**(URI 加 immutable=1,SQLite
+    跳过 WAL/-shm 机制直接读页)。仅用于上游 Online Backup 完成的
+    append-only 快照件(td backups/,写后不改;方案 A,2026-10-07);
+    活库禁用——并发写/检查点下会读到撕裂页。"""
     uri = Path(path).resolve().as_uri().replace("file:///", "file:/")
-    return sqlite3.connect(uri + "?mode=ro", uri=True)
+    qs = "?mode=ro&immutable=1" if immutable else "?mode=ro"
+    return sqlite3.connect(uri + qs, uri=True)
 
 
 def migrate(conn: sqlite3.Connection) -> None:

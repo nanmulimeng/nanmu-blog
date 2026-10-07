@@ -762,3 +762,20 @@ def test_upstream_db_env_override(tmp_path, monkeypatch):
         tmp_path / "topic-digest.db")
     monkeypatch.setenv("NANMU_UPSTREAM_DB", "/srv/topic-digest/data.db")
     assert _upstream_path_from_env(tmp_path) == "/srv/topic-digest/data.db"
+
+
+def test_upstream_snapshot_dir_env_takes_priority(tmp_path, monkeypatch):
+    """方案 A(2026-10-07):NANMU_UPSTREAM_SNAPSHOT_DIR(备份目录)优先
+    于 NANMU_UPSTREAM_DB——collect 侧按"证据齐全的最新件"解析并
+    immutable 读;两者都未设=本地替身现状 root/topic-digest.db。"""
+    from nanmu_engine.run import _upstream_path_from_env
+    monkeypatch.setenv("NANMU_UPSTREAM_DB", "/srv/old/data.db")
+    monkeypatch.delenv("NANMU_UPSTREAM_SNAPSHOT_DIR", raising=False)
+    assert _upstream_path_from_env(tmp_path) == "/srv/old/data.db"
+    monkeypatch.setenv("NANMU_UPSTREAM_SNAPSHOT_DIR",
+                       "/opt/topic-digest/backups")
+    assert _upstream_path_from_env(tmp_path) == "/opt/topic-digest/backups"
+    monkeypatch.delenv("NANMU_UPSTREAM_SNAPSHOT_DIR", raising=False)
+    monkeypatch.delenv("NANMU_UPSTREAM_DB", raising=False)
+    assert _upstream_path_from_env(tmp_path) == str(
+        tmp_path / "topic-digest.db")

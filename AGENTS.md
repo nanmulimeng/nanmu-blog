@@ -5,7 +5,7 @@
 ## 项目状态快照(2026-10-06)
 
 - M0:**全部完成并验收通过(2026-10-06,tag `m0`)**——首篇文章《你好,nanmu-blog》真实发布上线(发布计时12s),线上验收全通过(RSS XML 解析+CommaFeed 真实订阅、明暗主题、文章页/404),持锁回滚演练实操通过(切旧版 c8a4567 确认后切回)。证据见 [M0 验收交接](docs/sessions/2026-10-06-m0-acceptance.md)与 [部署交接](docs/sessions/2026-10-04-m0-deploy.md)
-- **当前阶段:M1 部署对接+审计修正完成,待真实校准授权(2026-10-07)**——engine 全套件 314 passed;Task 25 部署在位(timer 保持 disabled),同日审计三项修正:①上游快照方案撤回(拷主库+quick_check 无一致性保证,反例验收)→mode=ro 直读,readonly 即 E2 中止+报最小权限缺口(nanmu 需上游 data/ 的 -shm/-wal 写权或上游暴露一致快照,待用户裁决,不改上游);②deepseek-flash=DeepSeek-V4.1-Flash 核实,官方 tokenizer 件替换锚定,初始系数 1.0 依据补齐(budget.yaml 注释);③校准 CLI `python -m nanmu_engine.calibrate --root` 补齐并经替身验证(退出码 0 生效/1 未通过或锁忙/2 配置错)。证据见[Task 25 交接(含审计更正块)](docs/sessions/2026-10-07-task25-deploy.md)。真实模型调用与 timer 启用归 Task 26,须用户当次显式授权。
+- **当前阶段:校准指纹与 CLI 已通过复核,待用户授权独立真实校准;上游采集待方案 A 的完成识别与时效规则落实,生产日报及 timer 暂不启用(2026-10-07)**——engine 全套件 330 passed。已闭合:快照裸拷撤回(反例验收)、tokenizer 官方件锚定与资源身份核实(系数 1.0 仍由受控真实校准验证,不因模型名机械替换)、校准 CLI(python -m nanmu_engine.calibrate,替身+服务器冒烟)。方案 A 已实现 journal 任务级证据链完成识别+48h时效规则(docs/sessions/2026-10-07-plan-a-snapshot-rules.md),服务器现场验证待做;真实付费调用须用户当次显式授权,本状态不构成。
 - 顺序:M1 Task 0-12→Task 13-24(本地替身端到端)→Task 25 部署/Task 26 分两段授权启用付费;进入条件以spec §9为准(M0 验收已满足)
 - 执行方式:Native,按任务顺序执行;计划中提及的 skill 若环境没有,以本仓库 workflow 为准,按 [docs/superpowers/plans/2026-10-05-m1-engine-implementation.md](docs/superpowers/plans/2026-10-05-m1-engine-implementation.md) 逐任务
 - 最新接手入口:[2026-10-06 M1 审计修复轮+跨模块核验+复核轮](docs/sessions/2026-10-06-m1-audit-fix-round.md)(审计 8 项+交界缝 8 处+复核轮三处修复全记录:账本校准/内容身份运行序/发布恢复/站点产物四组,测试与验收证据);前序:[M1 批次实施](docs/sessions/2026-10-06-m1-batch1-implementation.md)、[M1 开发交接](docs/sessions/2026-10-06-m1-development-handoff.md)。本轮修改/提交/推送状态接手时以 Git 实况核对。
@@ -36,7 +36,7 @@
 ```
 scripts/   已有文档检查工具
 site/      Astro 5 静态站已建(M0 Task 2-8+8a;posts 手写 + digest 生成)
-engine/    AI 引擎已建(M1 Task 0-24,Python + SQLite + systemd timer;src/nanmu_engine + tests,314 测试;服务器已部署 /opt/nanmu-blog,timer 未启用)
+engine/    AI 引擎已建(M1 Task 0-24,Python + SQLite + systemd timer;src/nanmu_engine + tests,330 测试;服务器已部署 /opt/nanmu-blog,timer 未启用)
 docs/      specs/plans/decisions/engine/ops/sessions/context
 deploy/    服务器部署工件(已安装并在 Task 9 验收;线上 https://nanmu.xyz)
 ```

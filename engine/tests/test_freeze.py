@@ -89,7 +89,7 @@ def test_second_collect_makes_zero_upstream_queries(env, tmp_path, monkeypatch):
     calls = []
     real_connect = collect_mod.connect_readonly
 
-    def counting_connect(p):
+    def counting_connect(p, *, immutable=False):
         calls.append(p)
         return real_connect(p)
 
