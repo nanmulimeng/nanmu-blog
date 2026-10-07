@@ -587,6 +587,12 @@ def main(argv: list[str] | None = None) -> int:
     from nanmu_engine.config import load_config
     from nanmu_engine.db import connect_db, migrate
 
+    # 观测性:systemd/journalctl 依赖 handler——不加则 INFO 级 stage=/event=
+    # 结构化行被吞(runbook 巡检承诺),只剩 WARNING+ 经 lastResort 兜底
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s")
+
     try:
         import msvcrt
 

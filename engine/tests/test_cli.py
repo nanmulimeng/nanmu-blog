@@ -37,3 +37,14 @@ def test_cli_full_chain_reaches_run_once_exits_3(env_path):
     result = _run_cli(env_path)               # 上游 db 不存在 → E2
     assert result.returncode == 3, result.stderr[-500:]
     assert (env_path / "engine.db").exists()  # migrate 已建表
+
+
+def test_cli_info_level_events_reach_stderr(env_path):
+    """Task 25 观测性:main 须配置日志 handler——INFO 级 stage=/event=
+    行(收尾 run_end)要进 stderr→systemd journal,runbook 的结构化
+    日志承诺依赖 INFO 可见,而不仅 WARNING+ 经 lastResort 兜底。"""
+    shutil.copytree(ENGINE_ROOT / "config", env_path / "config")
+    shutil.copytree(ENGINE_ROOT / "resources", env_path / "resources")
+    result = _run_cli(env_path)               # 上游 db 不存在 → E2 exit 3
+    assert result.returncode == 3, result.stderr[-500:]
+    assert "stage=run event=run_end exit=3" in result.stderr
