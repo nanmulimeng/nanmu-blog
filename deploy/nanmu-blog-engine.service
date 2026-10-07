@@ -1,0 +1,24 @@
+# nanmu-blog AI 引擎每日运行(Task 25;timer 保持 disabled 直到
+# Task 26 Step 5 启用)。OnFailure 触发独立告警 unit——engine 退出非零
+# (含 E1/E2/E6/失败期)即告警一次,通知去重由 engine 进程内
+# notify_sent 表负责,此处只做进程级失败信号。
+[Unit]
+Description=nanmu-blog AI engine daily run
+Documentation=file:///opt/nanmu-blog/engine-src/docs/ops/runbook.md
+OnFailure=nanmu-blog-engine-fail.service
+# 同 timer 单元名(防 timer 触发时 service 尚在运行)
+RefuseManualStart=no
+
+[Service]
+Type=oneshot
+User=nanmu
+Group=nanmu
+WorkingDirectory=/opt/nanmu-blog/engine
+# '-' 前缀:env 文件缺失不阻塞(但付费链路无 key 会按 E1 拒绝)
+EnvironmentFile=-/etc/nanmu-blog.env
+ExecStart=/opt/nanmu-blog/engine/.venv/bin/python -m nanmu_engine.run --root /opt/nanmu-blog/engine
+# 防御性资源上限(开发机全套件峰值远低于此;构建链独立不受影响)
+MemoryMax=300M
+# SQLite/文件写均在 /opt/nanmu-blog;只读其余文件系统可后续收紧
+NoNewPrivileges=yes
+PrivateTmp=yes

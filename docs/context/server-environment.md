@@ -35,7 +35,9 @@
 ### topic-digest 服务器布局(本项目 engine 只读它的 SQLite)
 
 - bare repo:`/opt/git/topic-digest.git`;代码同步走 **git bundle 传输**(`git remote add server` 直连 push 从未走通,历史事实)
-- SQLite:本地文件(具体路径未核实 [declared],M1 实施时确认并回填本文)
+- SQLite:`/opt/topic-digest/data/topic-digest.db`(td:td 0644,data/ 0755,nanmu 经 td 组可读)[verified: 2026-10-07 Task25 探针]。**WAL 模式库**:nanmu 无权在 data/ 创建/写 `-shm`,ro 直读一律 SQLITE_READONLY(sqlite 3.26.0 实测,含无 sidecar 的干净状态);engine 因此改为每轮拷主库文件到自有目录快照 + quick_check 后再读(`db.snapshot_upstream`,2026-10-07 服务器实测 ok:17.2MB、item 4359 条、fetched_utc 全 ISO-Z;48h 窗口 238 条/12 源,正文覆盖 94/238)
+- 运行用户 td;timers(hourly ingest/backup 03:31/release 06:37/health 09:04)全部 `User=td`、WorkingDirectory=/opt/topic-digest [verified: 2026-10-07 unit 文件探针]
+- 服务器 Python:默认 `python3`=3.6.8,可用 `/usr/bin/python3.11`=3.11.13(内置 sqlite 3.26.0);engine 部署 venv 用 3.11 [verified: 2026-10-07]
 - 备份:标准库 `conn.backup()` 每日本地、保留 30 天(约 244M);**无异地备份**(已知欠账)
 - 通知:`/etc/topic-digest.env` 不存在 → OnFailure 告警未武装(已知欠账)
 

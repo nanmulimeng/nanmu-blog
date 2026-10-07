@@ -1,0 +1,15 @@
+# 每日 08:30(Asia/Shanghai 本地时间;systemd 239 支持,部署时用
+# systemd-analyze calendar 核对 next elapse)。Persistent=true 使
+# 错过的触发补跑一次。**安装后保持 disabled——Task 26 Step 5 付费
+# 启用完成前不得 enable/start。**
+[Unit]
+Description=nanmu-blog AI engine daily timer (installed DISABLED until Task 26)
+
+[Timer]
+OnCalendar=*-*-* 08:30:00
+RandomizedDelaySec=300
+Persistent=true
+Unit=nanmu-blog-engine.service
+
+[Install]
+WantedBy=timers.target

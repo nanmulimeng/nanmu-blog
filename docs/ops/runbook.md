@@ -24,7 +24,7 @@
 | push成功但未更新 | 对比远端main、release.txt与部署日志 | push只代表接收;按部署手册§8带锁重跑,原样push可能无更新不触发hook |
 | 日报未出 | engine journal、digest_issue、receipt_attempt | 区分生成失败/预算停止/提交冲突/已提交未发布;复用产物,不重复付费 |
 | 成本异常 | 查看实际+未决预占、请求/价目版本与供应商用量 | budget调0立即禁止新调用,unknown费用不得当零处理 |
-| 上游读失败 | 实际路径/只读权限/WAL sidecar/schema | 只修本项目读取方式,不改上游数据与服务 |
+| 上游读失败 | 实际路径/快照 quick_check/WAL shm 权限/schema | 只修本项目读取方式,不改上游数据与服务。现行机制=每轮拷主库到 `root/upstream-snap` + quick_check 后读(quick_check 失败=中止并 OnFailure 告警;不要改成 immutable 直读活库——并发检查点有撕裂风险) |
 | 内存不足 | free、journal、构建与RAG实测峰值 | 保持旧站,停止失败增强任务;RAG MemoryMax=200M只是限制,不是性能保证 |
 
 M0部署完成后的带锁手动重跑使用[部署手册](deploy.md)§8,再按§6核对线上SHA与实际页面。此处不另存一份命令,避免路径、日志或超时参数漂移。
@@ -38,3 +38,22 @@ M0部署完成后的带锁手动重跑使用[部署手册](deploy.md)§8,再按�
 - 服务器bare repo只是代码副本,同机SQLite备份不覆盖整机丢失;异地数据库备份仍未落实,不得在验收记录中称“备份全部完成”。
 
 恢复旧engine.db前先停止新付费和发布,保留现库用于核对。恢复副本通过完整性检查后,对照备份之后的供应商用量、远端Git和线上SHA补齐账本/期状态,再恢复调度;未知费用继续预占。不能把旧库里缺失的调用当作没有发生,否则可能重复扣费。具体命令及备份时间点演练在M1计划落盘,M0不提前操作数据库。
+
+## M1 engine 运维命令(Task 25 安装;root=/opt/nanmu-blog/engine)
+
+以下命令经 engine venv 执行(`/opt/nanmu-blog/engine/.venv/bin/python`);所有改变状态的操作(恢复/暂停解除)是人工决策,先核对再执行。
+
+| 操作 | 命令 |
+|------|------|
+| 期状态总览 | `cd /opt/nanmu-blog/engine && .venv/bin/python -c "from nanmu_engine.db import connect_db; from nanmu_engine.ops import status; from pprint import pprint; pprint(status(connect_db('engine.db')))"` |
+| 单期事实 | 同上,`status(connect_db('engine.db'), '2026-10-07')` |
+| 暂停一期 | `… -c "from nanmu_engine.db import connect_db; from nanmu_engine.ops import pause_issue; pause_issue(connect_db('engine.db'), '2026-10-07', reason='人工核对')"` |
+| 解除暂停 | 同上换 `unpause_issue(connect_db('engine.db'), '2026-10-07')` |
+| 每日备份 | `NANMU_ENGINE_ROOT=/opt/nanmu-blog/engine /opt/nanmu-blog/engine-src/deploy/engine-backup.sh`(Online Backup,保留 30 天,产物 `/opt/nanmu-blog/backups/engine.db.<时间戳>`) |
+| 恢复备份 | 先停 engine(无 timer 运行时即无并发)再执行:`flock /opt/nanmu-blog/engine/run.lock … -c "from nanmu_engine.ops import restore_backup; restore_backup('/opt/nanmu-blog/backups/engine.db.<时间戳>', '/opt/nanmu-blog/engine/engine.db')"`——五步序列(副本置 pay_paused→读回校验→原子切换),调用方须持与常规运行相同的单实例锁;**恢复后闸门拒新增付费,人工核对备份点之后的供应商用量与账单再显式解除** |
+| 解除付费暂停 | `… -c "import sqlite3; c=sqlite3.connect('/opt/nanmu-blog/engine/engine.db'); c.execute(\"INSERT INTO engine_meta (key,value,updated_utc) VALUES ('pay_paused','0',datetime('now')) ON CONFLICT(key) DO UPDATE SET value='0'\"); c.commit()"`——仅在完成上述核对后 |
+| 校准状态 | `… -c "from nanmu_engine.db import connect_db; from nanmu_engine.config import load_config; from nanmu_engine.ledger import calibration_effective; from nanmu_engine.ops import status; c=connect_db('engine.db'); print(calibration_effective(c, load_config('/opt/nanmu-blog/engine')))"` |
+
+- 手动触发一次运行(替代 timer;需在 `/etc/nanmu-blog.env` 有真实 key 才会付费,当前空 key=闸门拒绝新增):`sudo systemctl start nanmu-blog-engine.service`——**timer 保持 disabled 直到 Task 26 Step 5**。
+- 失败告警:service `OnFailure=nanmu-blog-engine-fail.service`(journal tag `nanmu-blog-engine`;webhook 配置见 `/etc/nanmu-blog.env` 的 `NANMU_NOTIFY_WEBHOOK`,空=仅 journal)。
+- 日志:`journalctl -u nanmu-blog-engine.service`;结构化行 `stage=… event=…` 与 design.md 日志观测节对应。

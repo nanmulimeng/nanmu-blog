@@ -1,0 +1,11 @@
+# OnFailure 告警 unit:engine service 失败时触发。渠道经
+# /etc/nanmu-blog.env 的 NANMU_NOTIFY_WEBHOOK(ServerChan 兼容
+# GET webhook,可空);未配置时写 journal(链路可验证)。
+[Unit]
+Description=nanmu-blog engine failure alert
+
+[Service]
+Type=oneshot
+User=nanmu
+EnvironmentFile=-/etc/nanmu-blog.env
+ExecStart=/opt/nanmu-blog/engine-src/deploy/engine-fail-notify.sh
