@@ -650,15 +650,18 @@ def test_content_op_unpushed_target_goes_manual(env):
 # ==================== 交界核验轮(发布×账本/恢复) ====================
 
 def test_w1_backfills_only_members_in_artifact(env):
-    # 交界 B-缝A:W1 回填口径=最终产物成员(产物 markdown 内含其来源
-    # URL),不是 claim 全集——被剔除成员不得借 W4 清算置 used(丧失
-    # 后续期再入选资格)
+    # 交界 B-缝A:W1 回填口径=最终产物成员(产物 markdown 含其完整来源
+    # 链接目标),不是 claim 全集——被剔除成员不得借 W4 清算置 used(丧失
+    # 后续期再入选资格)。
+    # 复核 P2:URL 子串命中不算进产物——A 的 URL 是产物内 B 的 URL 的
+    # 前缀("https://e.com/a" ⊂ "https://e.com/ab")时,A 不得被子串
+    # 反解误恢复;须对产物链接目标集合做精确成员判定。
     conn, config, ctx, work, state = env
-    in_id = _seed_claim(conn, "in1", url="https://e.com/in")
-    _seed_claim(conn, "out1", url="https://e.com/out")   # claim 在但未进产物
+    _seed_claim(conn, "in1", url="https://e.com/a")     # 前缀陷阱:未进产物
+    b_id = _seed_claim(conn, "out1", url="https://e.com/ab")  # 唯一进产物
     md = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
           "entry_count: 1\ncost_cny: 0.01\ncost_pending: false\n---\n"
-          "\n## 值得一瞥(压线入选)\n\n- [t](https://e.com/in)"
+          "\n## 值得一瞥(压线入选)\n\n- [t](https://e.com/ab)"
           "(s · 展示分 71)——p\n")
     sha = _commit_file(work, "2026-10-06", content=md)
     _run(["push", "origin", "main"], work)
@@ -667,14 +670,33 @@ def test_w1_backfills_only_members_in_artifact(env):
     ids = json.loads(conn.execute(
         "SELECT entry_ids FROM digest_issue WHERE issue_date='2026-10-06'"
         ).fetchone()[0])
-    assert ids == [in_id]                       # 只回填产物内成员
+    assert ids == [b_id]                        # 只回填产物内成员(精确匹配)
     with conn:
         conn.execute("UPDATE digest_issue SET git_commit=?, status="
                      " 'submitted' WHERE issue_date='2026-10-06'", (sha,))
     out2 = recover_issue(conn, "2026-10-06", ctx)       # W4
     assert out2.status == "published"
-    assert _entry_states(conn) == [("in1", "used", None),
-                                   ("out1", "rejected", None)]
+    assert _entry_states(conn) == [("in1", "rejected", None),
+                                   ("out1", "used", None)]
+
+
+def test_w1_member_count_mismatch_with_artifact_links_goes_manual(env):
+    # 复核 P2:恢复成员数量须与产物来源链接事实一致——产物含 2 条来源
+    # 链接而 claim 成员只命中 1 条(另一链接无对应成员)=无法唯一确认
+    # 成员清单,转人工,不得以部分命中回填
+    conn, config, ctx, work, state = env
+    _seed_claim(conn, "in1", url="https://e.com/a")
+    md = ("---\ndate: '2026-10-06'\ngenerated: true\nai_model: m\n"
+          "entry_count: 2\ncost_cny: 0.01\ncost_pending: false\n---\n"
+          "\n## 值得一瞥\n\n- [t](https://e.com/a)(s · 展示分 71)——p\n"
+          "- [g](https://e.com/ghost)(s · 展示分 70)——q\n")  # ghost 无成员
+    _commit_file(work, "2026-10-06", content=md)
+    _run(["push", "origin", "main"], work)
+    with pytest.raises(ManualIntervention, match="证据不足"):
+        recover_issue(conn, "2026-10-06", ctx)
+    # 未以部分命中落库:转人工先于 INSERT,无 digest_issue 行
+    assert conn.execute("SELECT COUNT(*) FROM digest_issue WHERE"
+                        " issue_date='2026-10-06'").fetchone()[0] == 0
 
 
 def test_correct_refuses_when_ledger_diverges_from_remote(env):

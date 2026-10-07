@@ -299,9 +299,12 @@ def recover_issue(conn, issue_date: str,
         commit = commits[0]                             # 该路径最新提交
         blob_sha = _blob_sha(ctx, commit, rel)
         # 期成员口径=最终产物成员(交界 B-缝A):claim 全集≠产物成员
-        # (裁剪/安全剔除后未进产物),以产物 markdown 内容反解——成员
-        # safe_source_url 出现在产物文本=进产物;被剔除成员不得借 W4
-        # 清算置 used(丧失后续期再入选资格)
+        # (裁剪/安全剔除后未进产物),以产物 markdown 内容反解。
+        # 复核 P2:匹配须精确到产物链接目标集合(成员 safe_source_url
+        # 必须等于某条完整 `](url)` 目标),URL 子串命中不算——
+        # "https://e.com/a" 是 "https://e.com/ab" 的前缀,子串匹配会把
+        # 未进产物成员误恢复;并校验恢复成员数与产物来源链接数一致,
+        # 无法唯一确认成员清单时转人工
         rows = conn.execute(
             "SELECT id, url FROM entry WHERE claim_issue=? ORDER BY id",
             (issue_date,)).fetchall()
@@ -311,12 +314,17 @@ def recover_issue(conn, issue_date: str,
                 "——转人工(不得以空成员清单落库)")
         text = (_git_bytes(ctx, "show", f"{commit}:{rel}")
                 or b"").decode("utf-8", errors="replace")
+        links = set(re.findall(r"\]\(([^()\s]+)\)", text))
         ids = [eid for eid, url in rows
-               if (s := safe_source_url(url)) is not None and s in text]
+               if (s := safe_source_url(url)) is not None and s in links]
         if not ids:
             raise ManualIntervention(
                 f"证据不足:{issue_date} claim 成员无一出现在产物内容"
                 "——转人工(成员事实无法重建,不得以空清单落库)")
+        if len(ids) != len(links):
+            raise ManualIntervention(
+                f"证据不足:{issue_date} 产物来源链接 {len(links)} 条与可恢复"
+                f"成员 {len(ids)} 条不一致——无法唯一确认成员清单,转人工核对")
         with conn:
             conn.execute(
                 "INSERT INTO digest_issue (issue_date, entry_ids,"
