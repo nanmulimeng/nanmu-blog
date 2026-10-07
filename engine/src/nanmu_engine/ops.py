@@ -345,10 +345,11 @@ CALIBRATION_SAMPLES = (
 
 
 def _calibration_spent_micro(conn: sqlite3.Connection) -> int:
-    """校准通道已耗(已结算 actual,未决按 reserved 保守计)微元合计。"""
+    """校准通道已批准预占累计微元合计(复核 P1,契约=model-calls §3
+    规则 11:calibration.budget_micro_cny 限制"按预占值批准的调用量",
+    不因结算回落到 actual——小额不自动保证实付不超)。"""
     return conn.execute(
-        "SELECT COALESCE(SUM(COALESCE(a.actual_micro_cny,"
-        " a.reserved_micro_cny)), 0) FROM receipt_attempt a"
+        "SELECT COALESCE(SUM(a.reserved_micro_cny), 0) FROM receipt_attempt a"
         " JOIN receipt r ON r.id=a.receipt_id"
         " WHERE r.purpose='calibration'").fetchone()[0]
 
@@ -410,13 +411,17 @@ def calibrate(conn: sqlite3.Connection, config: Config, *, transport,
         rh = request_hash(ctx)
         logical_key = _logical_key("calibration", model, rh)   # 与账本写入同构
 
-        # 交界 A1:replay 取最新已结算(usage_json 非空)attempt——首发
-        # 传输 unknown 后过窗补发结算的是 attempt_no=2,只认 attempt_no=1
-        # 会判"未复用"对已付费样本重复出网
+        # 交界 A1:replay 取最新成功 attempt(status='received' 且带
+        # usage)——首发传输 unknown 后过窗补发结算的是 attempt_no=2,
+        # 只认 attempt_no=1 会判"未复用"对已付费样本重复出网。
+        # 复核 P1:usage_json 非空≠通过证据——失败回执也可带 usage
+        # (record_failure 会写入),只是费用证据;replay 有效性条件与
+        # 首次消费一致:仅成功(received)attempt 可作校准通过样本
         replay = conn.execute(
             "SELECT a.usage_json FROM receipt r JOIN receipt_attempt a"
             " ON a.receipt_id=r.id"
-            " WHERE r.logical_key=? AND a.usage_json IS NOT NULL"
+            " WHERE r.logical_key=? AND a.status='received'"
+            " AND a.usage_json IS NOT NULL"
             " ORDER BY a.attempt_no DESC LIMIT 1", (logical_key,)).fetchone()
         if replay and replay[0]:
             prompt_tokens = json.loads(replay[0]).get("prompt_tokens")

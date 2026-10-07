@@ -293,6 +293,77 @@ def _net_down():
     return httpx.MockTransport(handler)
 
 
+# ==================== 复核轮(校准 replay 有效性/预算口径) ====================
+
+def _http400_with_usage():
+    """替身:HTTP 400(no_retry)但 body 带 usage——失败回执带费用证据
+    的形态(record_failure 会把它写进 usage_json)。"""
+    def handler(request):
+        return httpx.Response(400, json={
+            "error": {"message": "bad request"},
+            "usage": {"prompt_tokens": 5, "completion_tokens": 0,
+                      "prompt_cache_hit_tokens": 0,
+                      "prompt_cache_miss_tokens": 5}})
+    return httpx.MockTransport(handler)
+
+
+def test_calibration_failed_attempt_with_usage_not_pass_evidence(env):
+    """复核 P1:带 usage 的失败回执是费用证据,不是通过样本——replay
+    只认成功(received)attempt;失败样本重走 can_retry(no_retry 拒),
+    不因 usage_json 非空被当已通过,一次失败请求不得变成校准许可。"""
+    conn, config = env
+    out1 = calibrate(conn, config, transport=_http400_with_usage(),
+                     now=NOW)
+    assert out1["status"] == "gate_rejected:sample_failed:no_retry"
+    assert _cal_attempts(conn) == 1
+
+    calls = []
+    counting = httpx.MockTransport(
+        lambda req: (calls.append(1), httpx.Response(200, json={
+            "id": "x", "choices": [{"finish_reason": "stop", "message": {
+                "content": json.dumps({"attentionScore": 50})}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5,
+                      "prompt_cache_hit_tokens": 0,
+                      "prompt_cache_miss_tokens": 10}}))[1])
+    out2 = calibrate(conn, config, transport=counting, now=NOW)
+    assert out2["passed"] is False                  # 不得 passed
+    assert out2["status"].startswith("gate_rejected:resend_")  # can_retry 拒
+    assert _cal_attempts(conn) == 1                 # 零新增 attempt
+    assert calls == []                              # 零网络(replay 不命中)
+    assert calibration_effective(conn, config) is False
+
+    # 重放只依赖持久化记录:关闭连接重开,判定一致
+    db = _db_path(conn)
+    conn.close()
+    conn2 = connect_db(db)
+    out3 = calibrate(conn2, config, transport=counting, now=NOW)
+    assert out3["passed"] is False
+    assert out3["status"] == out2["status"]
+    assert _cal_attempts(conn2) == 1
+    assert calls == []
+    conn2.close()
+
+
+def test_calibration_budget_limits_approved_reservations(env):
+    """复核 P1:calibration.budget_micro_cny 是"按预占值批准的调用量"
+    上限(model-calls §3 规则 11),不是实付预算——每样本实付极低但
+    累计预占耗尽后必须中止,已批准累计不得超上限。"""
+    conn, config = env
+    tiny = dataclasses.replace(
+        config, budget=dataclasses.replace(
+            config.budget, calibration_budget_micro_cny=6000))
+    out = calibrate(conn, tiny, transport=_transport(10), now=NOW)
+    assert out["status"] == "budget_exhausted"
+    assert out["passed"] is False
+    n, total = conn.execute(
+        "SELECT COUNT(*), COALESCE(SUM(reserved_micro_cny), 0)"
+        " FROM receipt_attempt a JOIN receipt r ON r.id=a.receipt_id"
+        " WHERE r.purpose='calibration'").fetchone()
+    assert 0 < n < 4                # 耗尽即中止,未跑完四样本
+    assert total <= 6000            # 已批准预占累计不超上限
+    assert calibration_effective(conn, config) is False
+
+
 def test_calibration_replay_uses_latest_settled_attempt(env):
     """交界 A1:首发传输 unknown(attempt_no=1 无计量)→过窗补发结算
     (attempt_no=2)→再次重跑:replay 须命中最新已结算 attempt——只认
