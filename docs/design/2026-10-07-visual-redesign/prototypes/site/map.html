@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原型总览 — nanmu-blog 全站原型</title>
+<!-- 全站原型入口:逐页导航,标清真实/夹具/概念;本页本身也是原型,不是上线页面 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/base.css">
+<style>
+.map-note{border:1px solid var(--line); background:var(--paper2); padding:14px 20px;
+  font-size:14.5px; color:var(--ink2); margin:20px 0 0; line-height:1.9}
+table.map{width:100%; border-collapse:collapse; font-size:15px; margin:10px 0 8px}
+table.map th,table.map td{border:1px solid var(--line); padding:9px 14px; text-align:left;
+  vertical-align:top}
+table.map th{background:var(--paper2); font-weight:600; white-space:nowrap}
+table.map td.d{font-size:13.5px; color:var(--ink2); line-height:1.8}
+.tag{font-family:var(--mono); font-size:.72rem; border-radius:2px; padding:1px 7px;
+  white-space:nowrap; margin-right:4px}
+.tag.real{border:1px solid var(--draw); color:var(--ink)}
+.tag.fix{border:1px dashed var(--seal); color:var(--seal-text)}
+.tag.concept{border:1px dotted var(--ink2); color:var(--ink2)}
+table.matrix td,table.matrix th{text-align:center; font-size:13.5px}
+table.matrix td:first-child,table.matrix th:first-child{text-align:left}
+.ok{color:var(--seal-text); font-weight:900}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <h2 class="sect-bar" style="margin-top:1.6em">原型总览<small>R4 纸筑 · 2026-10-08</small></h2>
+  <div class="map-note">
+    本页是全部原型的入口索引。<strong>R4「纸筑」是当前全站视觉方向</strong>(概念:站是一本正在写的发光的书),
+    入口 <a href="../r4/index.html">r4/index.html</a>;R3 保留为交互骨架与对照基线。
+    <strong>R5「字场 · 碑页」是首页专项深化</strong>(2026-10-08,仅首页,内页沿用 R4):一页印着真实文章的稿纸立成碑,
+    入口 <a href="../r5/index.html">r5/index.html</a>,与 R4 的同视口对照见 shots/r4-vs-r5-hero-*.png。
+    R3→R4 同页面同视口对照图见 shots/cmp-index-day.png / cmp-index-night.png。
+    标记含义:
+    <span class="tag real">真实</span>内容取自仓库实际状态(文章 1 篇、日报 0 期);
+    <span class="tag fix">夹具</span>虚构样张,页内有虚线标注,仅用于排版与状态评审;
+    <span class="tag concept">概念</span>未实现功能的视觉预案,不接后端。
+    所有页面均可无脚本浏览;脚本只做渐进增强。正式接入、提交推送与发布不在本轮范围。
+  </div>
+
+  <h2 class="sect-bar">R5 首页<small>r5/ · 字场 · 碑页,首页专项;内页复用 R4(引用 ../r4/assets)</small></h2>
+  <table class="map">
+    <tr><th style="width:21em">页面</th><th>标记</th><th>呈现的状态与看点</th></tr>
+    <tr><td><a href="../r5/index.html">首页 r5/index</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">碑页场景(真实文章摘录排印上页+线装朱砂线+夜览背光透纸)+ 竖排标题对望;精选文章大区块(真实摘要+封面卡)、日报空态(虚线稿纸)、这个站、订阅书签卡;朱砂落线自碑页装订线接入正文 thread,随滚动延伸点亮节点;无虚构内容。修正轮(2026-10-08)见 <a href="../../../../sessions/2026-10-08-r5-fix-round.md">r5-fix-round</a></td></tr>
+    <tr><td class="mono"><a href="../r5/3d/ASSETS.md">r5/3d/ASSETS.md</a></td>
+      <td><span class="tag real">资产</span></td>
+      <td class="d">场景参数/灯光表/实测几何量/poster 复现流程/缺测项</td></tr>
+    <tr><td class="mono"><a href="../lab/r5-lab-a.html">lab/r5-lab-a</a> / <a href="../lab/r5-lab-b.html">r5-lab-b</a></td>
+      <td><span class="tag concept">试验</span></td>
+      <td class="d">R5 方向两试验:A 案头剧场(弃选,仍是 R4 变体)vs B 字场碑页(选定);实拍见 shots/r5-lab-*.png</td></tr>
+  </table>
+
+  <h2 class="sect-bar">R4 全站页面<small>r4/ · 纸筑,共用 tokens4/base4/site4.js + 3d/book.js</small></h2>
+  <table class="map">
+    <tr><th style="width:21em">页面</th><th>标记</th><th>呈现的状态与看点</th></tr>
+    <tr><td><a href="../r4/index.html">首页 r4/index</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">夹具</span></td>
+      <td class="d">满幅「纸筑」场景(书页扇+发光页+虚线页+朱砂书签,可交互)+ 叠印大标题(昼 multiply/夜 screen)+ 文章/日报/订阅区;HUD 可暂停动态、复位视角</td></tr>
+    <tr><td><a href="../r4/posts.html">文章列表 r4/posts</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">夹具</span></td>
+      <td class="d">与 R3 同结构换 R4 色系;书签带式节标</td></tr>
+    <tr><td><a href="../r4/post-hello.html">文章详情 r4/post-hello</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">真实全文;lightbox 改原生 &lt;dialog&gt;.showModal()(背景 inert+焦点约束由浏览器保证)</td></tr>
+    <tr><td><a href="../r4/digest.html">日报列表 r4/digest</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">夹具</span></td>
+      <td class="d">真实空态;夹具列表</td></tr>
+    <tr><td><a href="../r4/digest-2026-10-05.html">日报详情 r4/digest-2026-10-05</a></td>
+      <td><span class="tag fix">夹具</span></td>
+      <td class="d">1:1 对齐 assemble.py 真实 Markdown:### 纯文本标题、来源链接在列表项、人工纳入在括号内、空板块省略、cost_pending 两态</td></tr>
+    <tr><td><a href="../r4/about.html">关于 r4/about</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">占位</span></td>
+      <td class="d">插图为纸筑线稿(页扇+发光页+虚线页+朱砂书签),与主视觉同语言</td></tr>
+    <tr><td><a href="../r4/404.html">404 r4/404</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">缺页意象(虚线空页+掀页动画各一次后静止);不泄露被撤回内容</td></tr>
+    <tr><td><a href="../r4/search-m2.html">站内检索 r4/search-m2(M2 预案)</a></td>
+      <td><span class="tag concept">概念</span><span class="tag fix">夹具</span></td>
+      <td class="d">8 态切换,不接 API、不进公开导航</td></tr>
+    <tr><td class="mono"><a href="../r4/3d/ASSETS.md">r4/3d/ASSETS.md</a></td>
+      <td><span class="tag real">资产</span></td>
+      <td class="d">场景参数/灯光表/实测几何量(723 三角形)/poster 复现流程/缺测项</td></tr>
+    <tr><td class="mono"><a href="../lab/r4-lab-a.html">lab/r4-lab-a</a> / <a href="../lab/r4-lab-b.html">r4-lab-b</a></td>
+      <td><span class="tag concept">试验</span></td>
+      <td class="d">R4 方向两试验:A 纸筑(选定)vs B 光束书房(弃选,昼景平庸);构图差异实拍见 shots/r4-lab-*.png</td></tr>
+  </table>
+
+  <h2 class="sect-bar">R3 全站页面<small>site/ · 保留为交互骨架与对照基线</small></h2>
+  <table class="map">
+    <tr><th style="width:21em">页面</th><th>标记</th><th>呈现的状态与看点</th></tr>
+    <tr><td><a href="index.html">首页 index</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">夹具</span></td>
+      <td class="d">3D 小院主视觉(可交互,海报降级)+ 最近在写(真实 1 篇)+ AI 日报空态条 + 订阅区;文章区含夹具 2 篇(details 折叠)</td></tr>
+    <tr><td><a href="posts.html">文章列表 posts</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">夹具</span></td>
+      <td class="d">真实列表+分页(共 1 页,两端置灰);夹具:第 2/4 页、长标题折行、无摘要条目、末页分页器</td></tr>
+    <tr><td><a href="post-hello.html">文章详情 post-hello</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">真实全文;目录+阅读进度+代码复制+图片点开+落款印;中英混排/长 URL/表格样张;上一篇下一篇空态;与首页标题做跨页衔接</td></tr>
+    <tr><td><a href="digest.html">日报列表 digest</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">夹具</span></td>
+      <td class="d">真实空态「暂无已发布日报」(中性,不推导故障);夹具:3 期列表、长模型名、cost_pending 两态文案</td></tr>
+    <tr><td><a href="digest-2026-10-05.html">日报详情 digest-2026-10-05</a></td>
+      <td><span class="tag fix">夹具</span></td>
+      <td class="d">1:1 对齐引擎 assemble.py 输出结构:引用行、头条/精选/值得一瞥三板块、展示分、来源、人工纳入、未决释义;变体:仅一瞥板块</td></tr>
+    <tr><td><a href="about.html">关于 about</a></td>
+      <td><span class="tag real">真实</span><span class="tag fix">占位</span></td>
+      <td class="d">只写已知事实(2026-10 上线、前身烂尾、topic-digest 参考);自我介绍/联系方式标「待填」;窗景 SVG(书桌望东厢脚手架)</td></tr>
+    <tr><td><a href="404.html">404</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">院门微开动画(各一次后静止)+ 去向链接;不泄露被撤回内容是否存在</td></tr>
+    <tr><td><a href="search-m2.html">站内检索 search-m2(M2 预案)</a></td>
+      <td><span class="tag concept">概念</span><span class="tag fix">夹具</span></td>
+      <td class="d">M2 私人检索问答的独立视觉预案:未认证/初始/检索中/有依据答案/证据不足/仅片段降级/服务不可用/预算停用 8 态切换;不接 API、不进公开导航</td></tr>
+    <tr><td><a href="3d/scene.html">3D 独立演示 3d/scene</a></td>
+      <td><span class="tag real">资产</span></td>
+      <td class="d">小院场景单独调试页:交互说明、入场分镜、昼夜、降级路径、资产参数表(运行时回填实测几何量)</td></tr>
+  </table>
+
+  <h2 class="sect-bar">共用资产</h2>
+  <table class="map">
+    <tr><th style="width:21em">文件</th><th>说明</th></tr>
+    <tr><td class="mono"><a href="assets/tokens.css">assets/tokens.css</a></td><td class="d">双主题 token:纸/墨/朱砂/灯 + 印章分色 + 运动参数(时长/缓动)+ 焦点色;data-theme 三态覆盖 + prefers-color-scheme</td></tr>
+    <tr><td class="mono"><a href="assets/base.css">assets/base.css</a></td><td class="d">组件库:导航/移动菜单、印章、行式列表、分页、图签、文章排版(目录/进度/复制/图片展开/落款)、日报正文、订阅区、页脚、进入视口动效、跨页视图过渡、reduced-motion、海报昼夜切换</td></tr>
+    <tr><td class="mono"><a href="assets/site.js">assets/site.js</a></td><td class="d">渐进增强:三态主题(nm-theme 事件)、移动菜单、IO reveal、阅读进度+目录高亮、代码复制、复制链接、图片 lightbox;无 JS 时全部内容可读可导航</td></tr>
+    <tr><td class="mono"><a href="3d/courtyard.js">3d/courtyard.js</a> + <a href="3d/boot.js">boot.js</a></td><td class="d">3D 源资产:程序化建模(PARAMS 参数表即源文件),three r180 本地固定;加载器负责 WebGL 检测、海报换画布、复位按钮、失败静默回退</td></tr>
+    <tr><td class="mono"><a href="../fonts/FONTS.md">fonts/FONTS.md</a></td><td class="d">字体来源/版本/许可证与分片构建脚本说明(Noto Serif SC + IBM Plex Mono,101 段×6 字重)</td></tr>
+  </table>
+
+  <h2 class="sect-bar">R1 / R2 稿<small>保留作对照,内容已被 R3 全站取代</small></h2>
+  <table class="map">
+    <tr><th style="width:21em">页面</th><th>说明</th></tr>
+    <tr><td class="mono"><a href="../direction-a.html">direction-a</a> / <a href="../direction-b.html">b</a> / <a href="../direction-c.html">c</a></td><td class="d">R1 三方向首页稿。注:R3 评审(2026-10-08)已明确——A「营造」的历史结论<strong>不再约束造型与配色</strong>,主视觉允许重新解释或替换,见 ../R3-REVIEW.md</td></tr>
+    <tr><td class="mono"><a href="../hero-compare.html">hero-compare</a></td><td class="d">R2 主视觉甲乙对照;结论:取落影+光池+线重,瓦线缓进</td></tr>
+    <tr><td class="mono"><a href="../direction-a-article.html">direction-a-article</a></td><td class="d">R2 文章页稿;R3 post-hello 已含全部要素</td></tr>
+    <tr><td class="mono"><a href="../direction-a-digest.html">direction-a-digest</a> <span class="tag fix">夹具</span></td><td class="d">R2 日报样张;本轮已按契约修正(去「已核清」「选自当日采集」,改真实三板块结构)</td></tr>
+    <tr><td class="mono"><a href="../index.html">../index.html</a></td><td class="d">R1/R2 旧入口索引</td></tr>
+  </table>
+
+  <h2 class="sect-bar">R4 完成矩阵<small>r4/ · ✓=已实测(shots/r4-*.png、shots/rec/r4-*.webm,Chromium 模拟非真机);△=未单独出图</small></h2>
+  <table class="map matrix">
+    <tr><th>页面</th><th>桌面昼</th><th>桌面夜</th><th>移动 390</th><th>reduced-motion</th><th>无 JS</th></tr>
+    <tr><td>首页(含 3D)</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓ 昼/夜</td><td class="ok">✓ 初始深色完成态+切换重绘两场景</td><td class="ok">✓ 海报降级</td></tr>
+    <tr><td>文章列表</td><td class="ok">✓</td><td>△</td><td>△</td><td>△</td><td>△(与 R3 同逻辑)</td></tr>
+    <tr><td>文章详情</td><td class="ok">✓ lightbox dialog 实测</td><td>△</td><td>△</td><td>△</td><td>△</td></tr>
+    <tr><td>日报列表/详情</td><td class="ok">✓</td><td class="ok">✓(详情)</td><td>△</td><td>△</td><td>△</td></tr>
+    <tr><td>关于 / 404</td><td class="ok">✓</td><td>△</td><td>△</td><td class="ok">✓(404 动画 disable)</td><td>△</td></tr>
+    <tr><td>M2 预案</td><td class="ok">✓ 初始态</td><td>△</td><td>△</td><td>△</td><td>△</td></tr>
+    <tr><td>3D 交互</td><td colspan="5">拖拽环顾 ✓ · 点击发光页→文章 ✓ · 复位视角 ✓ · 暂停/恢复动态(aria-pressed 同步)✓ · 主题联动 ✓ · 竖屏拉远构图 ✓ · 离屏暂停:代码路径在,未逐项真机测</td></tr>
+  </table>
+
+  <h2 class="sect-bar">R3 完成矩阵<small>site/ · 对照基线</small></h2>
+  <table class="map matrix">
+    <tr><th>页面</th><th>桌面昼</th><th>桌面夜</th><th>移动 390</th><th>reduced-motion</th><th>无 JS</th></tr>
+    <tr><td>首页(含 3D)</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓ 静态完成态</td><td class="ok">✓ 海报降级</td></tr>
+    <tr><td>文章列表</td><td class="ok">✓</td><td>△</td><td class="ok">✓</td><td>△</td><td class="ok">✓</td></tr>
+    <tr><td>文章详情</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓ 修过横向溢出</td><td>△</td><td class="ok">✓</td></tr>
+    <tr><td>日报列表/详情</td><td class="ok">✓</td><td class="ok">✓(详情)</td><td>△</td><td>△</td><td class="ok">✓</td></tr>
+    <tr><td>关于 / 404</td><td class="ok">✓</td><td>△</td><td>△</td><td class="ok">✓(404 静止)</td><td class="ok">✓</td></tr>
+    <tr><td>M2 预案(8 态)</td><td class="ok">✓ 答案/预算两态</td><td>△</td><td>△</td><td>△</td><td class="ok">✓</td></tr>
+    <tr><td>3D 交互</td><td colspan="5">拖拽环顾 ✓ · 点击正房→文章列表 ✓ · 复位视角 ✓ · 主题联动 ✓ · 离屏暂停/移动降载:代码路径在,未逐项真机测</td></tr>
+  </table>
+  <p class="mono" style="font-size:.75rem;color:var(--ink2)">△ = 未单独出图;双主题为同一套 token 切换,风险低但不替代实测。截图见 shots/r3-*.png,录屏见 shots/rec/*.webm(Chromium 模拟)。</p>
+
+  <footer class="site">
+    <span>© 2026 nanmu · 原型总览</span>
+    <span><a href="index.html">首页原型</a> · <a href="3d/scene.html">3D 演示</a></span>
+  </footer>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

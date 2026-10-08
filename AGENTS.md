@@ -12,6 +12,8 @@
 
 ## Agent接手入口
 
+前端设计专项(2026-10-08)：按用户新要求集中完成全站页面、动画与 3D 原型及源资产，允许科技感与更大胆的美术探索。先读 [全站设计任务书](docs/design/2026-10-07-visual-redesign/FULL-SITE-BRIEF.md) 与 [专项交接](docs/sessions/2026-10-08-frontend-creative-research.md)；此为独立原型设计，不代表生产 JS 规则已修订或全站已实施，M1 状态另行核对。
+
 1. 读本文与上方最新交接,先明确**本轮用户目标**。交接中的下一步不是自动执行授权。
 2. 按 [workflow](docs/development/workflow.md) 核对工作区、暂存区、分支与提交;保留已有修改,不要先清理工作区。
 3. 初次进入补读 [项目背景](docs/context/project-background.md)(两个自有前项目与外部借鉴)、[经验教训](docs/context/lessons.md)及 [spec](docs/superpowers/specs/2026-10-02-nanmu-blog-design.md) 总体边界。继续会话只读本次影响的章节。

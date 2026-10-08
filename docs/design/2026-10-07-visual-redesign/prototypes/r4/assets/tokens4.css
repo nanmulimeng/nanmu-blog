@@ -1,0 +1,57 @@
+/* ═══ R4 设计 token「纸筑」· 双主题 ═══
+   概念色:纸瓷白/墨蓝黑/朱砂/暖灯/轮廓蓝。与 3D 场景 LIGHT 表同源。 */
+:root{
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --kai:"Kaiti SC","STKaiti","KaiTi",serif;
+
+  --paper:#F2F1EC;      /* 内容区纸面 */
+  --sky:#E8EBEF;        /* 场景天空(昼),hero 无缝衔接 */
+  --ink:#14161A;
+  --ink2:#5C6068;
+  --line:#D8D5CB;
+  --draw:#2A2E35;
+  --seal:#C2402A;
+  --seal-text:#A83622;
+  --seal-wash:rgba(194,64,42,.06);
+  --lamp:#E8B96A;
+  --rim:#6E9BFF;
+  --code-bg:#E9E6DC;
+  --focus:#C2402A;
+  --radius:2px;
+  /* 兼容 R3 内页插图(线稿/示意)用词,按纸筑色系重译 */
+  --paper2:#E7E5DC;   /* 纸面下一阶:卡片/示意底 */
+  --roof:#D8D4C6;     /* 线稿屋顶填充 */
+  --roofline:#2A2E35; /* 线稿轮廓 */
+
+  --t-fast:.18s; --t-med:.32s; --t-slow:.6s;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-soft:cubic-bezier(.4,0,.2,1);
+}
+:root[data-theme="dark"]{
+  --paper:#0E1219;
+  --sky:#0B0E14;
+  --ink:#E8E4D8;
+  --ink2:#8A94A8;
+  --line:#242B38;
+  --draw:#CFC9B8;
+  --seal:#D4604C;
+  --seal-text:#E08A72;
+  --seal-wash:rgba(212,96,76,.08);
+  --lamp:#E8B96A;
+  --rim:#6E9BFF;
+  --code-bg:#171C26;
+  --focus:#E08A72;
+  --paper2:#141A23;
+  --roof:#1E2632;
+  --roofline:#CFC9B8;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1219; --sky:#0B0E14;
+    --ink:#E8E4D8; --ink2:#8A94A8; --line:#242B38; --draw:#CFC9B8;
+    --seal:#D4604C; --seal-text:#E08A72; --seal-wash:rgba(212,96,76,.08);
+    --code-bg:#171C26; --focus:#E08A72;
+    --paper2:#141A23; --roof:#1E2632; --roofline:#CFC9B8;
+  }
+}

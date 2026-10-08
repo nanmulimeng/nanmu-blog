@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向 A · 日报样张(设计夹具)— nanmu-blog 视觉原型</title>
+<!--
+  ⚠ 设计夹具:本页所有日报内容均为虚构样张,用于评审排版与标注位置,
+  不代表任何已发布日报;模型名/费用数字仅示意 frontmatter 字段(ai_model/cost_cny/cost_pending)的呈现。
+-->
+<link rel="stylesheet" href="fonts.css">
+<style>
+:root{
+  --paper:#F4EEE0; --paper2:#ECE4D0; --ink:#29241B; --ink2:#6E6450;
+  --line:#D9CFB6; --draw:#3A332A; --seal:#B23A26; --seal-text:#A5341F; --lamp:#E9B45B;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171916; --paper2:#1F221D; --ink:#DDD5C2; --ink2:#8F8875;
+  --line:#32362C; --draw:#CFC7B0; --seal:#CE5340; --seal-text:#DA6A55; --lamp:#F2BE63;
+}}
+:root[data-theme="dark"]{
+  --paper:#171916; --paper2:#1F221D; --ink:#DDD5C2; --ink2:#8F8875;
+  --line:#32362C; --draw:#CFC7B0; --seal:#CE5340; --seal-text:#DA6A55; --lamp:#F2BE63;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--serif); font-size:17px; line-height:1.95;
+  transition:background-color .25s ease,color .25s ease}
+a{color:inherit}
+.mono{font-family:var(--mono); font-size:.78rem; letter-spacing:.03em}
+.frame{max-width:1120px; margin:0 auto; padding:0 clamp(20px,4vw,48px)}
+header.top{display:flex; align-items:baseline; justify-content:space-between;
+  padding:26px 0 22px; border-bottom:1px solid var(--line)}
+.brand{display:flex; align-items:center; gap:12px; text-decoration:none}
+.brand .mark{width:22px; height:22px; border:1.5px solid var(--seal); color:var(--seal);
+  display:grid; place-items:center; font-size:13px; font-weight:900; line-height:1}
+.brand b{font-weight:900; font-size:19px; letter-spacing:.04em}
+nav{display:flex; gap:clamp(16px,3vw,34px); align-items:baseline}
+nav a{position:relative; padding:4px 0; font-size:15px; color:var(--ink2); text-decoration:none}
+nav a:hover{color:var(--ink)}
+nav a[aria-current]{color:var(--ink); box-shadow:inset 0 -2px 0 var(--ink)}
+#theme-btn{font-family:var(--serif); font-size:13px; color:var(--ink2); background:none;
+  border:1px solid var(--line); border-radius:2px; padding:5px 12px; cursor:pointer}
+#theme-btn:hover{border-color:var(--seal); color:var(--seal-text)}
+
+/* 夹具横幅 */
+.fixture-banner{margin:18px 0 0; border:1.5px dashed var(--seal); color:var(--seal-text);
+  padding:8px 14px; font-size:13px; font-family:var(--mono); letter-spacing:.04em}
+
+h2.sect{font-size:19px; font-weight:900; margin:2.6em 0 .9em; padding-left:12px; border-left:4px solid var(--seal)}
+h2.sect small{font-weight:400; color:var(--ink2); font-size:13px; margin-left:10px}
+
+/* ── 列表条目(日报在列表中的样子) ── */
+.digest-row{display:block; position:relative; padding:18px 4px 18px 22px; border-bottom:1px solid var(--line);
+  text-decoration:none}
+.digest-row::before{content:""; position:absolute; left:2px; top:34px; width:6px; height:6px;
+  background:var(--seal); transform:scale(0); transition:transform .2s ease}
+.digest-row:hover::before{transform:scale(1)}
+.digest-row h3{margin:0 0 4px; font-size:19px; font-weight:600; transition:transform .2s ease}
+.digest-row:hover h3{transform:translateX(4px)}
+.digest-row .meta{color:var(--ink2)}
+.digest-row .meta .pending{color:var(--seal-text)}
+
+/* ── 日报详情:与文章页同骨架,双线「机」章 + 图签 + 细框正文 ── */
+.issue-wrap{max-width:760px; margin:0 auto; padding-top:clamp(24px,4vw,40px)}
+.crumb{display:flex; align-items:center; gap:10px; color:var(--ink2); font-size:14px; margin-bottom:22px}
+.crumb .seal{width:24px; height:24px; display:grid; place-items:center; flex:none;
+  border:3px double var(--seal); color:var(--seal); font-size:12px; font-weight:900}
+.crumb a{color:var(--ink2); text-decoration:none; border-bottom:1px solid var(--line)}
+.crumb a:hover{color:var(--seal-text); border-color:var(--seal)}
+h1.title{font-size:clamp(26px,4vw,36px); font-weight:900; line-height:1.3; margin:0 0 16px}
+/* 图签:溯源字段的固定位置 */
+.titleblock{border:1px solid var(--draw); margin:0 0 30px}
+.titleblock .tb-row{display:flex; justify-content:space-between; gap:16px;
+  padding:10px 16px; border-bottom:1px solid var(--line); font-size:14px}
+.titleblock .tb-row:last-child{border-bottom:none}
+.titleblock .k{color:var(--ink2); flex:none}
+.titleblock .v{text-align:right; font-family:var(--mono); font-size:.82rem}
+.titleblock .v .pending{color:var(--seal-text)}
+/* 日报正文区:细框+纸二底色,与手写文章视觉区分 */
+.issue-body{border:1px solid var(--line); background:var(--paper2);
+  padding:clamp(18px,3.5vw,34px); font-size:16px; line-height:1.95}
+.issue-body .entry{margin-bottom:2em}
+.issue-body .entry:last-child{margin-bottom:0}
+.issue-body .entry h3{font-size:17.5px; font-weight:600; margin:0 0 6px; line-height:1.6}
+.issue-body .entry h3 a{text-decoration:none; box-shadow:inset 0 -1px 0 var(--seal)}
+.issue-body .entry h3 a:hover{color:var(--seal-text); box-shadow:inset 0 -2px 0 var(--seal)}
+.issue-body .entry p{margin:0 0 8px; color:var(--ink)}
+.issue-body .src{font-family:var(--mono); font-size:.75rem; color:var(--ink2); word-break:break-all}
+.issue-body .src a{color:var(--ink2); border-bottom:1px solid var(--line); text-decoration:none}
+.issue-body .src a:hover{color:var(--seal-text); border-color:var(--seal)}
+/* 真实 Markdown 结构:引用行 + 三板块 + 展示分/人工纳入 */
+blockquote.issue-note{margin:0 0 20px; padding:8px 14px; border-left:3px solid var(--seal);
+  background:var(--paper); font-size:14px; color:var(--ink2)}
+.issue-body h4.blk{font-size:16px; font-weight:900; margin:1.7em 0 .6em; padding-left:10px;
+  border-left:3px solid var(--seal)}
+.issue-body h4.blk:first-child{margin-top:0}
+.issue-body h4.blk .mono{color:var(--ink2); font-weight:400; font-size:.72rem; margin-left:6px}
+.issue-body ul{margin:.2em 0 1.1em; padding-left:1.3em}
+.issue-body li{margin-bottom:.35em}
+.score{font-family:var(--mono); font-size:.72rem; color:var(--ink2);
+  border:1px solid var(--line); border-radius:2px; padding:1px 6px; white-space:nowrap}
+.badge-human{font-family:var(--mono); font-size:.72rem; color:var(--seal-text);
+  border:1px solid var(--seal); border-radius:2px; padding:1px 6px; white-space:nowrap}
+.issue-foot{margin-top:22px; padding-top:14px; border-top:1px solid var(--line);
+  font-size:13px; color:var(--ink2); line-height:1.9}
+
+/* 小院状态对照 */
+.compare{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:8px}
+.compare figure{margin:0}
+.compare figcaption{font-size:13px; color:var(--ink2); margin-top:6px; text-align:center}
+.mini-house{width:100%; height:auto; border:1px solid var(--line); background:var(--paper2)}
+.mini-house text{font-family:var(--serif); fill:var(--ink)}
+.mini-house .ground-top{fill:var(--paper); stroke:var(--draw); stroke-width:1.4}
+.mini-house .wing-frame{fill:none; stroke:var(--draw); stroke-width:1.2; stroke-dasharray:5 4}
+.mini-house .scaffold{stroke:var(--draw); stroke-width:.7; stroke-dasharray:2 3}
+.mini-house .wing-built{fill:var(--paper); stroke:var(--draw); stroke-width:1.2}
+.mini-house .wing-roof{fill:var(--paper2); stroke:var(--draw); stroke-width:1.2}
+.mini-house .wing-window{fill:var(--lamp); fill-opacity:.55; stroke:var(--draw); stroke-width:.8}
+.mini-house .cap{font-size:13px; font-weight:600}
+.mini-house .cap-s{font-size:10.5px; fill:var(--ink2); font-family:var(--mono)}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .mini-house .wing-window{fill-opacity:1} }
+:root[data-theme="dark"] .mini-house .wing-window{fill-opacity:1}
+
+footer{border-top:1px solid var(--line); margin-top:64px; padding:26px 0 40px; display:flex;
+  justify-content:space-between; gap:16px; flex-wrap:wrap; color:var(--ink2); font-size:13px}
+footer a{color:var(--ink2); text-decoration:none; border-bottom:1px solid var(--line)}
+footer a:hover{color:var(--seal-text); border-color:var(--seal)}
+
+@media (max-width:700px){
+  .compare{grid-template-columns:1fr}
+  .titleblock .tb-row{flex-direction:column; gap:2px; padding:9px 14px}
+  .titleblock .v{text-align:left}
+  header.top{flex-wrap:wrap; row-gap:10px}
+  nav{width:100%; justify-content:space-between; gap:10px}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="direction-a.html"><span class="mark">n</span><b>nanmu</b></a>
+    <nav>
+      <a href="direction-a.html">首页</a>
+      <a href="#">文章</a>
+      <a href="#" aria-current="page">日报</a>
+      <a href="#">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="fixture-banner">设计夹具 · 本页日报内容为虚构样张,仅用于评审排版与标注位置;不代表任何已发布日报</div>
+
+  <!-- ═══ 1. 列表条目 ═══ -->
+  <h2 class="sect">列表中的日报<small>首页/存档页共用此行式;双线「机」章与手写「文」章区分</small></h2>
+  <a class="digest-row" href="#detail">
+    <h3>2026-10-05 日报</h3>
+    <div class="meta mono">4 条 · 模型 demo-model-a(夹具) · 费用 ¥0.43 <span class="pending">含未决,为上界</span></div>
+  </a>
+  <a class="digest-row" href="#detail">
+    <h3>2026-10-04 日报</h3>
+    <div class="meta mono">5 条 · 模型 demo-model-a(夹具) · 费用 ¥0.38</div>
+  </a>
+
+  <!-- ═══ 2. 日报详情 ═══ -->
+  <h2 class="sect" id="detail">日报详情<small>溯源字段固定进图签;正文细框+底色与手写文章区分</small></h2>
+  <div class="issue-wrap">
+    <div class="crumb">
+      <span class="seal">机</span>
+      <a href="direction-a.html">首页</a><span>/</span><a href="#">日报</a><span>/</span><span>2026-10-05</span>
+    </div>
+    <h1 class="title">2026-10-05 日报</h1>
+
+    <div class="titleblock" role="table" aria-label="本期溯源信息">
+      <div class="tb-row"><span class="k">生成方式</span><span class="v">AI 自动生成 · 模型 demo-model-a(夹具)</span></div>
+      <div class="tb-row"><span class="k">条目</span><span class="v">4 条</span></div>
+      <div class="tb-row"><span class="k">费用</span><span class="v">¥0.43 <span class="pending">含未决,为保守上界</span></span></div>
+    </div>
+
+    <div class="issue-body">
+      <blockquote class="issue-note">AI 生成与精选 · 模型 demo-model-a(夹具) · 成本 ¥0.43(含未决预占,为保守上界)</blockquote>
+
+      <h4 class="blk">头条<span class="mono">展示分 ≥ 80</span></h4>
+      <div class="entry">
+        <h3><a href="#">夹具条目:某个开源模型推理框架发布大版本,长标题用来检验两行折行时的行距与下划线表现是否仍然稳定</a> <span class="score">展示分 86</span></h3>
+        <ul>
+          <li>摘要样张:该版本重写调度器并降低显存占用。这是一条用于排版评审的虚构摘要,长度按真实日报摘要的上限构造。</li>
+          <li>理由样张:调度器重写给自建部署直接降费。<span class="src">来源:<a href="#">https://example.dev/releases/v9(夹具)</a>(demo-source-a · 展示分 86)</span></li>
+        </ul>
+      </div>
+
+      <h4 class="blk">精选<span class="mono">展示分 60–79</span></h4>
+      <div class="entry">
+        <h3><a href="#">夹具条目:终端工具链的一次安静重构</a> <span class="score">展示分 68</span></h3>
+        <ul>
+          <li>摘要样张:把三个子命令合并成一个,默认行为不变。虚构内容,仅用于排版。</li>
+          <li>理由样张:合并子命令减少记忆负担。<span class="src">来源:<a href="#">https://example.org/blog/quiet-refactor(夹具)</a>(demo-source-b · 展示分 68)</span></li>
+        </ul>
+      </div>
+
+      <h4 class="blk">值得一瞥<span class="mono">压线入选</span></h4>
+      <ul>
+        <li><a href="#">夹具条目:关于本地优先软件的一篇长文</a>——数据先属于自己,再谈同步。<span class="src">(demo-source-c · 展示分 55)</span></li>
+        <li><a href="#">夹具条目:一份中文排版引擎的更新日志</a>——标点悬挂与避头尾规则补全。<span class="src">(demo-source-d · 展示分 52, 人工纳入)</span> <span class="badge-human">人工纳入</span></li>
+      </ul>
+
+      <div class="issue-foot">
+        本期内容由 AI 引擎自动选题与摘要生成,模型与费用见顶部图签;条目附原始来源链接。页面为预生成静态内容,不实时调用模型。<br>
+        费用若标注"含未决预占",表示当日存在尚未结算的调用,所列为保守上界,结算后可能下调;无该标注即当日预占均已结清。
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 3. cost_pending 两态对照 ═══ -->
+  <h2 class="sect">费用标注两态<small>对应 frontmatter cost_pending=false / true,文案沿用现有契约</small></h2>
+  <div class="compare">
+    <div class="titleblock">
+      <div class="tb-row"><span class="k">cost_pending = false</span><span class="v">¥0.38(无追加标注)</span></div>
+    </div>
+    <div class="titleblock">
+      <div class="tb-row"><span class="k">cost_pending = true</span><span class="v">¥0.43 <span class="pending">含未决,为保守上界</span></span></div>
+    </div>
+  </div>
+
+  <!-- ═══ 4. 小院状态对照:日报上线后,首页仍然成立 ═══ -->
+  <h2 class="sect">小院状态对照<small>日报上线那天,东厢从虚线变实线、窗也亮起;首页叙事不过期</small></h2>
+  <div class="compare">
+    <figure>
+      <svg class="mini-house" viewBox="358 148 184 196" role="img" aria-label="今天:东厢施工中">
+        <g>
+          <polygon points="452.9,222.5 510,255.5 443.4,294 386.2,261" fill="none" stroke="var(--draw)" stroke-dasharray="3 4"/>
+          <polygon points="452.9,180.7 510,213.7 443.4,252.2 386.2,219.2" class="wing-frame"/>
+          <line x1="452.9" y1="222.5" x2="452.9" y2="180.7" class="wing-frame"/>
+          <line x1="510" y1="255.5" x2="510" y2="213.7" class="wing-frame"/>
+          <line x1="443.4" y1="294" x2="443.4" y2="252.2" class="wing-frame"/>
+          <line x1="386.2" y1="261" x2="386.2" y2="219.2" class="wing-frame"/>
+          <line x1="386.2" y1="261" x2="443.4" y2="252.2" class="scaffold"/>
+          <line x1="443.4" y1="294" x2="386.2" y2="219.2" class="scaffold"/>
+        </g>
+        <text x="448" y="318" class="cap" text-anchor="middle">东厢 · 施工中</text>
+        <text x="448" y="334" class="cap-s" text-anchor="middle">digest: 0 期</text>
+      </svg>
+      <figcaption>今天:虚线线框 + 脚手架,如实。</figcaption>
+    </figure>
+    <figure>
+      <svg class="mini-house" viewBox="358 148 184 196" role="img" aria-label="日报上线后:东厢建成">
+        <g>
+          <polygon points="452.9,222.5 510,255.5 443.4,294 386.2,261" fill="none" stroke="var(--draw)"/>
+          <polygon points="386.2,261 443.4,294 443.4,252.2 386.2,219.2" class="wing-built"/>
+          <polygon points="443.4,294 510,255.5 510,213.7 443.4,252.2" class="wing-built"/>
+          <polygon points="386.2,219.2 443.4,252.2 510,213.7 452.9,180.7" class="wing-roof"/>
+          <polygon points="399.5,252.2 430,269.8 430,256.6 399.5,239" class="wing-window"/>
+        </g>
+        <text x="448" y="318" class="cap" text-anchor="middle">东厢 · 日报</text>
+        <text x="448" y="334" class="cap-s" text-anchor="middle">digest: n 期 · 窗已亮</text>
+      </svg>
+      <figcaption>上线后:实墙、亮窗——同一座院子,不需要换图。</figcaption>
+    </figure>
+  </div>
+
+  <footer>
+    <span>© 2026 nanmu · 设计夹具样张</span>
+    <span><a href="direction-a.html">返回首页原型</a></span>
+  </footer>
+</div>
+<script>
+/* 【原型演示专用】三态主题,同首页。 */
+(function(){
+  var b=document.getElementById('theme-btn'),root=document.documentElement,KEY='nm-theme';
+  function get(){try{return localStorage.getItem(KEY)||'auto';}catch(e){return 'auto';}}
+  function set(v){try{localStorage.setItem(KEY,v);}catch(e){}}
+  function apply(){
+    var m=get();
+    if(m==='auto'){delete root.dataset.theme;}else{root.dataset.theme=m;}
+    b.textContent=m==='auto'?'跟随系统':(m==='light'?'昼览':'夜览');
+  }
+  b.addEventListener('click',function(){var m=get();set(m==='auto'?'light':(m==='light'?'dark':'auto'));apply();});
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',apply);
+  apply();
+})();
+</script>
+</body>
+</html>

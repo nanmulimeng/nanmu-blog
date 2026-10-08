@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R5-lab A「展卷 · 案头剧场」首屏实拍</title>
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --paper:#EFEDE6; --ink:#14161A; --ink2:#5C6068; --seal:#C2402A; --line:#D8D5CB;
+}
+:root[data-theme="dark"]{ --paper:#0A0D13; --ink:#E8E4D8; --ink2:#8A94A8; --seal:#D4604C; --line:#242B38; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --paper:#0A0D13; --ink:#E8E4D8; --ink2:#8A94A8; --seal:#D4604C; --line:#242B38; } }
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--serif)}
+.hero{position:relative; height:100vh; overflow:hidden}
+.scene-host{position:absolute; inset:0}
+.title-block{position:absolute; z-index:2; left:clamp(24px,6vw,90px); top:50%; transform:translateY(-54%);
+  width:min(38vw,540px); pointer-events:none}
+.kicker{font-family:var(--mono); font-size:12.5px; letter-spacing:.26em; color:var(--ink2); margin:0 0 18px}
+h1{font-size:clamp(40px,4.6vw,64px); font-weight:900; line-height:1.24; margin:0; letter-spacing:.01em}
+.sub{margin:22px 0 0; font-size:16.5px; line-height:1.9; color:var(--ink2); max-width:26em}
+.actions{pointer-events:auto; margin-top:30px; display:flex; gap:14px; flex-wrap:wrap}
+.btn{font-family:var(--serif); font-size:15.5px; text-decoration:none; padding:11px 22px; border:1.5px solid var(--ink)}
+.btn.primary{background:var(--seal); border-color:var(--seal); color:#F7F4EB}
+.mark{position:absolute; z-index:2; right:clamp(20px,4vw,56px); bottom:26px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--ink2); writing-mode:vertical-rl}
+</style>
+</head>
+<body>
+<section class="hero" id="scene3d">
+  <div class="title-block">
+    <p class="kicker">NANMU · 手写博客</p>
+    <h1>先把最小的东西<br>做完,上线,能用。</h1>
+    <p class="sub">这里放三样东西:我手写的文章、计划中的 AI 日报、计划中的个人检索。现在真正在线的,是博客本体。</p>
+    <div class="actions">
+      <a class="btn primary" href="../r4/post-hello.html">读最新一篇</a>
+      <a class="btn" href="../r4/about.html">了解这个站</a>
+    </div>
+  </div>
+  <span class="mark">方案 A · 案头剧场</span>
+</section>
+<script type="module">
+import {createScene} from './scene5a.js';
+const host = document.createElement('div');
+host.className = 'scene-host';
+document.getElementById('scene3d').appendChild(host);
+const dark = new URLSearchParams(location.search).get('theme') === 'dark';
+const scene = createScene(host, {links:{post:'../r4/post-hello.html', digest:'../r4/digest.html'}});
+scene.setTheme(dark, true);
+window.__scene = scene;
+</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 · 院门没开到这条路上 — nanmu(全站原型)</title>
+<!-- 全站原型 · 404:院门意象 + 短动画;不存在与撤回内容共用同一语义,不泄露任何条目信息 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/base.css">
+<style>
+.gate-wrap{max-width:640px; margin:0 auto; padding:clamp(36px,7vw,80px) 0 20px; text-align:center}
+.gate-wrap h1{font-size:clamp(24px,3.4vw,32px); font-weight:900; margin:26px 0 8px}
+.gate-wrap .code{font-family:var(--mono); color:var(--seal-text); letter-spacing:.3em; font-size:13px}
+.gate-wrap p{color:var(--ink2); max-width:26em; margin:0 auto 26px}
+.gate-links{display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+.gate-links a{border:1px solid var(--line); padding:10px 22px; text-decoration:none;
+  transition:border-color var(--t-fast),background var(--t-fast)}
+.gate-links a:hover{border-color:var(--seal); background:var(--seal-wash)}
+/* 院门小动画:门轴微开、门环轻晃,各一次后静止 */
+.gate{width:min(320px,80vw); height:auto; margin:0 auto}
+.gate .door-l{transform-origin:120px 60px; animation:gateOpen 1.6s var(--ease-soft) .3s both}
+.gate .knocker{transform-origin:150px 118px; animation:knock 2.2s var(--ease-soft) 1.2s both}
+@keyframes gateOpen{from{transform:perspective(400px) rotateY(0)}to{transform:perspective(400px) rotateY(-14deg)}}
+@keyframes knock{0%{transform:rotate(0)}30%{transform:rotate(7deg)}60%{transform:rotate(-4deg)}100%{transform:rotate(0)}}
+@media (prefers-reduced-motion:reduce){ .gate *{animation:none !important} }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="gate-wrap">
+    <svg class="gate" viewBox="0 0 300 220" role="img" aria-label="一座半开的院门,门后没有路">
+      <!-- 院墙 -->
+      <line x1="10" y1="70" x2="96" y2="70" stroke="var(--draw)" stroke-width="3"/>
+      <line x1="204" y1="70" x2="290" y2="70" stroke="var(--draw)" stroke-width="3"/>
+      <line x1="10" y1="70" x2="10" y2="190" stroke="var(--draw)" stroke-width="2"/>
+      <line x1="290" y1="70" x2="290" y2="190" stroke="var(--draw)" stroke-width="2"/>
+      <!-- 门楼 -->
+      <polygon points="96,70 150,38 204,70" fill="var(--roof)" stroke="var(--roofline)" stroke-width="2"/>
+      <line x1="150" y1="38" x2="150" y2="30" stroke="var(--roofline)" stroke-width="2"/>
+      <!-- 门框与门 -->
+      <rect x="104" y="70" width="92" height="120" fill="none" stroke="var(--draw)" stroke-width="2.5"/>
+      <g class="door-l">
+        <rect x="108" y="74" width="84" height="112" fill="var(--paper2)" stroke="var(--draw)" stroke-width="1.5"/>
+        <line x1="150" y1="74" x2="150" y2="186" stroke="var(--draw)" stroke-width="1"/>
+        <circle class="knocker" cx="140" cy="118" r="6" fill="none" stroke="var(--seal)" stroke-width="2"/>
+        <circle cx="160" cy="118" r="6" fill="none" stroke="var(--draw)" stroke-width="1.5"/>
+      </g>
+      <!-- 门后:空白,没有路 -->
+      <line x1="150" y1="196" x2="150" y2="206" stroke="var(--line)" stroke-dasharray="3 4"/>
+      <text x="150" y="212" text-anchor="middle" font-size="9" fill="var(--ink2)" font-family="var(--mono)">no path</text>
+    </svg>
+    <div class="code">HTTP 404</div>
+    <h1>院门没开到这条路上</h1>
+    <p>你要找的页面不存在,或者从来没有存在过。撤回的内容也用同一扇门——这里不会透露它曾经是什么。</p>
+    <div class="gate-links">
+      <a href="index.html">回首页</a>
+      <a href="posts.html">看文章目录</a>
+      <a href="digest.html">看日报栏目</a>
+    </div>
+  </div>
+
+  <footer class="site" style="margin-top:80px">
+    <span>© 2026 nanmu</span>
+    <span><a href="map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

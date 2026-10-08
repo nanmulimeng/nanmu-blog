@@ -1,0 +1,287 @@
+/* ═══════════════════════════════════════════════════════════
+   nanmu-blog 全站原型 · 共用组件与版式(R3)
+   依赖 tokens.css;字体由 fonts.css(分片)提供。
+   渐进增强:无 JS 时全部内容可读、链接可用。
+   ═══════════════════════════════════════════════════════════ */
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--serif); font-size:17px; line-height:1.95;
+  /* 纸面肌理:两层极淡的径向渐变 + 细颗粒 */
+  background-image:
+    radial-gradient(1200px 800px at 85% -10%, var(--seal-wash), transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, var(--seal-wash), transparent 55%);
+  background-attachment:fixed;
+  transition:background-color var(--t-slow) var(--ease-soft),color var(--t-slow) var(--ease-soft)}
+::selection{background:var(--seal); color:var(--paper)}
+a{color:inherit}
+img,svg{max-width:100%}
+.mono{font-family:var(--mono); font-size:.78rem; letter-spacing:.03em}
+.frame{max-width:1120px; margin:0 auto; padding:0 clamp(20px,4vw,48px)}
+.narrow{max-width:760px; margin:0 auto}
+
+/* ── 键盘焦点全局可见 ── */
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+
+/* ── 顶部导航 ── */
+header.top{display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:22px 0 18px; border-bottom:1px solid var(--line); position:relative}
+.brand{display:flex; align-items:center; gap:12px; text-decoration:none}
+.brand .mark{width:22px; height:22px; border:1.5px solid var(--seal); color:var(--seal);
+  display:grid; place-items:center; font-size:13px; font-weight:900; line-height:1;
+  transition:transform var(--t-med) var(--ease-out)}
+.brand:hover .mark{transform:rotate(-6deg)}
+.brand b{font-weight:900; font-size:19px; letter-spacing:.04em}
+nav.main{display:flex; gap:clamp(14px,2.6vw,32px); align-items:center}
+nav.main a{position:relative; padding:4px 0; font-size:15px; color:var(--ink2); text-decoration:none;
+  transition:color var(--t-fast)}
+nav.main a:hover{color:var(--ink)}
+nav.main a::after{content:""; position:absolute; left:0; bottom:0; width:100%; height:2px;
+  background:var(--seal); transform:scaleX(0); transform-origin:left;
+  transition:transform var(--t-med) var(--ease-out)}
+nav.main a:hover::after{transform:scaleX(1)}
+nav.main a[aria-current]{color:var(--ink)}
+nav.main a[aria-current]::after{transform:scaleX(1); background:var(--ink)}
+
+#theme-btn{font-family:var(--serif); font-size:13px; color:var(--ink2); background:none;
+  border:1px solid var(--line); border-radius:var(--radius); padding:5px 12px; cursor:pointer;
+  transition:border-color var(--t-fast),color var(--t-fast)}
+#theme-btn:hover{border-color:var(--seal); color:var(--seal-text)}
+
+/* 移动菜单:默认按无 JS 处理——导航常显纵向、按钮不出现;
+   site.js 给根元素加 .js 后才切换为「按钮开合」模式 */
+.menu-toggle{display:none; font-family:var(--serif); font-size:13px; color:var(--ink2);
+  background:none; border:1px solid var(--line); border-radius:var(--radius);
+  padding:5px 12px; cursor:pointer}
+@media (max-width:700px){
+  header.top{flex-wrap:wrap}
+  nav.main{width:100%; flex-direction:column; align-items:flex-start;
+    gap:2px; padding-top:10px}
+  nav.main a{font-size:17px; padding:8px 0; width:100%; border-bottom:1px dashed var(--line)}
+  nav.main a:last-of-type{border-bottom:none}
+  /* 有 JS:按钮出现,导航默认收起 */
+  html.js .menu-toggle{display:inline-block}
+  html.js nav.main{display:none}
+  html.js nav.main.open{display:flex}
+}
+
+/* ── 印章体系 ── */
+.seal-w,.seal-m{display:inline-grid; place-items:center; flex:none;
+  color:var(--seal); font-weight:900}
+.seal-w{width:24px; height:24px; border:1.5px solid var(--seal); font-size:13px}
+.seal-m{width:24px; height:24px; border:3px double var(--seal); font-size:12px}
+
+/* ── 区块标题 ── */
+.sect-head{display:flex; align-items:baseline; gap:12px; margin:2.8em 0 1em}
+.sect-head h2{font-size:21px; font-weight:900; margin:0}
+.sect-head .count{color:var(--ink2); margin-left:auto}
+h2.sect-bar{font-size:19px; font-weight:900; margin:2.6em 0 .9em;
+  padding-left:12px; border-left:4px solid var(--seal)}
+h2.sect-bar small{font-weight:400; color:var(--ink2); font-size:13px; margin-left:10px}
+
+/* ── 行式列表(文章/日报共用) ── */
+.row-item{display:block; position:relative; padding:18px 4px 18px 22px;
+  border-bottom:1px solid var(--line); text-decoration:none}
+.row-item::before{content:""; position:absolute; left:2px; top:34px; width:6px; height:6px;
+  background:var(--seal); transform:scale(0); transition:transform var(--t-fast) var(--ease-out)}
+.row-item:hover::before,.row-item:focus-visible::before{transform:scale(1)}
+.row-item h3{margin:0 0 4px; font-size:19px; font-weight:600; line-height:1.6;
+  transition:transform var(--t-fast) var(--ease-out)}
+.row-item:hover h3{transform:translateX(4px)}
+.row-item .meta{color:var(--ink2)}
+.row-item .meta .tags,.row-item .meta .pending{color:var(--seal-text)}
+.row-item p{margin:6px 0 0; font-size:14.5px; color:var(--ink2); line-height:1.85}
+
+/* ── 分页 ── */
+.pager{display:flex; justify-content:space-between; gap:12px; padding:22px 4px;
+  font-size:15px}
+.pager a{color:var(--ink2); text-decoration:none; border-bottom:1px solid var(--line);
+  padding-bottom:2px; transition:color var(--t-fast),border-color var(--t-fast)}
+.pager a:hover{color:var(--seal-text); border-color:var(--seal)}
+.pager .at-ends{color:var(--line); border:none; cursor:default}
+.pager .mono{color:var(--ink2)}
+
+/* ── 图签(溯源信息栏) ── */
+.titleblock{border:1px solid var(--draw); margin:0 0 30px; background:var(--paper)}
+.titleblock .tb-row{display:flex; justify-content:space-between; gap:16px;
+  padding:10px 16px; border-bottom:1px solid var(--line); font-size:14px}
+.titleblock .tb-row:last-child{border-bottom:none}
+.titleblock .k{color:var(--ink2); flex:none}
+.titleblock .v{text-align:right; font-family:var(--mono); font-size:.82rem}
+.titleblock .v .pending{color:var(--seal-text)}
+@media (max-width:700px){
+  .titleblock .tb-row{flex-direction:column; gap:2px; padding:9px 14px}
+  .titleblock .v{text-align:left}
+}
+
+/* ── 面包屑 ── */
+.crumb{display:flex; align-items:center; gap:10px; color:var(--ink2); font-size:14px; margin-bottom:22px}
+.crumb a{color:var(--ink2); text-decoration:none; border-bottom:1px solid var(--line)}
+.crumb a:hover{color:var(--seal-text); border-color:var(--seal)}
+
+/* ── 文章排版 ── */
+.prose{font-size:17.5px; line-height:2.05; max-width:34em;
+  hanging-punctuation:first allow-end; text-align:justify; text-justify:inter-ideograph}
+.prose p{margin:0 0 1.6em}
+/* 纯文本长 URL/长 token 在窄屏可断行,防横向溢出 */
+.prose p,.prose li{overflow-wrap:anywhere}
+.prose h2{font-size:22px; font-weight:900; margin:2.6em 0 1em; padding-left:14px;
+  border-left:4px solid var(--seal); line-height:1.4; scroll-margin-top:80px}
+.prose h3{font-size:18.5px; font-weight:600; margin:2.2em 0 .8em; scroll-margin-top:80px}
+.prose a{color:var(--ink); text-decoration:none; word-break:break-all;
+  box-shadow:inset 0 -1px 0 var(--seal); transition:box-shadow var(--t-fast),color var(--t-fast)}
+.prose a:hover{color:var(--seal-text); box-shadow:inset 0 -2px 0 var(--seal)}
+.prose strong{font-weight:900}
+.prose blockquote{margin:2em 0; padding:4px 0 4px 22px; border-left:2px solid var(--draw);
+  font-family:var(--kai); font-size:18px; color:var(--ink2)}
+.prose blockquote p{margin:0 0 .8em}
+.prose pre{background:var(--code-bg,#EFE8D5); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:13.5px;
+  line-height:1.75; margin:2em 0; position:relative}
+:root[data-theme="dark"] .prose pre{--code-bg:#1E211C}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .prose pre{background:#1E211C} }
+.prose code{font-family:var(--mono); font-size:.86em}
+.prose p code,.prose li code{background:var(--paper2); border:1px solid var(--line);
+  border-radius:var(--radius); padding:.1em .38em}
+.prose pre code{background:none; border:none; padding:0}
+.prose img{border:1px solid var(--line)}
+figure{margin:2.2em 0}
+figcaption{font-size:13.5px; color:var(--ink2); margin-top:10px; padding-left:14px;
+  border-left:2px solid var(--line); line-height:1.8}
+.prose hr{border:none; margin:2.6em auto; width:56px; border-top:2px solid var(--draw)}
+.prose ul,.prose ol{padding-left:1.4em; margin:0 0 1.6em}
+.prose li{margin-bottom:.5em}
+.prose table{width:100%; border-collapse:collapse; margin:2em 0; font-size:15px;
+  display:block; overflow-x:auto}
+.prose th,.prose td{border:1px solid var(--line); padding:8px 12px; text-align:left}
+.prose th{background:var(--paper2); font-weight:600}
+
+/* 代码复制按钮(JS 注入) */
+.copy-btn{position:absolute; top:8px; right:8px; font-family:var(--mono); font-size:11px;
+  color:var(--ink2); background:var(--paper); border:1px solid var(--line);
+  border-radius:var(--radius); padding:3px 10px; cursor:pointer; opacity:0;
+  transition:opacity var(--t-fast)}
+pre:hover .copy-btn,.copy-btn:focus-visible{opacity:1}
+.copy-btn.done{color:var(--seal-text); border-color:var(--seal)}
+
+/* 阅读进度 */
+.progress-bar{position:fixed; top:0; left:0; height:2px; width:0;
+  background:var(--seal); z-index:60; transition:width .1s linear}
+
+/* 目录(文章页) */
+.toc{border:1px solid var(--line); background:var(--paper2); padding:14px 20px;
+  margin:0 0 2.4em; font-size:14.5px; max-width:34em}
+.toc b{font-size:13px; font-family:var(--mono); color:var(--ink2); letter-spacing:.1em;
+  display:block; margin-bottom:6px}
+.toc a{color:var(--ink2); text-decoration:none; display:inline-block; padding:2px 0;
+  border-bottom:1px solid transparent}
+.toc a:hover,.toc a.active{color:var(--seal-text); border-color:var(--seal)}
+.toc ol{margin:0; padding-left:1.4em}
+.toc li{margin-bottom:2px}
+
+/* 图片展开(JS 注入 button 包裹) */
+.img-expand{cursor:zoom-in; background:none; border:none; padding:0; width:100%}
+.lightbox{position:fixed; inset:0; background:rgba(15,14,10,.88); z-index:100;
+  display:grid; place-items:center; padding:4vw; cursor:zoom-out; border:none}
+.lightbox img{max-width:min(92vw,1200px); max-height:88vh; border:1px solid var(--line)}
+.lightbox .lb-cap{position:absolute; bottom:3vh; left:0; right:0; text-align:center;
+  color:#DDD5C2; font-size:14px; font-family:var(--serif)}
+
+/* 落款印 */
+.colophon{display:flex; align-items:center; gap:14px; margin:56px 0 0}
+.colophon .fin{width:34px; height:34px; border:2px solid var(--seal); color:var(--seal);
+  display:grid; place-items:center; font-weight:900; font-size:17px}
+.colophon .line{flex:1; border-top:1px solid var(--line)}
+.colophon .mono{color:var(--ink2)}
+
+/* 上下文导航(上一篇/下一篇) */
+.prev-next{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:48px}
+.prev-next a{border:1px solid var(--line); padding:14px 18px; text-decoration:none;
+  transition:border-color var(--t-fast),background var(--t-fast)}
+.prev-next a:hover{border-color:var(--seal); background:var(--seal-wash)}
+.prev-next .lab{font-family:var(--mono); font-size:.72rem; color:var(--ink2); letter-spacing:.12em}
+.prev-next .t{font-weight:600; margin-top:4px}
+.prev-next .next{text-align:right}
+.prev-next .none{border-style:dashed; color:var(--ink2)}
+@media (max-width:640px){ .prev-next{grid-template-columns:1fr} }
+
+/* ── 日报正文(与手写区分:细框+纸二底) ── */
+.issue-body{border:1px solid var(--line); background:var(--paper2);
+  padding:clamp(18px,3.5vw,34px); font-size:16px; line-height:1.95; max-width:44em}
+.issue-body h2{font-size:18px; font-weight:900; margin:1.8em 0 .8em; padding-left:12px;
+  border-left:4px solid var(--seal)}
+.issue-body h2:first-child{margin-top:0}
+.issue-body h2 .mono{color:var(--ink2); font-weight:400; font-size:.72rem; margin-left:8px}
+.issue-body h3{font-size:17px; font-weight:600; margin:1.6em 0 6px; line-height:1.6}
+.issue-body h3 a{text-decoration:none; box-shadow:inset 0 -1px 0 var(--seal)}
+.issue-body h3 a:hover{color:var(--seal-text); box-shadow:inset 0 -2px 0 var(--seal)}
+.issue-body ul{padding-left:1.3em; margin:.2em 0 1.2em}
+.issue-body li{margin-bottom:.4em}
+.issue-body li a{color:var(--ink2); border-bottom:1px solid var(--line); text-decoration:none}
+.issue-body li a:hover{color:var(--seal-text); border-color:var(--seal)}
+.issue-body .src{font-family:var(--mono); font-size:.75rem; color:var(--ink2); word-break:break-all}
+.score{font-family:var(--mono); font-size:.72rem; color:var(--ink2);
+  border:1px solid var(--line); border-radius:2px; padding:1px 6px; white-space:nowrap}
+.badge-human{font-family:var(--mono); font-size:.72rem; color:var(--seal-text);
+  border:1px solid var(--seal); border-radius:2px; padding:1px 6px; white-space:nowrap}
+blockquote.issue-note{margin:0 0 24px; padding:10px 16px; border-left:3px solid var(--seal);
+  background:var(--paper); font-size:14px; color:var(--ink2)}
+.issue-foot{margin-top:22px; padding-top:14px; border-top:1px solid var(--line);
+  font-size:13px; color:var(--ink2); line-height:1.9}
+
+/* ── 订阅区(页脚上方) ── */
+.subscribe{border:1px solid var(--line); margin-top:64px; padding:20px 24px;
+  display:flex; flex-wrap:wrap; gap:14px 28px; align-items:center; background:var(--paper2)}
+.subscribe .s-title{font-weight:900}
+.subscribe .s-item{display:flex; align-items:center; gap:10px}
+.subscribe code{font-family:var(--mono); font-size:.78rem; color:var(--ink2);
+  background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+  padding:3px 10px}
+.copy-link{font-family:var(--serif); font-size:13px; color:var(--ink2); background:none;
+  border:1px solid var(--line); border-radius:var(--radius); padding:4px 12px; cursor:pointer}
+.copy-link:hover{border-color:var(--seal); color:var(--seal-text)}
+.copy-link.done{color:var(--seal-text); border-color:var(--seal)}
+.subscribe .hint{width:100%; font-size:13px; color:var(--ink2)}
+
+/* ── 页脚 ── */
+footer.site{border-top:1px solid var(--line); margin-top:48px; padding:26px 0 40px;
+  display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  color:var(--ink2); font-size:13px}
+footer.site a{color:var(--ink2); text-decoration:none; border-bottom:1px solid var(--line)}
+footer.site a:hover{color:var(--seal-text); border-color:var(--seal)}
+
+/* ── 进入视口动效(JS 加 .reveal-ready 才启用,无 JS 全显示) ── */
+.reveal-ready [data-reveal]{opacity:0; transform:translateY(14px);
+  transition:opacity var(--t-slow) var(--ease-soft),transform var(--t-slow) var(--ease-soft)}
+.reveal-ready [data-reveal].in{opacity:1; transform:none}
+.reveal-ready [data-reveal="1"].in{transition-delay:.08s}
+.reveal-ready [data-reveal="2"].in{transition-delay:.16s}
+
+/* ── 跨页视图过渡(支持的浏览器生效,其余静默) ── */
+@view-transition{navigation:auto}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.35s}
+/* 列表标题 → 详情标题的命名衔接由页面内 style 指定 view-transition-name */
+
+/* ── 减少动态 ── */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
+  .reveal-ready [data-reveal]{opacity:1; transform:none}
+  .progress-bar{transition:none}
+}
+
+/* ── 夹具标记 ── */
+.fixture-banner{margin:18px 0 0; border:1.5px dashed var(--seal); color:var(--seal-text);
+  padding:8px 14px; font-size:13px; font-family:var(--mono); letter-spacing:.04em}
+.fixture-banner a{color:inherit; text-decoration:underline}
+details.fixture-note{margin:12px 0; font-size:13.5px; color:var(--ink2)}
+details.fixture-note summary{cursor:pointer; color:var(--seal-text)}
+
+/* ── 3D 海报降级:昼夜各一张,随主题切换 ── */
+img.poster{width:100%; height:100%; object-fit:cover}
+img.poster-dark{display:none}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) img.poster-light{display:none}
+  :root:not([data-theme="light"]) img.poster-dark{display:block} }
+:root[data-theme="dark"] img.poster-light{display:none}
+:root[data-theme="dark"] img.poster-dark{display:block}

@@ -1,0 +1,43 @@
+/* ═══════════════════════════════════════════════════════════
+   nanmu-blog 全站原型 · 设计 token(R3)
+   纸 · 墨 · 朱砂 · 灯。昼夜双主题 + 三态手动切换。
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  /* 昼览 */
+  --paper:#F4EEE0; --paper2:#ECE4D0; --paper3:#E4DAC2;
+  --ink:#29241B; --ink2:#6E6450;
+  --line:#D9CFB6; --draw:#3A332A;
+  --seal:#B23A26; --seal-text:#A5341F; --seal-wash:rgba(178,58,38,.08);
+  --lamp:#E9B45B;
+  --wall:#F8F3E6; --roof:#E4D9BE; --roofline:#29241B;
+  --shadow-ink:rgba(41,36,27,.14);
+  --focus:#A5341F;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --kai:"Kaiti SC","KaiTi","STKaiti",var(--serif);
+  /* 运动参数 */
+  --ease-out:cubic-bezier(.2,.8,.3,1);
+  --ease-soft:cubic-bezier(.4,0,.2,1);
+  --t-fast:.18s; --t-med:.28s; --t-slow:.6s;
+  --radius:3px;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171916; --paper2:#1F221D; --paper3:#262a22;
+  --ink:#DDD5C2; --ink2:#8F8875;
+  --line:#32362C; --draw:#CFC7B0;
+  --seal:#CE5340; --seal-text:#DA6A55; --seal-wash:rgba(206,83,64,.12);
+  --lamp:#F2BE63;
+  --wall:#20241E; --roof:#232820; --roofline:#DDD5C2;
+  --shadow-ink:rgba(0,0,0,.5);
+  --focus:#DA6A55;
+}}
+:root[data-theme="dark"]{
+  --paper:#171916; --paper2:#1F221D; --paper3:#262a22;
+  --ink:#DDD5C2; --ink2:#8F8875;
+  --line:#32362C; --draw:#CFC7B0;
+  --seal:#CE5340; --seal-text:#DA6A55; --seal-wash:rgba(206,83,64,.12);
+  --lamp:#F2BE63;
+  --wall:#20241E; --roof:#232820; --roofline:#DDD5C2;
+  --shadow-ink:rgba(0,0,0,.5);
+  --focus:#DA6A55;
+}

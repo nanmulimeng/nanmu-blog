@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>关于 · nanmu(R4 纸筑)</title>
+<!-- 全站原型 · 关于页:只用已知事实;缺失信息以「待填」明示,不编造 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="../r4/assets/tokens4.css">
+<link rel="stylesheet" href="../r4/assets/base4.css">
+<style>
+.about-grid{display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr);
+  gap:clamp(24px,4vw,56px); padding:clamp(28px,5vw,56px) 0 0; align-items:start}
+.about-grid h1{font-size:clamp(26px,3.4vw,34px); font-weight:900; margin:0 0 18px}
+.about-grid .prose{font-size:16.5px}
+.todo-slot{border:1px dashed var(--seal); color:var(--seal-text); font-size:13px;
+  font-family:var(--mono); padding:8px 12px; margin:1.2em 0; letter-spacing:.04em}
+/* 纸筑图解:与主视觉同一套语言的手绘线稿(页扇/发光页/虚线页/朱砂书签) */
+.vignette{border:1px solid var(--line); background:var(--paper2); padding:10px}
+.vignette svg{width:100%; height:auto; display:block}
+.vignette figcaption{margin-top:8px; padding-left:0; border-left:none; text-align:center}
+.facts{margin-top:40px}
+.facts h2{font-size:19px; font-weight:900; margin:0 0 12px; padding-left:12px; border-left:4px solid var(--seal)}
+.fact-row{display:flex; gap:18px; padding:12px 4px; border-bottom:1px solid var(--line)}
+.fact-row .when{font-family:var(--mono); font-size:.78rem; color:var(--ink2); flex:none; width:88px}
+.fact-row .what{font-size:15px}
+@media (max-width:860px){ .about-grid{grid-template-columns:1fr} .vignette{order:2} }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html" aria-current="page">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="about-grid">
+    <div>
+      <h1>关于这个站</h1>
+      <div class="prose">
+        <p>我叫 nanmu。这个站在 2026 年 10 月上线,是我第二次做博客:第一次做得太大,十二周半之后烂尾;这次只先做最小的东西——写完文章,推送,服务器自动构建上线。这条链路已经在跑。</p>
+        <p>站上分两个栏目,印章不同:<span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">文</span> <b>文章</b>是我手写的;<span class="seal-m" style="width:18px;height:18px;font-size:10px;vertical-align:-3px">机</span> <b>AI 日报</b>是引擎自动生成的,每期标注模型与成本,永远和我的文章分开。还有一个计划中的自用检索,做好了会先在站内小范围用。</p>
+        <p>八月底我上线过一个叫 topic-digest 的小爬取试点,这次日报的技术底子从那里来。设计时参考过 AIHOT 和 PowerContext 两个项目,各借了一点模式。</p>
+      </div>
+      <div class="todo-slot">待填:一段正式的自我介绍(作者供图/文字后替换)</div>
+      <div class="todo-slot">待填:联系方式或外链(目前无可核实条目,不编造)</div>
+    </div>
+
+    <figure class="vignette">
+      <!-- 纸筑图解:主视觉的手绘线稿版——页扇 + 发光页 + 虚线页 + 朱砂书签 -->
+      <svg viewBox="0 0 360 300" role="img" aria-label="纸筑图解:立起的页扇,一页透着暖光,旁边一页还是虚线">
+        <rect x="0" y="0" width="360" height="300" fill="var(--paper2)"/>
+        <!-- 地面与落影 -->
+        <line x1="30" y1="252" x2="330" y2="252" stroke="var(--draw)" stroke-width="1.5"/>
+        <ellipse cx="185" cy="252" rx="105" ry="7" fill="var(--line)" fill-opacity=".5" stroke="none"/>
+        <!-- 左页一 -->
+        <polygon points="180,252 106,238 118,98 184,112" fill="var(--paper)" stroke="var(--draw)" stroke-width="1.5"/>
+        <!-- 左页二(带行线) -->
+        <polygon points="180,252 144,243 152,102 182,109" fill="var(--paper)" stroke="var(--draw)" stroke-width="1.5"/>
+        <g stroke="var(--line)" stroke-width="1.5">
+          <line x1="156" y1="130" x2="176" y2="126"/>
+          <line x1="155" y1="146" x2="177" y2="142"/>
+          <line x1="154" y1="162" x2="176" y2="158"/>
+          <line x1="153" y1="178" x2="175" y2="174"/>
+        </g>
+        <!-- 右页一(带行线) -->
+        <polygon points="180,252 216,243 208,102 178,109" fill="var(--paper)" stroke="var(--draw)" stroke-width="1.5"/>
+        <g stroke="var(--line)" stroke-width="1.5">
+          <line x1="186" y1="126" x2="204" y2="130"/>
+          <line x1="185" y1="142" x2="205" y2="146"/>
+          <line x1="184" y1="158" x2="204" y2="162"/>
+        </g>
+        <!-- 右页二:发光页(最新一篇),透出暖光 -->
+        <polygon points="180,252 254,238 242,98 176,112" fill="var(--lamp)" fill-opacity=".38" stroke="var(--draw)" stroke-width="1.5"/>
+        <polygon points="180,252 254,238 242,98 176,112" fill="none" stroke="var(--lamp)" stroke-width="1" stroke-opacity=".7"/>
+        <!-- 朱砂书签带:夹在发光页顶缘 -->
+        <polygon points="228,104 238,102 241,66 231,68" fill="var(--seal)" stroke="none"/>
+        <!-- 虚线页:还在计划的日报 -->
+        <g stroke="var(--draw)" fill="none" stroke-width="1.2" stroke-dasharray="5 4">
+          <polygon points="272,240 326,226 318,116 266,128"/>
+        </g>
+        <text x="296" y="258" text-anchor="middle" font-size="10" fill="var(--ink2)" font-family="var(--mono)">计划</text>
+        <!-- 印章角标 -->
+        <rect x="24" y="24" width="30" height="30" fill="none" stroke="var(--seal)" stroke-width="2"/>
+        <text x="39" y="46" text-anchor="middle" font-size="16" fill="var(--seal)" font-family="var(--serif)" font-weight="900">南</text>
+      </svg>
+      <figcaption>这个站的样子:立起的页是文章,透着暖光的是最新一篇,虚线页是还在计划的日报。</figcaption>
+    </figure>
+  </div>
+
+  <div class="facts">
+    <h2>这个站的时间线</h2>
+    <div class="fact-row"><span class="when">2026 上半年</span><span class="what">第一个博客项目:功能铺得太大,十二周半后烂尾,成为这次的反面教材。</span></div>
+    <div class="fact-row"><span class="when">2026-08-31</span><span class="what">topic-digest 小爬取试点上线:定时采集 + 静态页面,验证最小闭环。</span></div>
+    <div class="fact-row"><span class="when">2026-10-02</span><span class="what">本站上线的第一篇文章:《你好,nanmu-blog》。</span></div>
+    <div class="fact-row"><span class="when">进行中</span><span class="what">AI 引擎:日报在前,检索在后。做好了会出现在「机」印章的栏目里。</span></div>
+  </div>
+
+  <footer class="site">
+    <span>© 2026 nanmu</span>
+    <span><a href="index.html#subscribe">订阅 RSS</a> · <a href="../site/map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="../r4/assets/site4.js"></script>
+</body>
+</html>

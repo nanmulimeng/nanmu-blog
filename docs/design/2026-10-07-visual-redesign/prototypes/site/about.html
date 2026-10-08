@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>关于 · nanmu(全站原型)</title>
+<!-- 全站原型 · 关于页:只用已知事实;缺失信息以「待填」明示,不编造 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/base.css">
+<style>
+.about-grid{display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr);
+  gap:clamp(24px,4vw,56px); padding:clamp(28px,5vw,56px) 0 0; align-items:start}
+.about-grid h1{font-size:clamp(26px,3.4vw,34px); font-weight:900; margin:0 0 18px}
+.about-grid .prose{font-size:16.5px}
+.todo-slot{border:1px dashed var(--seal); color:var(--seal-text); font-size:13px;
+  font-family:var(--mono); padding:8px 12px; margin:1.2em 0; letter-spacing:.04em}
+/* 第二视角:窗景小画(纯 SVG 静帧,与主视觉同一座院子的屋内视角) */
+.vignette{border:1px solid var(--line); background:var(--paper2); padding:10px}
+.vignette svg{width:100%; height:auto; display:block}
+.vignette figcaption{margin-top:8px; padding-left:0; border-left:none; text-align:center}
+.facts{margin-top:40px}
+.facts h2{font-size:19px; font-weight:900; margin:0 0 12px; padding-left:12px; border-left:4px solid var(--seal)}
+.fact-row{display:flex; gap:18px; padding:12px 4px; border-bottom:1px solid var(--line)}
+.fact-row .when{font-family:var(--mono); font-size:.78rem; color:var(--ink2); flex:none; width:88px}
+.fact-row .what{font-size:15px}
+@media (max-width:860px){ .about-grid{grid-template-columns:1fr} .vignette{order:2} }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html" aria-current="page">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="about-grid">
+    <div>
+      <h1>关于这个站</h1>
+      <div class="prose">
+        <p>我叫 nanmu。这个站在 2026 年 10 月上线,是我第二次做博客:第一次做得太大,十二周半之后烂尾;这次只先做最小的东西——写完文章,推送,服务器自动构建上线。这条链路已经在跑。</p>
+        <p>站上分两个栏目,印章不同:<span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">文</span> <b>文章</b>是我手写的;<span class="seal-m" style="width:18px;height:18px;font-size:10px;vertical-align:-3px">机</span> <b>AI 日报</b>是引擎自动生成的,每期标注模型与成本,永远和我的文章分开。还有一个计划中的自用检索,做好了会先在站内小范围用。</p>
+        <p>八月底我上线过一个叫 topic-digest 的小爬取试点,这次日报的技术底子从那里来。设计时参考过 AIHOT 和 PowerContext 两个项目,各借了一点模式。</p>
+      </div>
+      <div class="todo-slot">待填:一段正式的自我介绍(作者供图/文字后替换)</div>
+      <div class="todo-slot">待填:联系方式或外链(目前无可核实条目,不编造)</div>
+    </div>
+
+    <figure class="vignette">
+      <!-- 第二视角:从正房屋内向外看,窗棂+灯+远处东厢的脚手架 -->
+      <svg viewBox="0 0 360 300" role="img" aria-label="屋内窗景:书桌、灯与窗外的院子">
+        <rect x="0" y="0" width="360" height="300" fill="var(--paper2)"/>
+        <rect x="40" y="30" width="280" height="170" fill="var(--paper)" stroke="var(--draw)" stroke-width="2"/>
+        <line x1="180" y1="30" x2="180" y2="200" stroke="var(--draw)" stroke-width="1.5"/>
+        <line x1="40" y1="115" x2="320" y2="115" stroke="var(--draw)" stroke-width="1.5"/>
+        <!-- 窗外:远处东厢线框 -->
+        <g stroke="var(--draw)" fill="none" stroke-width="1">
+          <polygon points="220,150 280,132 280,100 220,118" stroke-dasharray="4 3"/>
+          <line x1="220" y1="150" x2="220" y2="118" stroke-dasharray="4 3"/>
+          <line x1="250" y1="141" x2="250" y2="109" stroke-dasharray="4 3"/>
+          <line x1="280" y1="132" x2="280" y2="100" stroke-dasharray="4 3"/>
+        </g>
+        <!-- 地面 -->
+        <line x1="40" y1="178" x2="320" y2="178" stroke="var(--draw)" stroke-width="1"/>
+        <circle cx="90" cy="150" r="12" fill="none" stroke="var(--draw)" stroke-dasharray="2 3"/>
+        <line x1="90" y1="162" x2="90" y2="178" stroke="var(--draw)"/>
+        <!-- 书桌 -->
+        <rect x="60" y="220" width="240" height="10" fill="var(--paper)" stroke="var(--draw)" stroke-width="1.5"/>
+        <line x1="80" y1="230" x2="80" y2="285" stroke="var(--draw)" stroke-width="2"/>
+        <line x1="280" y1="230" x2="280" y2="285" stroke="var(--draw)" stroke-width="2"/>
+        <!-- 稿纸与笔 -->
+        <rect x="120" y="204" width="70" height="16" fill="var(--paper)" stroke="var(--draw)"/>
+        <line x1="128" y1="209" x2="182" y2="209" stroke="var(--line)"/>
+        <line x1="128" y1="213" x2="176" y2="213" stroke="var(--line)"/>
+        <line x1="196" y1="206" x2="214" y2="216" stroke="var(--draw)" stroke-width="2"/>
+        <!-- 台灯 -->
+        <line x1="250" y1="220" x2="250" y2="196" stroke="var(--draw)" stroke-width="2"/>
+        <polygon points="238,196 262,196 256,184 244,184" fill="var(--lamp)" fill-opacity=".55" stroke="var(--draw)"/>
+        <circle cx="250" cy="192" r="3" fill="var(--lamp)"/>
+        <!-- 印章角标 -->
+        <rect x="300" y="252" width="34" height="34" fill="none" stroke="var(--seal)" stroke-width="2"/>
+        <text x="317" y="276" text-anchor="middle" font-size="18" fill="var(--seal)" font-family="var(--serif)" font-weight="900">南</text>
+      </svg>
+      <figcaption>小院的第二视角:从正房的书桌望出去,东厢还在图纸上。</figcaption>
+    </figure>
+  </div>
+
+  <div class="facts">
+    <h2>这个站的时间线</h2>
+    <div class="fact-row"><span class="when">2026 上半年</span><span class="what">第一个博客项目:功能铺得太大,十二周半后烂尾,成为这次的反面教材。</span></div>
+    <div class="fact-row"><span class="when">2026-08-31</span><span class="what">topic-digest 小爬取试点上线:定时采集 + 静态页面,验证最小闭环。</span></div>
+    <div class="fact-row"><span class="when">2026-10-02</span><span class="what">本站上线的第一篇文章:《你好,nanmu-blog》。</span></div>
+    <div class="fact-row"><span class="when">进行中</span><span class="what">AI 引擎:日报在前,检索在后。做好了会出现在「机」印章的栏目里。</span></div>
+  </div>
+
+  <footer class="site">
+    <span>© 2026 nanmu</span>
+    <span><a href="index.html#subscribe">订阅 RSS</a> · <a href="map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

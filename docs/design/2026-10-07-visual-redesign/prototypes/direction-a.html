@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向 A「营造」· 首页 — nanmu-blog 视觉原型</title>
+<!--
+  视觉原型 · 方向 A「营造 · 本站施工图」(推荐方案)
+  本文件是设计评审稿,不是 site/ 代码;内联脚本仅用于演示主题切换。
+-->
+<link rel="stylesheet" href="fonts.css">
+<style>
+/* ── 设计 token:纸 · 墨 · 朱砂 ── */
+:root{
+  --paper:#F4EEE0; --paper2:#ECE4D0; --ink:#29241B; --ink2:#6E6450;
+  --line:#D9CFB6; --draw:#3A332A; --seal:#B23A26; --seal-text:#A5341F; --lamp:#E9B45B;
+  --wall:#F8F3E6; --roof:#E4D9BE; --roofline:#29241B;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#171916; --paper2:#1F221D; --ink:#DDD5C2; --ink2:#8F8875;
+  --line:#32362C; --draw:#CFC7B0; --seal:#CE5340; --seal-text:#DA6A55; --lamp:#F2BE63;
+  --wall:#20241E; --roof:#232820; --roofline:#DDD5C2;
+}}
+:root[data-theme="dark"]{
+  --paper:#171916; --paper2:#1F221D; --ink:#DDD5C2; --ink2:#8F8875;
+  --line:#32362C; --draw:#CFC7B0; --seal:#CE5340; --seal-text:#DA6A55; --lamp:#F2BE63;
+  --wall:#20241E; --roof:#232820; --roofline:#DDD5C2;
+}
+*{box-sizing:border-box}
+html{scrollbar-color:var(--line) var(--paper)}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--serif); font-size:17px; line-height:1.95;
+  transition:background-color .25s ease,color .25s ease;
+}
+::selection{background:var(--seal); color:var(--paper)}
+a{color:inherit; text-decoration:none}
+.mono{font-family:var(--mono); font-size:.78rem; letter-spacing:.03em}
+
+/* ── 页框与导航 ── */
+.frame{max-width:1120px; margin:0 auto; padding:0 clamp(20px,4vw,48px)}
+header.top{display:flex; align-items:baseline; justify-content:space-between;
+  padding:26px 0 22px; border-bottom:1px solid var(--line)}
+.brand{display:flex; align-items:center; gap:12px}
+.brand .mark{width:22px; height:22px; border:1.5px solid var(--seal); color:var(--seal);
+  display:grid; place-items:center; font-size:13px; font-weight:900; line-height:1}
+.brand b{font-weight:900; font-size:19px; letter-spacing:.04em}
+nav{display:flex; gap:clamp(16px,3vw,34px); align-items:baseline}
+nav a{position:relative; padding:4px 0; font-size:15px; color:var(--ink2)}
+nav a:hover{color:var(--ink)}
+nav a::after{content:""; position:absolute; left:0; bottom:0; width:100%; height:2px;
+  background:var(--seal); transform:scaleX(0); transform-origin:left; transition:transform .22s ease}
+nav a:hover::after{transform:scaleX(1)}
+nav a[aria-current]{color:var(--ink)}
+nav a[aria-current]::after{transform:scaleX(1); background:var(--ink)}
+#theme-btn{font-family:var(--serif); font-size:13px; color:var(--ink2); background:none;
+  border:1px solid var(--line); border-radius:2px; padding:5px 12px; cursor:pointer}
+#theme-btn:hover{border-color:var(--seal); color:var(--seal)}
+
+/* ── 主视觉:本站施工图 ── */
+.hero{padding:clamp(28px,5vw,56px) 0 8px}
+.house{width:100%; height:auto; display:block}
+.house text{font-family:var(--serif); fill:var(--ink)}
+.house .ground-top{fill:var(--paper2); stroke:var(--draw); stroke-width:1.4}
+.house .ground-side{fill:var(--line); opacity:.55}
+.house .grid{stroke:var(--line); stroke-width:.6; opacity:.7}
+.house .plinth-top{fill:var(--paper); stroke:var(--draw); stroke-width:1.2}
+.house .plinth-face{fill:var(--paper2); stroke:var(--draw); stroke-width:.8}
+.house .wall{stroke:var(--draw); stroke-width:1.4}
+.house .wall-front{fill:var(--wall)}
+.house .wall-side{fill:var(--paper2)}
+.house .roof{stroke:var(--roofline); stroke-width:1.6}
+.house .roof-front{fill:var(--roof)}
+.house .roof-gable{fill:var(--paper2)}
+.house .ridge{stroke:var(--roofline); stroke-width:2.2}
+.house .door{fill:var(--paper2); stroke:var(--draw); stroke-width:1}
+.house .door-seam{stroke:var(--draw); stroke-width:.8}
+.house .window-lit{fill:var(--lamp); stroke:var(--draw); stroke-width:1; fill-opacity:.45; transition:fill-opacity .4s ease}
+.house .window-dark{fill:none; stroke:var(--draw); stroke-width:1}
+.house .muntin{stroke:var(--draw); stroke-width:.7}
+.house .wing-ground{fill:none; stroke:var(--draw); stroke-width:1; stroke-dasharray:5 4; opacity:.8}
+.house .wing-frame{fill:none; stroke:var(--draw); stroke-width:1.1; stroke-dasharray:5 4}
+.house .scaffold{stroke:var(--draw); stroke-width:.6; stroke-dasharray:2 3; opacity:.75}
+.house .plot-line{fill:none; stroke:var(--draw); stroke-width:1; stroke-dasharray:3 5; opacity:.7}
+.house .stake{stroke:var(--draw); stroke-width:1.2}
+.house .flag{fill:var(--seal); fill-opacity:.85}
+.house .stone{fill:var(--paper); stroke:var(--draw); stroke-width:.9}
+.house .trunk,.house .branch{stroke:var(--draw); stroke-width:1.3; fill:none}
+.house .branch{stroke-width:.9}
+.house .crown{fill:none; stroke:var(--draw); stroke-width:1; stroke-dasharray:1.5 2.5}
+.house .leader{stroke:var(--seal); stroke-width:.8; opacity:.85; transition:stroke-width .2s}
+.house .lead-dot{fill:var(--seal)}
+.house .note-t{font-size:13.5px; font-weight:600}
+.house .note-s{font-size:11px; fill:var(--ink2); font-family:var(--mono); letter-spacing:0}
+.house .compass-c{fill:none; stroke:var(--draw); stroke-width:1}
+.house .compass-n{fill:var(--seal)}
+.house .compass-t{font-size:12px; fill:var(--ink2)}
+.house .tb-frame{fill:var(--paper); stroke:var(--draw); stroke-width:1.1}
+.house .tb-line{stroke:var(--draw); stroke-width:.7}
+.house .tb-name{font-size:13px; font-weight:900}
+.house .tb-s{font-size:10px; fill:var(--ink2); font-family:var(--mono)}
+.house .stamp{fill:none; stroke:var(--seal); stroke-width:1.4}
+.house .stamp-t{font-size:9.5px; fill:var(--seal); font-family:var(--mono); font-weight:500}
+/* 房间交互:沿轴测轴抬升 + 引线加粗 + 焦点勾红(纯 CSS,触屏点按直接跳转) */
+.house .room{transition:transform .28s cubic-bezier(.2,.8,.3,1); cursor:pointer}
+.house a:focus-visible{outline:none}
+.house a:hover .hall,.house a:focus-visible .hall,
+.house a:hover .wing,.house a:focus-visible .wing{transform:translateY(-6px)}
+.house a:focus-visible .plinth-top,.house a:focus-visible .wing-ground{stroke:var(--seal); stroke-width:2}
+.house:has(a:hover .hall) .note-hall .leader,
+.house:has(a:focus-visible .hall) .note-hall .leader,
+.house:has(a:hover .wing) .note-wing .leader,
+.house:has(a:focus-visible .wing) .note-wing .leader{stroke-width:2}
+.house:has(a:hover .plot) .note-plot .leader,
+.house:has(a:focus-visible .plot) .note-plot .leader{stroke-width:2}
+/* 夜览:窗灯亮起,成为画面唯一亮部 */
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .house .window-lit{
+  fill-opacity:1; filter:drop-shadow(0 0 9px rgba(242,190,99,.75))}}
+:root[data-theme="dark"] .house .window-lit{fill-opacity:1; filter:drop-shadow(0 0 9px rgba(242,190,99,.75))}
+/* 线稿自绘:载入时一次,2.1s 内落定(末项=图签/指北针 1.5s 延迟 + 0.6s 渐入) */
+.draw{stroke-dasharray:1; stroke-dashoffset:1; animation:draw 1s cubic-bezier(.4,0,.2,1) both}
+.house .plinth-top{animation-delay:.15s}
+.house .wall-front{animation-delay:.3s}
+.house .wall-side{animation-delay:.4s}
+.house .roof-front{animation-delay:.6s}
+.house .roof-gable{animation-delay:.7s}
+.house .ground-top{animation-duration:1.2s}
+/* 填色与描线同步:fillin 直接动画 fill-opacity,完成态与 reduced-motion 一致 */
+.house .wall,.house .roof{animation:draw 1s cubic-bezier(.4,0,.2,1) both, fillop .5s ease both}
+.house .wall-front{animation-delay:.3s,.55s}
+.house .wall-side{animation-delay:.4s,.65s}
+.house .roof-front{animation-delay:.6s,.85s}
+.house .roof-gable{animation-delay:.7s,.95s}
+.house .plinth-face,.house .ground-side,.house .door,.house .window-dark,.house .stone{animation:fillop .5s ease .4s both}
+.house .window-lit{animation:lampin .8s ease 1.25s both}
+.house .notes{animation:fillin .6s ease 1.4s both}
+.house .titleblock,.house .compass{animation:fillin .6s ease 1.5s both}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fillop{from{fill-opacity:0}}
+@keyframes fillin{from{opacity:0}to{opacity:1}}
+@keyframes lampin{from{fill-opacity:0}}
+/* 减少动态:直接呈现与普通模式相同的完成态,显式关闭位移与过渡 */
+@media (prefers-reduced-motion:reduce){
+  .house *{animation:none !important; stroke-dashoffset:0 !important}
+  .house .room{transform:none !important}
+  *{transition:none !important}
+}
+
+/* ── 首屏:左内容入口 + 右小院图 ── */
+.hero-grid{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr);
+  gap:clamp(24px,4vw,56px); align-items:center; padding:clamp(20px,3.5vw,40px) 0 10px}
+.hero-lead .kicker{font-family:var(--mono); font-size:.8rem; color:var(--ink2);
+  letter-spacing:.12em; margin:0 0 14px}
+.hero-lead .motto{font-size:clamp(24px,2.7vw,33px); font-weight:900; line-height:1.55; margin:0}
+.hero-lead .motto em{font-style:normal; box-shadow:inset 0 -0.42em var(--paper2); padding:0 .08em}
+.latest{margin-top:clamp(20px,3vw,34px); border-top:2px solid var(--ink); padding-top:12px}
+.latest .lab{font-family:var(--mono); font-size:.75rem; color:var(--ink2); letter-spacing:.15em}
+.latest a{display:block; margin-top:6px}
+.latest h3{margin:0; font-size:19px; font-weight:600}
+.latest a:hover h3{color:var(--seal-text)}
+.latest .meta{font-family:var(--mono); font-size:.78rem; color:var(--ink2); margin-top:2px}
+.latest p{margin:6px 0 0; font-size:14.5px; color:var(--ink2); line-height:1.85}
+.digest-strip{display:flex; align-items:center; gap:10px; margin-top:18px;
+  border:1px solid var(--line); padding:9px 14px; font-size:13.5px; color:var(--ink2)}
+.digest-strip .seal{flex:none; width:20px; height:20px; display:grid; place-items:center;
+  border:3px double var(--seal); color:var(--seal); font-size:11px; font-weight:900}
+.digest-strip a{margin-left:auto; color:var(--ink2); border-bottom:1px solid var(--line); white-space:nowrap}
+.digest-strip a:hover{color:var(--seal-text); border-color:var(--seal)}
+.legend{display:none; margin:14px 0 0; padding:12px 16px; border:1px solid var(--line); font-size:13.5px; color:var(--ink2); line-height:2}
+.legend b{color:var(--ink)}
+
+/* ── 正文双栏:内容 + 栏外注 ── */
+.body-grid{display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:clamp(32px,6vw,80px);
+  padding:clamp(28px,5vw,52px) 0}
+.sect-head{display:flex; align-items:center; gap:12px; margin:0 0 6px}
+.sect-head .seal{flex:none; width:26px; height:26px; display:grid; place-items:center;
+  border:1.5px solid var(--seal); color:var(--seal); font-size:14px; font-weight:900}
+.sect-head .seal.machine{border-style:double; border-width:3px}
+.sect-head h2{font-size:21px; font-weight:900; margin:0}
+.sect-head .count{margin-left:auto; color:var(--ink2)}
+.post-row{display:block; position:relative; padding:18px 4px 18px 22px; border-bottom:1px solid var(--line)}
+.post-row::before{content:""; position:absolute; left:2px; top:34px; width:6px; height:6px;
+  background:var(--seal); transform:scale(0); transition:transform .2s ease}
+.post-row:hover::before{transform:scale(1)}
+.post-row h3{margin:0 0 4px; font-size:19px; font-weight:600; transition:transform .2s ease}
+.post-row:hover h3{transform:translateX(4px)}
+.post-row .meta{color:var(--ink2)}
+.post-row .meta + p{margin:8px 0 0; font-size:15px; color:var(--ink2); line-height:1.9}
+.post-row .tags{color:var(--seal-text)}
+.more-link{display:inline-block; margin-top:14px; font-size:14px; color:var(--ink2);
+  border-bottom:1px solid var(--line); padding-bottom:2px}
+.more-link:hover{color:var(--seal-text); border-color:var(--seal)}
+/* 日报:图签式状态栏,空状态即设计 */
+.digest-status{border:1px solid var(--draw); margin-top:2px}
+.digest-status .tb-row{display:flex; justify-content:space-between; gap:16px;
+  padding:12px 16px; border-bottom:1px solid var(--line); font-size:14.5px}
+.digest-status .tb-row:last-child{border-bottom:none}
+.digest-status .k{color:var(--ink2); flex:none}
+.digest-status .v{text-align:right}
+.digest-status .v .pending{color:var(--seal-text)}
+/* 栏外注 */
+aside .note-block{border-top:2px solid var(--ink); padding-top:14px; margin-bottom:36px}
+aside .note-block h4{margin:0 0 8px; font-size:14px; font-weight:900; letter-spacing:.1em}
+aside .note-block p, aside .note-block li{font-size:13.5px; color:var(--ink2); line-height:2}
+aside .note-block ul{margin:0; padding:0; list-style:none}
+aside .note-block a{border-bottom:1px solid var(--line)}
+aside .note-block a:hover{color:var(--seal-text); border-color:var(--seal)}
+
+footer{border-top:1px solid var(--line); padding:26px 0 40px; display:flex;
+  justify-content:space-between; gap:16px; flex-wrap:wrap; color:var(--ink2); font-size:13px}
+footer a{border-bottom:1px solid var(--line)}
+footer a:hover{color:var(--seal-text); border-color:var(--seal)}
+
+/* ── 手机 ── */
+@media (max-width:860px){
+  .body-grid{grid-template-columns:1fr}
+  .hero-grid{grid-template-columns:1fr; align-items:start; gap:20px}
+  .hero-art{order:2}
+  .house .notes{display:none}          /* 小屏隐藏图内标注,改用图例 */
+  .legend{display:block}
+}
+@media (max-width:640px){
+  header.top{flex-wrap:wrap; row-gap:10px}
+  nav{order:3; width:100%; justify-content:space-between; gap:10px}
+  .digest-status .tb-row{flex-direction:column; gap:2px; padding:10px 14px}
+  .digest-status .v{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="#"><span class="mark">n</span><b>nanmu</b></a>
+    <nav>
+      <a href="#" aria-current="page">首页</a>
+      <a href="#">文章</a>
+      <a href="#">日报</a>
+      <a href="#">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <!-- 首屏:左=作者定位与最近内容入口,右=本站施工图(轴测 SVG,悬停=房间抬升,点击=进栏目) -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="hero-lead">
+        <p class="kicker">NANMU 的博客</p>
+        <p class="motto">先把<em>最小的东西</em>做完,上线,能用。</p>
+        <div class="latest">
+          <span class="lab">最近在写</span>
+          <a href="direction-a-article.html">
+            <h3>你好,nanmu-blog</h3>
+            <div class="meta">2026-10-02 · 随笔 / 建站</div>
+            <p>前身烂尾的教训,与这次最小闭环的来历。</p>
+          </a>
+        </div>
+        <div class="digest-strip">
+          <span class="seal">机</span><span>AI 日报:第一期尚未发布</span><a href="#digest">栏目说明</a>
+        </div>
+      </div>
+      <div class="hero-art">
+    <svg viewBox="0 0 704 432" role="img" aria-label="本站施工图:正房为文章,东厢为在建的 AI 日报,空地为规划中的检索" class="house">
+<g class="ground">
+<polygon points="310,114.7 576.7,268.7 367.2,389.7 100.4,235.7" class="ground-side" />
+<polygon points="310,107 576.7,261 367.2,382 100.4,228" class="ground-top draw" pathLength="1"/>
+<line x1="338.6" y1="123.5" x2="129" y2="244.5" class="grid" />
+<line x1="376.7" y1="145.5" x2="167.1" y2="266.5" class="grid" />
+<line x1="414.8" y1="167.5" x2="205.2" y2="288.5" class="grid" />
+<line x1="452.9" y1="189.5" x2="243.3" y2="310.5" class="grid" />
+<line x1="491" y1="211.5" x2="281.4" y2="332.5" class="grid" />
+<line x1="529.1" y1="233.5" x2="319.5" y2="354.5" class="grid" />
+<line x1="567.2" y1="255.5" x2="357.6" y2="376.5" class="grid" />
+<line x1="281.4" y1="123.5" x2="548.1" y2="277.5" class="grid" />
+<line x1="243.3" y1="145.5" x2="510" y2="299.5" class="grid" />
+<line x1="205.2" y1="167.5" x2="471.9" y2="321.5" class="grid" />
+<line x1="167.1" y1="189.5" x2="433.8" y2="343.5" class="grid" />
+<line x1="129" y1="211.5" x2="395.7" y2="365.5" class="grid" />
+</g>
+<a href="#posts" aria-label="进入检索规划说明"><g class="plot" tabindex="-1">
+<polygon points="224.3,211.5 300.5,255.5 243.3,288.5 167.1,244.5" class="plot-line" />
+<line x1="224.3" y1="211.5" x2="224.3" y2="202.7" class="stake" />
+<line x1="300.5" y1="255.5" x2="300.5" y2="246.7" class="stake" />
+<line x1="243.3" y1="288.5" x2="243.3" y2="279.7" class="stake" />
+<line x1="167.1" y1="244.5" x2="167.1" y2="235.7" class="stake" />
+<line x1="243.3" y1="288.5" x2="243.3" y2="259.9" class="stake" />
+<polygon points="243.3,259.9 260.5,274.2 243.3,268.7" class="flag" />
+</g></a>
+<g class="path">
+<polygon points="238.6,202.2 255.7,212.1 248.1,216.4 230.9,206.6" class="stone" />
+<polygon points="226.2,215.9 243.3,225.8 236.6,229.7 219.5,219.8" class="stone" />
+<polygon points="201.4,221.4 218.6,231.3 210.9,235.7 193.8,225.8" class="stone" />
+</g>
+<a href="#posts" aria-label="进入文章栏目"><g class="room hall">
+<polygon points="435.7,206 348.1,256.6 348.1,250.4 435.7,199.8" class="plinth-face" />
+<polygon points="222.4,184 348.1,256.6 348.1,250.4 222.4,177.8" class="plinth-face" />
+<polygon points="310,127.2 435.7,199.8 348.1,250.4 222.4,177.8" class="plinth-top draw" pathLength="1"/>
+<polygon points="233.8,177.8 348.1,243.8 348.1,187.3 233.8,121.3" class="wall wall-front draw" pathLength="1"/>
+<polygon points="424.3,199.8 348.1,243.8 348.1,187.3 424.3,143.3" class="wall wall-side draw" pathLength="1"/>
+<polygon points="251.9,188.3 269,198.2 269,160.3 251.9,150.4" class="door" />
+<line x1="260.5" y1="193.2" x2="260.5" y2="155.4" class="door-seam" />
+<polygon points="294.8,193.9 321.4,209.3 321.4,187.3 294.8,171.9" class="window-lit" />
+<line x1="308.1" y1="201.6" x2="308.1" y2="179.6" class="muntin" />
+<line x1="294.8" y1="182.9" x2="321.4" y2="198.3" class="muntin" />
+<polygon points="397.6,196.1 372.9,210.4 372.9,188.4 397.6,174.1" class="window-dark" />
+<polygon points="233.8,121.3 348.1,187.3 386.2,132.3 271.9,66.3" class="roof roof-front draw" pathLength="1"/>
+<polygon points="424.3,143.3 348.1,187.3 386.2,132.3" class="roof roof-gable draw" pathLength="1"/>
+<line x1="271.9" y1="66.3" x2="386.2" y2="132.3" class="ridge" />
+</g></a>
+<a href="#digest" aria-label="进入日报栏目"><g class="room wing">
+<polygon points="452.9,222.5 510,255.5 443.4,294 386.2,261" class="wing-ground" />
+<polygon points="452.9,180.7 510,213.7 443.4,252.2 386.2,219.2" class="wing-frame" />
+<line x1="452.9" y1="222.5" x2="452.9" y2="180.7" class="wing-frame" />
+<line x1="510" y1="255.5" x2="510" y2="213.7" class="wing-frame" />
+<line x1="443.4" y1="294" x2="443.4" y2="252.2" class="wing-frame" />
+<line x1="386.2" y1="261" x2="386.2" y2="219.2" class="wing-frame" />
+<line x1="386.2" y1="261" x2="443.4" y2="252.2" class="scaffold" />
+<line x1="443.4" y1="294" x2="386.2" y2="219.2" class="scaffold" />
+<line x1="510" y1="255.5" x2="443.4" y2="252.2" class="scaffold" />
+<line x1="443.4" y1="294" x2="510" y2="213.7" class="scaffold" />
+</g></a>
+<g class="tree">
+<path d="M 393.8 338 C 389.8 324, 396.8 312.6, 393.8 300.6" class="trunk"/>
+<line x1="393.8" y1="300.6" x2="381.8" y2="307.6" class="branch" />
+<line x1="393.8" y1="300.6" x2="403.8" y2="309.6" class="branch" />
+<line x1="391.8" y1="322" x2="380.8" y2="329" class="branch" />
+<circle cx="393.8" cy="294.6" r="9" class="crown"/>
+<circle cx="382.8" cy="305.6" r="6" class="crown"/>
+<circle cx="403.8" cy="307.6" r="5" class="crown"/>
+</g>
+<g class="notes">
+<g class="note note-hall"><line x1="290.9" y1="137.8" x2="250.9" y2="91.8" class="leader"/><circle cx="290.9" cy="137.8" r="2.2" class="lead-dot"/><text x="244.9" y="85.8" class="note-t" text-anchor="end">正房 · 文章</text><text x="244.9" y="101.8" class="note-s" text-anchor="end">手写,目前 1 篇</text></g>
+<g class="note note-wing"><line x1="510" y1="213.7" x2="556" y2="166" class="leader"/><circle cx="510" cy="213.7" r="2.2" class="lead-dot"/><text x="562" y="162" class="note-t">东厢 · AI 日报</text><text x="562" y="178" class="note-s">机器施工,尚未出第一期</text></g>
+<g class="note note-plot"><line x1="205.2" y1="257.7" x2="257.2" y2="287.7" class="leader"/><circle cx="205.2" cy="257.7" r="2.2" class="lead-dot"/><text x="263.2" y="289.7" class="note-t">留白 · 检索</text><text x="263.2" y="305.7" class="note-s">图纸上,未动工</text></g>
+</g>
+<g class="compass" transform="translate(66,58)"><circle r="19" class="compass-c"/><path d="M 0 12 L 5 -2 L 0 -13 L -5 -2 Z" class="compass-n"/><text y="-24" class="compass-t" text-anchor="middle">北</text></g>
+<g class="titleblock" transform="translate(442,352)">
+<rect width="186" height="62" class="tb-frame"/>
+<line x1="0" y1="22" x2="186" y2="22" class="tb-line"/><line x1="0" y1="42" x2="186" y2="42" class="tb-line"/>
+<line x1="140" y1="0" x2="140" y2="62" class="tb-line"/>
+<text x="10" y="15" class="tb-name">本站施工图</text>
+<text x="10" y="35" class="tb-s">nanmu.xyz · 2026-10</text>
+<text x="10" y="55" class="tb-s">比例 1:1 · 第 R2 版</text>
+<g transform="translate(148,8)"><rect width="46" height="46" class="stamp"/><text x="23" y="20" class="stamp-t" text-anchor="middle">nanmu</text><text x="23" y="36" class="stamp-t" text-anchor="middle">制</text></g>
+</g>
+</svg>
+    <!-- 小屏/触屏图例:图内标注的等价物 -->
+    <div class="legend">
+      <b>图例</b> — 正房:文章(手写,1 篇);东厢:AI 日报(机器施工,尚未出第一期);留白:检索(图纸上,未动工)。
+    </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="body-grid">
+    <div>
+      <section id="posts">
+        <div class="sect-head">
+          <span class="seal">文</span><h2>文章</h2>
+          <span class="count mono">1 篇 · 手写</span>
+        </div>
+        <a class="post-row" href="direction-a-article.html">
+          <h3>你好,nanmu-blog</h3>
+          <div class="meta mono">2026-10-02 <span class="tags">随笔 / 建站</span></div>
+          <p>今年上半年,我做过一个功能很多的博客,十二周半之后烂尾收场。这次重开,就从那段历史里长出来——先把最小的东西做完、上线、能用。</p>
+        </a>
+        <a class="more-link" href="#">全部文章(分页)</a>
+      </section>
+
+      <section id="digest" style="margin-top:56px">
+        <div class="sect-head">
+          <span class="seal machine">机</span><h2>AI 日报</h2>
+          <span class="count mono">0 期 · 机器生成</span>
+        </div>
+        <div class="digest-status" role="status">
+          <div class="tb-row"><span class="k">状态</span><span class="v">第一期尚未发布 · 引擎调试中</span></div>
+          <div class="tb-row"><span class="k">生成方式</span><span class="v">独立引擎自动选题与摘要,不由本站实时调用模型</span></div>
+          <div class="tb-row"><span class="k">标注</span><span class="v">每期注明模型与费用;<span class="pending">未决费用会先标保守上界</span></span></div>
+        </div>
+        <a class="more-link" href="#">日报存档</a>
+      </section>
+    </div>
+
+    <aside>
+      <div class="note-block">
+        <h4>订阅</h4>
+        <ul>
+          <li><a href="#">文章 RSS</a></li>
+          <li><a href="#">日报 RSS</a></li>
+        </ul>
+      </div>
+      <div class="note-block">
+        <h4>关于</h4>
+        <p>这个站在 2026 年 10 月上线,前身烂尾过一次;教训写进了第一篇文章。</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>© 2026 nanmu · 手工搭建,缓慢施工</span>
+    <span class="mono">纸本 / 夜览双版式 · 比例 1:1</span>
+  </footer>
+</div>
+<script>
+/* 【原型演示专用】三态主题:跟随系统/昼/夜,循环切换,localStorage 跨页保持;存储不可用时静默停留跟随系统。 */
+(function(){
+  var b=document.getElementById('theme-btn'),root=document.documentElement,KEY='nm-theme';
+  function get(){try{return localStorage.getItem(KEY)||'auto';}catch(e){return 'auto';}}
+  function set(v){try{localStorage.setItem(KEY,v);}catch(e){}}
+  function apply(){
+    var m=get();
+    if(m==='auto'){delete root.dataset.theme;}else{root.dataset.theme=m;}
+    b.textContent=m==='auto'?'跟随系统':(m==='light'?'昼览':'夜览');
+  }
+  b.addEventListener('click',function(){var m=get();set(m==='auto'?'light':(m==='light'?'dark':'auto'));apply();});
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',apply);
+  apply();
+})();
+</script>
+</body>
+</html>

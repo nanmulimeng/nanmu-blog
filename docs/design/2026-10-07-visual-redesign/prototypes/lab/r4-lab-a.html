@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R4 试验 A · 纸筑 Paperfold — nanmu-blog</title>
+<!-- R4 视觉试验 A:曲面纸页构成的书写空间。原型试验,非最终交付 -->
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{--ink:#14161A; --paper:#F2F1EC; --line:#D8D5CB; --seal:#C2402A; --ink2:#5C6068; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace; --serif:"Noto Serif SC","Songti SC",serif}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--serif)}
+.lab-head{display:flex; align-items:baseline; gap:18px; padding:16px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.lab-head b{font-size:18px; font-weight:900}
+.lab-head span{font-family:var(--mono); font-size:12px; color:var(--ink2)}
+.lab-head .btns{margin-left:auto; display:flex; gap:8px}
+.lab-head button{font-family:var(--mono); font-size:12px; background:none; border:1px solid var(--line); padding:5px 14px; cursor:pointer; color:var(--ink2)}
+.lab-head button:hover{border-color:var(--seal); color:var(--seal)}
+.stage{position:relative; height:calc(100vh - 60px); min-height:480px}
+.stage canvas{display:block; width:100%; height:100%; touch-action:pan-y; cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.overlay{position:absolute; left:clamp(20px,5vw,72px); bottom:clamp(24px,6vh,64px); pointer-events:none; mix-blend-mode:multiply}
+.overlay.night{mix-blend-mode:screen; color:#E8E4D8}
+.overlay .k{font-family:var(--mono); font-size:12px; letter-spacing:.2em; color:var(--ink2)}
+.overlay.night .k{color:#8A94A8}
+.overlay h1{font-size:clamp(34px,5.4vw,64px); font-weight:900; line-height:1.25; margin:8px 0 0}
+</style>
+</head>
+<body>
+<header class="lab-head">
+  <b>试验 A · 纸筑</b><span>Paperfold · 曲面纸页空间 · 拖拽环顾</span>
+  <div class="btns">
+    <button id="b-day" type="button">昼</button>
+    <button id="b-night" type="button">夜</button>
+    <button id="b-replay" type="button">重放入场</button>
+  </div>
+</header>
+<div class="stage" id="stage">
+  <div class="overlay" id="overlay">
+    <div class="k">NANMU · 书写空间试验</div>
+    <h1>纸页立起的地方,<br>就是书房。</h1>
+  </div>
+</div>
+<script type="module">
+import * as THREE from '../site/3d/three.module.min.js';
+
+/* ═══ 参数表(可编辑源) ═══ */
+const P = {
+  cam: {fov: 38, r: 18.5, az: 0.52, el: 0.30, azSpan: 0.30, elMin: 0.18, elMax: 0.58, ty: 3.4},
+  backdrop: {w: 13, h: 9, curve: 0.35, x: -5.5, z: -5.5, ry: 0.42},  // 远景弧幕(背景)
+  /* 书页雕塑:6 页扇形展开,纸页即空间 */
+  book: {cx: 1.6, cz: 0.4, w: 4.4, h: 6.2, curve: 0.5,
+         pages: [
+           {ry: -0.55, y: 0.30, glow: false},
+           {ry: -0.22, y: 0.18, glow: false},
+           {ry:  0.08, y: 0.10, glow: true},   // 发光页=当前文章
+           {ry:  0.40, y: 0.16, glow: false},
+           {ry:  0.72, y: 0.26, glow: false},
+           {ry:  1.02, y: 0.40, glow: false},
+         ]},
+  panels: [  // 浮页=文章入口
+    {w: 2.0, h: 2.8, x: -1.2, y: 2.6, z: 2.6, ry: 0.3, lines: 9, title: true},
+    {w: 2.0, h: 2.8, x: 4.6,  y: 3.1, z: 2.2, ry: -0.35, lines: 6},
+  ],
+  ghost: {w: 2.6, h: 3.6, x: 6.2, y: 2.0, z: 0.6, ry: -0.8},  // 虚线页=日报(计划)
+  groundR: 26,
+};
+const LIGHT = {
+  day:   {sky: 0xE8EBEF, fog: 0xE8EBEF, fogD: 0.016, hemiS: 0xDFE8F2, hemiG: 0x8A8578, hemiI: 0.95,
+          sunC: 0xFFF2DC, sunI: 2.6, sunPos: [11, 13, 4], rimC: 0xBFD4FF, rimI: 0.0, warmI: 0.0,
+          sheetEm: 0xF5F3EC, sheetEmI: 0.06, vellumEmI: 0.0, backEmI: 0.0, panelEmI: 0.06},
+  night: {sky: 0x0B0E14, fog: 0x0B0E14, fogD: 0.020, hemiS: 0x1C2638, hemiG: 0x07090D, hemiI: 0.55,
+          sunC: 0x8FA8D8, sunI: 0.5, sunPos: [-8, 10, -6], rimC: 0x6E9BFF, rimI: 2.4, warmI: 1.6,
+          sheetEm: 0x8A7B5E, sheetEmI: 0.07, vellumEmI: 1.2, backEmI: 0.35, panelEmI: 0.14},
+};
+
+/* ═══ 渲染器 ═══ */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(P.cam.fov, 1, 0.1, 120);
+let az = P.cam.az, el = P.cam.el;
+function placeCam(){
+  camera.position.set(
+    Math.sin(az) * Math.cos(el) * P.cam.r,
+    Math.sin(el) * P.cam.r + P.cam.ty,
+    Math.cos(az) * Math.cos(el) * P.cam.r);
+  camera.lookAt(0, P.cam.ty, 0);
+}
+function resize(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+/* ═══ 纹理(确定性种子) ═══ */
+function rng(seed){ let s = seed >>> 0; return () => (s = s * 1664525 + 1013904223 >>> 0) / 4294967296; }
+function paperTex(seed, base = '#F5F3EC'){
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'), rnd = rng(seed);
+  g.fillStyle = base; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2400; i++){
+    g.fillStyle = `rgba(60,55,40,${rnd() * 0.05})`;
+    g.fillRect(rnd() * 256, rnd() * 256, 1 + rnd() * 1.5, 1);
+  }
+  for (let i = 0; i < 60; i++){  // 纤维
+    g.strokeStyle = `rgba(120,110,85,${0.03 + rnd() * 0.04})`;
+    g.lineWidth = 0.6;
+    g.beginPath();
+    const x = rnd() * 256, y = rnd() * 256;
+    g.moveTo(x, y); g.lineTo(x + (rnd() - .5) * 30, y + (rnd() - .5) * 6); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function textTex(seed, lines, title){
+  const c = document.createElement('canvas'); c.width = 256; c.height = 348;
+  const g = c.getContext('2d'), rnd = rng(seed);
+  g.fillStyle = '#F7F5EE'; g.fillRect(0, 0, 256, 348);
+  g.fillStyle = '#1A1C20';
+  if (title){ g.fillRect(28, 30, 150, 12); g.fillRect(28, 52, 96, 12); }
+  let y = title ? 96 : 36;
+  for (let i = 0; i < lines; i++){
+    const w = 150 + rnd() * 60;
+    g.fillStyle = `rgba(26,28,32,${0.5 + rnd() * 0.2})`;
+    g.fillRect(28, y, w, 4); y += 16;
+    if (rnd() > .5){ g.fillRect(28, y, w * (0.4 + rnd() * .5), 4); y += 16; }
+  }
+  g.strokeStyle = '#C2402A'; g.lineWidth = 2.5;  // 朱砂页边
+  g.strokeRect(8.5, 8.5, 239, 331);
+  return new THREE.CanvasTexture(c);
+}
+function groundTex(seed){
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'), rnd = rng(seed);
+  const grad = g.createRadialGradient(256, 256, 40, 256, 256, 256);
+  grad.addColorStop(0, '#D9D6CC'); grad.addColorStop(0.75, '#C4C1B6'); grad.addColorStop(1, 'rgba(196,193,182,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 512, 512);
+  g.strokeStyle = 'rgba(40,44,52,0.07)'; g.lineWidth = 1;
+  for (let i = 0; i <= 16; i++){  // 刻线网格
+    const p = i * 32;
+    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, 512); g.stroke();
+    g.beginPath(); g.moveTo(0, p); g.lineTo(512, p); g.stroke();
+  }
+  for (let i = 0; i < 900; i++){
+    g.fillStyle = `rgba(50,48,40,${rnd() * 0.06})`;
+    g.fillRect(rnd() * 512, rnd() * 512, 1.5, 1.5);
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+/* ═══ 几何:弯曲纸页 ═══ */
+function bentSheet(w, h, curve){
+  const geo = new THREE.PlaneGeometry(w, h, 40, 1);
+  const pos = geo.attributes.position;
+  const R = w / curve;
+  for (let i = 0; i < pos.count; i++){
+    const x = pos.getX(i), a = x / R;
+    pos.setX(i, Math.sin(a) * R);
+    pos.setZ(i, (1 - Math.cos(a)) * R);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* ═══ 材质与构件 ═══ */
+const M = {
+  paper: new THREE.MeshStandardMaterial({map: paperTex(11), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide}),
+  backing: new THREE.MeshStandardMaterial({color: 0xC4CAD2, roughness: 0.88, metalness: 0.05, side: THREE.BackSide}), // 纸背:淡冷灰裱背
+  vellum: new THREE.MeshPhysicalMaterial({color: 0xF4EFE2, roughness: 0.55, transparent: true, opacity: 0.42, side: THREE.DoubleSide, depthWrite: false}),
+  ink: new THREE.MeshStandardMaterial({color: 0x181B21, roughness: 0.35, metalness: 0.65}),
+  seal: new THREE.MeshStandardMaterial({color: 0xC2402A, roughness: 0.5, metalness: 0.1}),
+  ground: new THREE.MeshStandardMaterial({map: groundTex(7), roughness: 0.96, transparent: true}),
+  panel: [],
+};
+const root = new THREE.Group(); scene.add(root);
+const track = [];  // 入场登记
+function reg(obj, t0, t1, kind){ obj.userData.ent = {t0, t1, kind, from: {}, to: {}}; track.push(obj); }
+
+// 远景弧幕(背景,正面纸+背面裱背)
+{
+  const s = P.backdrop;
+  const grp = new THREE.Group();
+  const geo = bentSheet(s.w, s.h, s.curve);
+  const front = new THREE.Mesh(geo, M.paper);
+  front.receiveShadow = true; front.position.y = s.h / 2;
+  const back = new THREE.Mesh(geo, M.backing); back.position.y = s.h / 2;
+  grp.add(front, back);
+  grp.position.set(s.x, 0, s.z); grp.rotation.y = s.ry;
+  root.add(grp);
+  reg(grp, 0.15, 1.0, 'rise');
+}
+
+// 书页雕塑(主角):扇形展开,发光页=当前文章
+const pageMats = [];
+P.book.pages.forEach((pg, i) => {
+  const tex = textTex(61 + i, 11, pg.glow);
+  const mat = new THREE.MeshStandardMaterial({map: tex, roughness: 0.88, side: THREE.DoubleSide,
+    emissive: pg.glow ? 0xFFE9BE : 0xF7F5EE, emissiveMap: tex, emissiveIntensity: 0.05});
+  pageMats.push(mat);
+  const mesh = new THREE.Mesh(bentSheet(P.book.w, P.book.h, P.book.curve), mat);
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.position.set(P.book.cx, P.book.h / 2 + pg.y, P.book.cz);
+  mesh.rotation.y = pg.ry;
+  mesh.userData.pageIdx = i;
+  root.add(mesh);
+  reg(mesh, 0.55 + i * 0.22, 1.55 + i * 0.22, 'unfold');
+  // 发光页缘的朱砂书签带
+  if (pg.glow){
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.0, 0.42), M.seal);
+    tab.position.set(P.book.w / 2 * 0.9, P.book.h * 0.55, 0.28);
+    mesh.add(tab);
+  }
+});
+
+// 浮页(文章入口):双面文字纸,自发光防背光死黑
+const panelMeshes = [];
+P.panels.forEach((p, i) => {
+  const tex = textTex(31 + i, p.lines, p.title);
+  const mat = new THREE.MeshStandardMaterial({map: tex, roughness: 0.85, side: THREE.DoubleSide,
+    emissive: 0xF7F5EE, emissiveMap: tex, emissiveIntensity: 0.06});
+  M.panel.push(mat);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), mat);
+  mesh.castShadow = true;
+  mesh.position.set(p.x, p.y, p.z); mesh.rotation.y = p.ry;
+  mesh.userData.link = 'post';
+  root.add(mesh); panelMeshes.push(mesh);
+  reg(mesh, 1.35 + i * 0.22, 2.0 + i * 0.22, 'drop');
+});
+
+// 虚线页(日报计划)
+function dashedEdges(w, h, color){
+  const geo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, h));
+  const mat = new THREE.LineDashedMaterial({color, dashSize: 0.16, gapSize: 0.12, transparent: true});
+  const lines = new THREE.LineSegments(geo, mat);
+  lines.computeLineDistances();
+  return lines;
+}
+const ghost = dashedEdges(P.ghost.w, P.ghost.h, 0x8A8F99);
+ghost.position.set(P.ghost.x, P.ghost.y, P.ghost.z); ghost.rotation.y = P.ghost.ry;
+ghost.userData.link = 'digest';
+root.add(ghost);
+reg(ghost, 1.9, 2.5, 'fade');
+
+// 地面
+const ground = new THREE.Mesh(new THREE.CircleGeometry(P.groundR, 64), M.ground);
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+scene.add(ground);
+reg(ground, 0, 0.5, 'fade');
+
+/* ═══ 灯光 ═══ */
+const hemi = new THREE.HemisphereLight(0xDFE8F2, 0x8A8578, 0.95); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xFFF2DC, 2.6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = sun.shadow.camera.bottom = -16;
+sun.shadow.camera.right = sun.shadow.camera.top = 16;
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0x6E9BFF, 0); rim.position.set(-10, 6, -8); scene.add(rim);
+/* 夜间补光:从相机方向照亮所有朝向观众的面,系统性避免剪影 */
+const fill = new THREE.DirectionalLight(0x93A8CC, 0); fill.position.set(9, 5, 12); scene.add(fill);
+const warm = new THREE.PointLight(0xFFBE6E, 0, 12, 1.8); warm.position.set(0.4, 2.2, 1.4); scene.add(warm);
+const sweep = new THREE.SpotLight(0xFFF6E2, 0, 40, 0.5, 0.6, 1.2); // 入场扫光
+sweep.position.set(-14, 12, 8); scene.add(sweep); scene.add(sweep.target);
+
+/* ═══ 主题插值 ═══ */
+let themeT = 0, themeTarget = 0;
+const cA = new THREE.Color(), cB = new THREE.Color();
+function lerpC(target, a, b, t){ cA.setHex(a); cB.setHex(b); target.copy(cA).lerp(cB, t); }
+function applyTheme(t){
+  const D = LIGHT.day, N = LIGHT.night;
+  lerpC(scene.background = scene.background || new THREE.Color(), D.sky, N.sky, t);
+  lerpC(scene.fog.color, D.fog, N.fog, t);
+  scene.fog.density = D.fogD + (N.fogD - D.fogD) * t;
+  lerpC(hemi.color, D.hemiS, N.hemiS, t); lerpC(hemi.groundColor, D.hemiG, N.hemiG, t);
+  hemi.intensity = D.hemiI + (N.hemiI - D.hemiI) * t;
+  lerpC(sun.color, D.sunC, N.sunC, t);
+  sun.intensity = D.sunI + (N.sunI - D.sunI) * t;
+  sun.position.set(...D.sunPos.map((v, i) => v + (N.sunPos[i] - v) * t));
+  rim.intensity = D.rimI + (N.rimI - D.rimI) * t;
+  fill.intensity = t * 0.5;
+  warm.intensity = D.warmI + (N.warmI - D.warmI) * t;
+  /* 纸幕自发光:昼=纸色微提亮暗面;夜=暖色透光,避免黑成剪影 */
+  lerpC(M.paper.emissive, D.sheetEm, N.sheetEm, t);
+  M.paper.emissiveIntensity = D.sheetEmI + (N.sheetEmI - D.sheetEmI) * t;
+  M.vellum.emissive = M.vellum.emissive || new THREE.Color();
+  lerpC(M.vellum.emissive, 0x000000, 0xE8B96A, t);
+  M.vellum.emissiveIntensity = D.vellumEmI + (N.vellumEmI - D.vellumEmI) * t;
+  /* 书页雕塑:发光页夜间点亮,其余页夜间微暖防死黑 */
+  pageMats.forEach((m, i) => {
+    const glow = P.book.pages[i].glow;
+    m.emissiveIntensity = glow ? 0.05 + t * 0.85 : 0.05 + t * 0.06;
+  });
+  /* 背景幕裱背:夜间给蓝灰自发光,不再黑成板 */
+  lerpC(M.backing.emissive, 0x000000, 0x22304A, t);
+  M.backing.emissiveIntensity = (D.backEmI || 0) + ((N.backEmI || 0) - (D.backEmI || 0)) * t;
+  /* 浮页:夜间加亮 */
+  M.panel.forEach(m => { m.emissiveIntensity = D.panelEmI + (N.panelEmI - D.panelEmI) * t; });
+  document.getElementById('overlay').classList.toggle('night', t > 0.5);
+}
+scene.fog = new THREE.FogExp2(0xE8EBEF, 0.028);
+applyTheme(0);
+
+/* ═══ 入场 ═══ */
+function prepEntrance(){
+  track.forEach(o => {
+    const e = o.userData.ent;
+    if (e.kind === 'rise'){ e.from.y = -4.5; e.to.y = o.position.y; e.from.rz = 0.5; e.to.rz = o.rotation.z; }
+    if (e.kind === 'unfold'){ e.from.ry = -0.62; e.to.ry = o.rotation.y; e.from.y = o.position.y + 1.2; e.to.y = o.position.y; }
+    if (e.kind === 'drop'){ e.from.y = o.position.y + 5; e.to.y = o.position.y; e.from.op = 0; }
+    if (e.kind === 'fade'){ e.from.op = 0; e.to.op = o.material.opacity ?? 1; }
+  });
+}
+prepEntrance();
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+let entT = -1;
+function playEntrance(){
+  entT = 0;
+  track.forEach(o => {
+    const e = o.userData.ent;
+    if (e.kind === 'rise'){ o.position.y = e.from.y; o.rotation.z = e.from.rz; }
+    if (e.kind === 'unfold'){ o.rotation.y = e.from.ry; o.position.y = e.from.y; }
+    if (e.kind === 'drop'){ o.position.y = e.from.y; }
+    if (o.material) o.material.transparent = true;
+  });
+  sweep.intensity = 0;
+}
+function stepEntrance(dt){
+  if (entT < 0) return;
+  entT += dt;
+  const T = 3.0;
+  track.forEach(o => {
+    const e = o.userData.ent, k = easeOut(Math.min(Math.max((entT - e.t0) / (e.t1 - e.t0), 0), 1));
+    if (e.kind === 'rise'){ o.position.y = e.from.y + (e.to.y - e.from.y) * k; o.rotation.z = e.from.rz * (1 - k); }
+    if (e.kind === 'unfold'){ o.rotation.y = e.from.ry + (e.to.ry - e.from.ry) * k; o.position.y = e.from.y + (e.to.y - e.from.y) * k; }
+    if (e.kind === 'drop'){ o.position.y = e.from.y + (e.to.y - e.from.y) * k; }
+    if (e.kind === 'fade'){ o.material.opacity = e.to.op * k; }
+    if ((e.kind === 'drop' || e.kind === 'rise') && o.material && o.material.opacity !== undefined && e.kind === 'drop'){}
+  });
+  // 扫光:1.2s 起,2.4s 收
+  const sk = Math.min(Math.max((entT - 1.2) / 1.4, 0), 1);
+  sweep.intensity = Math.sin(sk * Math.PI) * 60;
+  sweep.target.position.set(-6 + sk * 14, 2, 0);
+  if (entT > T + 0.4){ entT = -1; sweep.intensity = 0;
+    track.forEach(o => { if (o.userData.ent.kind === 'fade') o.material.opacity = o.userData.ent.to.op; });
+  }
+}
+
+/* ═══ 交互:有限拖拽 ═══ */
+let dragging = false, px = 0, py =0;
+renderer.domElement.addEventListener('pointerdown', e => { dragging = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  az = Math.min(Math.max(az - (e.clientX - px) * 0.0032, P.cam.az - P.cam.azSpan), P.cam.az + P.cam.azSpan);
+  el = Math.min(Math.max(el + (e.clientY - py) * 0.0026, P.cam.elMin), P.cam.elMax);
+  px = e.clientX; py = e.clientY;
+});
+addEventListener('pointerup', () => dragging = false);
+
+/* ═══ 主循环 ═══ */
+const clock = new THREE.Clock();
+let amb = 0;
+function tick(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  amb += dt;
+  themeT += (themeTarget - themeT) * Math.min(dt * 2.2, 1);
+  applyTheme(themeT);
+  stepEntrance(dt);
+  // 环境微动:浮页呼吸 + 虚线页轻摆
+  panelMeshes.forEach((m, i) => {
+    m.position.y += Math.sin(amb * 0.8 + i * 2.1) * 0.0012;
+    m.rotation.y += Math.sin(amb * 0.5 + i) * 0.0004;
+  });
+  ghost.rotation.y = P.ghost.ry + Math.sin(amb * 0.4) * 0.05;
+  placeCam();
+  renderer.render(scene, camera);
+}
+resize(); placeCam(); playEntrance();
+renderer.setAnimationLoop(tick);
+
+/* ═══ 按钮 ═══ */
+document.getElementById('b-day').onclick = () => themeTarget = 0;
+document.getElementById('b-night').onclick = () => themeTarget = 1;
+document.getElementById('b-replay').onclick = () => playEntrance();
+// 统计
+let tris = 0; scene.traverse(o => { if (o.geometry) { const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; }});
+console.log('lab-A triangles:', Math.round(tris));
+window.__lab = {setTheme: d => {themeTarget = d ? 1 : 0;}, setThemeNow: d => {themeT = themeTarget = d ? 1 : 0; applyTheme(themeT);}, replay: playEntrance};
+</script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>检索预案(M2 夹具)· nanmu(R4 纸筑)</title>
+<!-- M2 私人检索/问答 · 独立视觉预案:全部状态为夹具,不接 API、不含真实调用;
+     布局/授权以未来 M2 评审为准 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="../r4/assets/tokens4.css">
+<link rel="stylesheet" href="../r4/assets/base4.css">
+<style>
+.m2-wrap{max-width:720px; margin:0 auto; padding:clamp(28px,5vw,48px) 0}
+.m2-head{display:flex; align-items:baseline; gap:12px; margin-bottom:6px}
+.m2-head h1{font-size:clamp(24px,3vw,30px); font-weight:900; margin:0}
+.m2-head .lock{font-family:var(--mono); font-size:.72rem; color:var(--seal-text);
+  border:1px solid var(--seal); border-radius:2px; padding:2px 8px}
+.m2-sub{color:var(--ink2); font-size:14px; margin:0 0 22px}
+.state-bar{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:22px}
+.state-bar button{font-family:var(--mono); font-size:11.5px; color:var(--ink2);
+  background:none; border:1px solid var(--line); border-radius:2px; padding:4px 10px; cursor:pointer}
+.state-bar button[aria-pressed="true"]{color:var(--seal-text); border-color:var(--seal)}
+.ask{display:flex; gap:10px; margin-bottom:26px}
+.ask input{flex:1; font-family:var(--serif); font-size:16px; padding:10px 14px;
+  background:var(--paper2); border:1px solid var(--line); color:var(--ink); border-radius:var(--radius)}
+.ask input:focus-visible{outline:2px solid var(--focus)}
+.ask button{font-family:var(--serif); font-size:15px; padding:10px 20px; cursor:pointer;
+  background:var(--ink); color:var(--paper); border:none; border-radius:var(--radius)}
+.ask button:disabled{background:var(--line); color:var(--ink2); cursor:not-allowed}
+.pane{display:none}
+.pane.show{display:block}
+.answer{border:1px solid var(--line); background:var(--paper2); padding:18px 22px; margin-bottom:18px}
+.answer p{margin:.4em 0; font-size:16px}
+.answer .ai-tag{display:inline-flex; align-items:center; gap:8px; font-size:13px;
+  color:var(--ink2); margin-bottom:8px}
+.src-list{border-top:1px solid var(--line); padding-top:12px}
+.src-list .lab{font-family:var(--mono); font-size:.72rem; color:var(--ink2); letter-spacing:.12em}
+.src-item{display:block; padding:10px 4px; border-bottom:1px dashed var(--line); text-decoration:none}
+.src-item:hover h4{color:var(--seal-text)}
+.src-item h4{margin:0; font-size:15px; font-weight:600}
+.src-item .m{font-family:var(--mono); font-size:.72rem; color:var(--ink2)}
+.src-item p{margin:4px 0 0; font-size:13.5px; color:var(--ink2)}
+.muted{color:var(--ink2); font-size:14.5px}
+.spin{display:inline-block; width:14px; height:14px; border:2px solid var(--line);
+  border-top-color:var(--seal); border-radius:50%; vertical-align:-2px; margin-right:8px;
+  animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){ .spin{animation:none} }
+.stop-note{border:1px dashed var(--seal); padding:14px 18px; color:var(--seal-text); font-size:14px}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="fixture-banner">M2 独立视觉预案 · 全部为夹具状态演示;不接 API、不含真实检索或模型调用;不构成已上线功能</div>
+
+  <div class="m2-wrap">
+    <div class="m2-head">
+      <h1>站内检索</h1><span class="lock">自用 · 需认证</span>
+    </div>
+    <p class="m2-sub">在 nanmu 的文章与日报精选里提问。仅作者本人可用;公开博客不设入口。</p>
+
+    <div class="state-bar" role="group" aria-label="夹具状态切换">
+      <button data-s="unauth" type="button">未认证</button>
+      <button data-s="initial" type="button" aria-pressed="true">初始</button>
+      <button data-s="searching" type="button">检索中</button>
+      <button data-s="answer" type="button">有依据答案</button>
+      <button data-s="thin" type="button">证据不足</button>
+      <button data-s="snippets" type="button">仅片段降级</button>
+      <button data-s="down" type="button">服务不可用</button>
+      <button data-s="budget" type="button">预算停用</button>
+    </div>
+
+    <div class="pane" data-p="unauth">
+      <div class="answer"><p class="muted">这是一个需要认证的私人工具。访问者看不到检索框;认证方式与授权范围在 M2 评审时确定。</p></div>
+    </div>
+
+    <div class="pane show" data-p="initial">
+      <div class="ask"><input type="text" placeholder="问点什么,比如:我为什么放弃了第一个博客?" aria-label="检索输入(夹具)"><button type="button">提问</button></div>
+      <p class="muted">索引范围:已发布的文章与日报精选条目;草稿不入库。答案必须给出处,给不出就直说。</p>
+    </div>
+
+    <div class="pane" data-p="searching">
+      <div class="ask"><input type="text" value="我为什么放弃了第一个博客?(夹具)" aria-label="检索输入(夹具)"><button type="button" disabled>检索中…</button></div>
+      <p class="muted"><span class="spin"></span>正在翻书架——先找相关段落,再组织答案。</p>
+    </div>
+
+    <div class="pane" data-p="answer">
+      <div class="ask"><input type="text" value="我为什么放弃了第一个博客?(夹具)" aria-label="检索输入(夹具)"><button type="button">提问</button></div>
+      <div class="answer">
+        <span class="ai-tag"><span class="seal-m" style="width:18px;height:18px;font-size:10px">机</span>AI 答案 · 依据下方来源生成</span>
+        <p>上一个博客功能铺得太大——文章、采集、日报、自动优化同时做,十二周半之后写不动,烂尾收场。教训被总结为:先把最小的东西做完、上线、能用。(夹具答案)</p>
+      </div>
+      <div class="src-list">
+        <span class="lab">来源</span>
+        <a class="src-item" href="post-hello.html">
+          <h4>你好,nanmu-blog</h4>
+          <div class="m">文章 · 2026-10-02 · 相关度 0.91(夹具)</div>
+          <p>命中片段:「设计越铺越大,十二周半之后写不动,烂尾收场……」(夹具)</p>
+        </a>
+      </div>
+    </div>
+
+    <div class="pane" data-p="thin">
+      <div class="ask"><input type="text" value="我对某某技术的评价?(夹具)" aria-label="检索输入(夹具)"><button type="button">提问</button></div>
+      <div class="answer"><p class="muted">索引里没有足够依据回答这个问题。已发布内容中没有相关段落,不作猜测。</p></div>
+    </div>
+
+    <div class="pane" data-p="snippets">
+      <div class="ask"><input type="text" value="topic-digest 是什么?(夹具)" aria-label="检索输入(夹具)"><button type="button">提问</button></div>
+      <div class="answer"><p class="muted">摘要模型暂不可用,降级为只返回命中片段,不生成答案。</p></div>
+      <div class="src-list">
+        <span class="lab">命中片段</span>
+        <a class="src-item" href="post-hello.html">
+          <h4>你好,nanmu-blog</h4>
+          <div class="m">相关度 0.87(夹具)</div>
+          <p>「……八月末,我又搭了个小爬取试点 topic-digest,并在八月三十一日完成上线……」</p>
+        </a>
+      </div>
+    </div>
+
+    <div class="pane" data-p="down">
+      <div class="ask"><input type="text" placeholder="服务暂不可用" disabled aria-label="检索输入(夹具)"><button type="button" disabled>提问</button></div>
+      <div class="answer"><p class="muted">检索服务当前不可用。博客的阅读与订阅不受影响——检索是叠加层,不是地基。</p></div>
+    </div>
+
+    <div class="pane" data-p="budget">
+      <div class="ask"><input type="text" placeholder="本月预算已停用" disabled aria-label="检索输入(夹具)"><button type="button" disabled>提问</button></div>
+      <div class="stop-note">本月模型预算用尽,问答已自动停用;静态页面与 RSS 不受影响。下月自动恢复或手动调整预算。(夹具文案)</div>
+    </div>
+  </div>
+
+  <footer class="site">
+    <span>© 2026 nanmu</span>
+    <span><a href="../site/map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="../r4/assets/site4.js"></script>
+<script>
+/* 夹具状态切换:纯前端演示,无任何请求 */
+(function(){
+  var btns=document.querySelectorAll('.state-bar button');
+  var panes=document.querySelectorAll('.pane');
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+      panes.forEach(function(p){p.classList.toggle('show',p.dataset.p===b.dataset.s);});
+    });
+  });
+})();
+</script>
+</body>
+</html>

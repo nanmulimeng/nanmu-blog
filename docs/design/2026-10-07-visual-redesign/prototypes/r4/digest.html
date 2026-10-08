@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 日报 · nanmu(R4 纸筑)</title>
+<!-- 全站原型 · 日报列表:真实状态=暂无已发布日报;条目为标注夹具 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens4.css">
+<link rel="stylesheet" href="assets/base4.css">
+<style>
+.list-head{margin:clamp(28px,5vw,48px) 0 0}
+.list-head h1{font-size:clamp(26px,3.4vw,34px); font-weight:900; margin:0}
+.list-head .sub{color:var(--ink2); font-size:14px; margin-top:6px; max-width:44em}
+.empty-note{border:1px dashed var(--draw); padding:22px 24px; margin-top:26px; max-width:44em}
+.empty-note p{margin:.2em 0; color:var(--ink2); font-size:15px}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html" aria-current="page">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="list-head">
+    <div class="crumb"><span class="seal-m">机</span><a href="index.html">首页</a><span>/</span><span>日报</span></div>
+    <h1>AI 日报</h1>
+    <p class="sub">由引擎读采集数据、自动选题与摘要生成的日报,每日一期。本栏目全部内容为 AI 生成,每期标注所用模型与成本;与手写「文章」栏目分开。</p>
+  </div>
+
+  <!-- 真实状态:空列表,中性表述,不从 0 期推导任何故障或建设进度 -->
+  <div class="empty-note">
+    <p><b>暂无已发布日报。</b></p>
+    <p>第一期发布后,这里会按日期倒序列出各期,含模型、条目数与成本标注。</p>
+  </div>
+
+  <details class="fixture" style="margin-top:32px">
+    <summary>设计夹具 · 有日报以后的列表(虚构样张,含长模型名与费用两态)</summary>
+    <div class="inner">
+      <a class="row-item" href="digest-2026-10-05.html">
+        <h3>2026-10-05 日报</h3>
+        <div class="meta mono">7 条 · demo-model-a-long-name-202510(夹具) · ¥0.43 <span class="pending">含未决预占,为保守上界</span></div>
+      </a>
+      <a class="row-item" href="digest-2026-10-05.html">
+        <h3>2026-10-04 日报</h3>
+        <div class="meta mono">5 条 · demo-model-a-long-name-202510(夹具) · ¥0.38</div>
+      </a>
+      <a class="row-item" href="digest-2026-10-05.html">
+        <h3>2026-10-03 日报</h3>
+        <div class="meta mono">9 条 · demo-model-a-long-name-202510(夹具) · ¥0.51</div>
+      </a>
+      <div class="pager">
+        <span class="at-ends">← 上一页</span>
+        <span class="mono">夹具 · 第 1 / 2 页</span>
+        <a href="digest.html">下一页 →</a>
+      </div>
+    </div>
+  </details>
+
+  <footer class="site">
+    <span>© 2026 nanmu</span>
+    <span><a href="index.html#subscribe">订阅 RSS</a> · <a href="../site/map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="assets/site4.js"></script>
+</body>
+</html>

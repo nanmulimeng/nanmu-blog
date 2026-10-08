@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D 小院 · 独立演示 — nanmu-blog 全站原型</title>
+<link rel="stylesheet" href="../../fonts.css">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/base.css">
+<style>
+.stage{position:relative; border:1px solid var(--line); background:var(--paper2);
+  margin-top:22px}
+.stage::before{content:""; display:block; padding-top:56%}
+.stage > *{position:absolute; inset:0}
+.doc{margin:26px 0; max-width:44em; font-size:15px; color:var(--ink2)}
+.doc b{color:var(--ink)}
+table.spec{width:100%; border-collapse:collapse; font-size:14px; margin:16px 0}
+table.spec th,table.spec td{border:1px solid var(--line); padding:7px 12px; text-align:left}
+table.spec th{background:var(--paper2)}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="../index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="../index.html">首页</a>
+      <a href="../posts.html">文章</a>
+      <a href="../digest.html">日报</a>
+      <a href="../about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <h2 class="sect-bar">3D 小院 · 独立演示<small>拖拽环顾(±14°)· 点击正房/东厢/留白进栏目 · 主题切换即昼夜</small></h2>
+  <div class="stage" id="scene3d">
+    <img class="poster poster-light" src="poster-light.png" alt="小院 3D 场景静态海报">
+    <img class="poster poster-dark" src="poster-dark.png" alt="">
+  </div>
+
+  <div class="doc">
+    <p><b>交互</b>:指针拖拽在有限角度内环顾,松手不停留惯性;"复位视角"回到主镜头。悬停房间体量,该体量抬升并提示可点;点击正房进文章、东厢进日报、留白进关于页规划说明。等价 HTML 入口永远在场景之外存在(导航与首屏链接)。</p>
+    <p><b>入场分镜</b>:地面与网格(0–0.5s)→ 台基与墙体升起(0.45–1.5s)→ 屋顶落位(0.9–1.6s)→ 东厢线框与留白地界淡入(1.25–1.9s)→ 窗灯点亮(2.0–3.0s)。之后只剩树影、旗角与夜灯呼吸。reduced-motion 直接呈现完成态。</p>
+    <p><b>昼夜</b>:跟随三态主题;切换时灯光、材质、背景 60 帧内插值过渡。夜=窗灯成为主光源,门前地面有一泊光。</p>
+    <p><b>降级</b>:无 WebGL/模块加载失败 → 静态海报;reduced-motion → 静态完成态 + 渲染按需;离屏/页面隐藏 → 暂停渲染;移动端 → 关阴影、降像素比。</p>
+  </div>
+
+  <h2 class="sect-bar">资产与参数</h2>
+  <table class="spec">
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>依赖</td><td class="mono">three@0.180.0(本地 three.module.min.js + three.core.min.js,MIT)</td></tr>
+    <tr><td>建模方式</td><td>程序化生成,源资产即 <a href="courtyard.js">courtyard.js</a>(PARAMS 参数表可调)</td></tr>
+    <tr><td>纹理</td><td>运行时 Canvas 纸纹(种子随机,确定性)</td></tr>
+    <tr><td>镜头</td><td class="mono">fov 36 · 半径 15.5 · 方位 0.64rad ±0.24 · 仰角 0.42–0.72rad</td></tr>
+    <tr><td>灯光</td><td>昼:半球光 + 暖色平行光(投影);夜:窗内点光 + 冷平行光;切换插值</td></tr>
+    <tr><td>几何量</td><td class="mono" id="tri-count">运行时读取(见控制台 __courtyard.stats())</td></tr>
+  </table>
+
+  <footer class="site">
+    <span>© 2026 nanmu</span>
+    <span><a href="../index.html">返回首页原型</a> · <a href="../map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="../assets/site.js"></script>
+<script type="module" src="boot.js"></script>
+<script type="module">
+  /* 场景就绪后回填几何量 */
+  const t = setInterval(() => {
+    if (window.__courtyard){
+      const s = window.__courtyard.stats();
+      document.getElementById('tri-count').textContent =
+        `约 ${s.triangles} 三角形 · ${s.objects} 个场景对象(实测)`;
+      clearInterval(t);
+    }
+  }, 300);
+  setTimeout(() => clearInterval(t), 8000);
+</script>
+</body>
+</html>

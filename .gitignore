@@ -5,3 +5,9 @@ dist/
 .venv/
 __pycache__/
 *.pyc
+
+# 设计专项:字体整包 TTF 缓存(tools/_font-cache,build-font-shards.py 可自动重新下载)
+docs/design/*/tools/_font-cache/
+
+# 浏览器自动化临时快照
+.playwright-mcp/

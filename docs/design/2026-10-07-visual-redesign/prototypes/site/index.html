@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanmu — 首页(全站原型)</title>
+<!-- 全站原型 · 首页:3D 小院主视觉 + 内容优先首屏。真实状态:文章 1 篇,日报 0 期;夹具已标注 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/base.css">
+<style>
+/* ── 首屏:左内容面板 + 右 3D 场景 ── */
+.hero3d{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr);
+  gap:clamp(24px,4vw,48px); align-items:center;
+  padding:clamp(24px,4vw,44px) 0 8px; min-height:min(72vh,640px)}
+.hero-lead .kicker{font-family:var(--mono); font-size:.8rem; color:var(--ink2);
+  letter-spacing:.12em; margin:0 0 14px}
+.hero-lead .motto{font-size:clamp(26px,3vw,36px); font-weight:900; line-height:1.5; margin:0}
+.hero-lead .motto em{font-style:normal; box-shadow:inset 0 -0.42em var(--paper2); padding:0 .08em}
+.latest{margin-top:clamp(18px,2.6vw,30px); border-top:2px solid var(--ink); padding-top:12px}
+.latest .lab{font-family:var(--mono); font-size:.75rem; color:var(--ink2); letter-spacing:.15em}
+.latest a{display:block; margin-top:6px; text-decoration:none}
+.latest h3{margin:0; font-size:19px; font-weight:600; view-transition-name:latest-title}
+.latest a:hover h3{color:var(--seal-text)}
+.latest .meta{font-family:var(--mono); font-size:.78rem; color:var(--ink2); margin-top:2px}
+.latest p{margin:6px 0 0; font-size:14.5px; color:var(--ink2); line-height:1.85}
+.digest-strip{display:flex; align-items:center; gap:10px; margin-top:18px;
+  border:1px solid var(--line); padding:9px 14px; font-size:13.5px; color:var(--ink2)}
+.digest-strip a{margin-left:auto; color:var(--ink2); border-bottom:1px solid var(--line);
+  white-space:nowrap; text-decoration:none}
+.digest-strip a:hover{color:var(--seal-text); border-color:var(--seal)}
+
+/* 3D 场景容器:固定高宽比,海报占位避免布局跳动 */
+.scene-wrap{position:relative; border:1px solid var(--line); background:var(--paper2)}
+.scene-wrap::before{content:""; display:block; padding-top:61.4%} /* 704:432 */
+.scene-wrap > *{position:absolute; inset:0; width:100%; height:100%}
+.scene-wrap img.poster{object-fit:cover; width:100%; height:100%}
+.scene-wrap canvas{display:block; width:100%; height:100%; touch-action:pan-y; cursor:grab}
+.scene-wrap canvas:active{cursor:grabbing}
+.scene-hud{position:absolute; left:10px; bottom:8px; right:10px; display:flex;
+  justify-content:space-between; align-items:flex-end; pointer-events:none;
+  font-family:var(--mono); font-size:11px; color:var(--ink2)}
+.scene-hud .btns{pointer-events:auto; display:flex; gap:6px}
+.scene-hud button{font-family:var(--mono); font-size:11px; color:var(--ink2);
+  background:color-mix(in srgb, var(--paper) 82%, transparent); border:1px solid var(--line);
+  border-radius:2px; padding:2px 8px; cursor:pointer}
+.scene-hud button:hover{color:var(--seal-text); border-color:var(--seal)}
+.scene-tip{font-size:12px; color:var(--ink2); margin-top:8px; text-align:right}
+.scene-tip a{color:var(--ink2); border-bottom:1px solid var(--line); text-decoration:none}
+.scene-tip a:hover{color:var(--seal-text)}
+
+/* 夹具预览 */
+details.fixture{margin-top:10px; border:1px dashed var(--seal); padding:0}
+details.fixture summary{cursor:pointer; padding:8px 14px; font-size:13px;
+  font-family:var(--mono); color:var(--seal-text); letter-spacing:.04em}
+details.fixture .inner{border-top:1px dashed var(--seal); padding-top:4px}
+
+@media (max-width:860px){
+  .hero3d{grid-template-columns:1fr; min-height:0}
+  .scene-wrap{order:2}
+}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html" aria-current="page">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <section class="hero3d">
+    <div class="hero-lead">
+      <p class="kicker">NANMU 的博客</p>
+      <p class="motto">先把<em>最小的东西</em>做完,上线,能用。</p>
+      <div class="latest">
+        <span class="lab">最近在写</span>
+        <a href="post-hello.html">
+          <h3>你好,nanmu-blog</h3>
+          <div class="meta">2026-10-02 · 随笔 / 建站</div>
+          <p>前身烂尾的教训,与这次最小闭环的来历。</p>
+        </a>
+      </div>
+      <div class="digest-strip">
+        <span class="seal-m">机</span><span>AI 日报:暂无已发布日报</span><a href="digest.html">栏目说明</a>
+      </div>
+    </div>
+    <div>
+      <div class="scene-wrap" id="scene3d">
+        <!-- 海报占位:3D 就绪前/失败时显示;poster 由场景实拍生成,昼夜各一 -->
+        <img class="poster poster-light" src="3d/poster-light.png" alt="小院主视觉(静态图):正房、东厢工地与留白">
+        <img class="poster poster-dark" src="3d/poster-dark.png" alt="">
+      </div>
+      <p class="scene-tip">可拖拽小幅环顾 · <a href="../direction-a.html">看轻量线稿版</a></p>
+    </div>
+  </section>
+
+  <section id="posts">
+    <div class="sect-head">
+      <span class="seal-w">文</span><h2>文章</h2>
+      <span class="count mono">1 篇 · 手写</span>
+    </div>
+    <a class="row-item" href="post-hello.html" data-reveal>
+      <h3>你好,nanmu-blog</h3>
+      <div class="meta mono">2026-10-02 <span class="tags">随笔 / 建站</span></div>
+      <p>今年上半年,我做过一个功能很多的博客,十二周半之后烂尾收场。这次重开,就从那段历史里长出来——先把最小的东西做完、上线、能用。</p>
+    </a>
+    <details class="fixture">
+      <summary>设计夹具 · 文章多起来以后(2 篇虚构样张)</summary>
+      <div class="inner">
+        <a class="row-item" href="posts.html">
+          <h3>夹具样张:把发布链路压到一条命令之后</h3>
+          <div class="meta mono">2026-10-09 <span class="tags">工程 / 运维</span></div>
+          <p>虚构内容,仅用于排版评审——多篇文章时列表的节奏、分隔线与摘要比对。</p>
+        </a>
+        <a class="row-item" href="posts.html">
+          <h3>夹具样张:一个足够长的中文标题用来检验两行折行时列表行高与朱砂点的对齐关系是否稳定</h3>
+          <div class="meta mono">2026-10-06 <span class="tags">随笔</span></div>
+          <p>虚构内容,仅用于排版评审。</p>
+        </a>
+      </div>
+    </details>
+    <p style="margin-top:14px"><a class="more" href="posts.html">全部文章 →</a></p>
+  </section>
+
+  <section id="digest">
+    <div class="sect-head">
+      <span class="seal-m">机</span><h2>AI 日报</h2>
+      <span class="count mono">AI 生成栏目</span>
+    </div>
+    <div class="titleblock">
+      <div class="tb-row"><span class="k">状态</span><span class="v">暂无已发布日报</span></div>
+      <div class="tb-row"><span class="k">说明</span><span class="v" style="font-family:var(--serif); font-size:.85rem">由引擎自动选题与摘要,每日一期;发布后将在此列出</span></div>
+    </div>
+    <p><a href="digest.html">查看日报栏目(含夹具样张)→</a></p>
+  </section>
+
+  <div class="subscribe" id="subscribe">
+    <span class="s-title">订阅</span>
+    <span class="s-item"><span class="seal-w" style="width:20px;height:20px;font-size:11px">文</span>
+      文章 RSS <code>nanmu.xyz/rss.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/rss.xml">复制链接</button></span>
+    <span class="s-item"><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>
+      日报 RSS <code>nanmu.xyz/digest.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/digest.xml">复制链接</button></span>
+    <span class="hint">把链接粘进你的阅读器即可。无脚本时直接选中地址复制。</span>
+  </div>
+
+  <footer class="site">
+    <span>© 2026 nanmu · 手工搭建,缓慢施工</span>
+    <span><a href="about.html">关于</a> · <a href="map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="assets/site.js"></script>
+<script type="module" src="3d/boot.js"></script>
+</body>
+</html>

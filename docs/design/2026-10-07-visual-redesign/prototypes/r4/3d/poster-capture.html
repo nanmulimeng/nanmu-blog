@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>纸筑静态备用图拍摄</title>
+<style>html,body,#scene{margin:0;width:100%;height:100%;overflow:hidden}</style>
+<div id="scene" aria-label="纸筑场景，备用图拍摄视图"></div>
+<script type="module">
+import {createScene} from './book.js';
+// Local asset-production entry, not a public page. Wait for entry to finish.
+const scene = createScene(document.getElementById('scene'));
+scene.setTheme(new URLSearchParams(location.search).get('theme') === 'dark', true);
+scene.setAmbient(false);
+</script>
+</html>

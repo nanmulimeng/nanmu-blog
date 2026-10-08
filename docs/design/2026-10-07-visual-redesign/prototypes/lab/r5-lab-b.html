@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R5-lab B「字场 · 碑页」首屏实拍</title>
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --paper:#F0EDE5; --ink:#14161A; --ink2:#5C6068; --seal:#C2402A; --line:#D8D5CB;
+}
+:root[data-theme="dark"]{ --paper:#090C12; --ink:#E8E4D8; --ink2:#8A94A8; --seal:#D4604C; --line:#242B38; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --paper:#090C12; --ink:#E8E4D8; --ink2:#8A94A8; --seal:#D4604C; --line:#242B38; } }
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--serif)}
+.hero{position:relative; height:100vh; overflow:hidden}
+.scene-host{position:absolute; inset:0}
+/* 竖排标题区:与碑页对望 */
+.title-block{position:absolute; z-index:2; left:clamp(28px,6vw,96px); top:0; bottom:0;
+  display:flex; align-items:center; gap:clamp(20px,3vw,44px); pointer-events:none}
+.v-kicker{writing-mode:vertical-rl; font-family:var(--mono); font-size:12px; letter-spacing:.34em; color:var(--ink2)}
+.v-title{writing-mode:vertical-rl; font-size:clamp(44px,4.8vw,68px); font-weight:900; line-height:1.18; letter-spacing:.06em; margin:0; max-height:82vh}
+.v-sub{writing-mode:vertical-rl; font-size:15px; line-height:2.1; color:var(--ink2); max-height:56vh; letter-spacing:.1em}
+.v-actions{position:absolute; z-index:2; left:clamp(28px,6vw,96px); bottom:30px; display:flex; gap:14px}
+.btn{font-family:var(--serif); font-size:15.5px; text-decoration:none; padding:11px 22px; border:1.5px solid var(--ink); color:var(--ink)}
+.btn.primary{background:var(--seal); border-color:var(--seal); color:#F7F4EB}
+.mark{position:absolute; z-index:2; right:clamp(20px,4vw,56px); bottom:26px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--ink2); writing-mode:vertical-rl}
+</style>
+</head>
+<body>
+<section class="hero" id="scene3d">
+  <div class="title-block">
+    <p class="v-kicker">NANMU · 手写博客</p>
+    <h1 class="v-title">先把最小的事做完</h1>
+    <p class="v-sub">手写文章 · AI 日报(计划中)· 个人检索(计划中)</p>
+  </div>
+  <div class="v-actions">
+    <a class="btn primary" href="../r4/post-hello.html">读最新一篇</a>
+    <a class="btn" href="../r4/about.html">了解这个站</a>
+  </div>
+  <span class="mark">方案 B · 字场碑页</span>
+</section>
+<script type="module">
+import {createScene} from './scene5b.js';
+const host = document.createElement('div');
+host.className = 'scene-host';
+document.getElementById('scene3d').appendChild(host);
+const dark = new URLSearchParams(location.search).get('theme') === 'dark';
+createScene(host, {links:{post:'../r4/post-hello.html', digest:'../r4/digest.html'}}).then(scene => {
+  scene.setTheme(dark, true);
+  window.__scene = scene;
+});
+</script>
+</body>
+</html>

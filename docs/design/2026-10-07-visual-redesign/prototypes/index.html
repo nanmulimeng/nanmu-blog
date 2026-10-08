@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanmu-blog 视觉改版 · 第一批评审稿</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+:root{
+  --paper:#F7F6F2; --ink:#26241E; --ink2:#6E6A5C; --line:#DDD9CC; --seal:#B23A26;
+  --serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#1B1A16; --ink:#E0DCCE; --ink2:#948F7E; --line:#3A372E; --seal:#CE5340;
+}}
+:root[data-theme="dark"]{
+  --paper:#1B1A16; --ink:#E0DCCE; --ink2:#948F7E; --line:#3A372E; --seal:#CE5340;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--serif);
+  font-size:16px; line-height:1.9; transition:background-color .25s,color .25s}
+.wrap{max-width:880px; margin:0 auto; padding:clamp(24px,5vw,56px) clamp(20px,4vw,40px)}
+h1{font-size:clamp(24px,3.4vw,32px); font-weight:900; margin:0 0 6px}
+h2{font-size:19px; font-weight:900; margin:2.4em 0 .8em; padding-left:12px; border-left:4px solid var(--seal)}
+.sub{color:var(--ink2); margin:0 0 8px}
+a{color:inherit}
+.cards{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:20px}
+.card{border:1px solid var(--line); padding:18px 18px 14px; display:flex; flex-direction:column; gap:8px}
+.card.rec{border:2px solid var(--seal)}
+.card .dir{font-weight:900; font-size:18px}
+.card .tagline{color:var(--ink2); font-size:13.5px; line-height:1.9; flex:1}
+.card .keys{font-family:var(--mono); font-size:11.5px; color:var(--ink2)}
+.card a.go{display:inline-block; margin-top:6px; font-size:14px; border-bottom:1.5px solid var(--seal); color:var(--seal); text-decoration:none; align-self:flex-start}
+.card .badge{font-family:var(--mono); font-size:11px; color:var(--seal); border:1px solid var(--seal); padding:0 6px; align-self:flex-start}
+table{width:100%; border-collapse:collapse; font-size:14px; margin-top:12px}
+th{font-family:var(--mono); font-size:11.5px; font-weight:500; color:var(--ink2); text-align:left;
+  padding:7px 10px; border-bottom:1.5px solid var(--ink)}
+td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; line-height:1.8}
+td.mono{font-family:var(--mono); font-size:12px; white-space:nowrap}
+.note{color:var(--ink2); font-size:13.5px}
+ul{padding-left:1.3em} li{margin-bottom:4px}
+#theme-btn{font-family:var(--serif); font-size:13px; color:var(--ink2); background:none;
+  border:1px solid var(--line); padding:4px 10px; cursor:pointer; float:right}
+@media (max-width:760px){ .cards{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <button id="theme-btn" type="button">夜览</button>
+  <h1>nanmu-blog 视觉改版 · 第一批评审稿</h1>
+  <p class="sub">2026-10-07 三方向(R1);2026-10-08 深化 A(R2):首屏内容优先、日报样张、主视觉两案对照。推荐方案 A 含首页、文章页与日报样张。所有内容均为真实状态:文章 1 篇,日报 0 期(日报页为明确标注的设计夹具)。详细设计说明见 <a href="../README.md">README</a>(设计文档)。</p>
+
+  <h2>三个方向</h2>
+  <div class="cards">
+    <div class="card rec">
+      <span class="badge">推荐</span>
+      <span class="dir">A · 营造</span>
+      <span class="tagline">把站点画成一张小型木构的轴测施工图:正房住文章,东厢是 AI 日报工地,留白画着检索。纸·墨·朱砂,宋体阅读,夜览时文章窗亮灯。</span>
+      <span class="keys">轴测SVG / 图签 / 印章分栏 / 自绘线稿</span>
+      <a class="go" href="direction-a.html">看首页</a>
+      <a class="go" href="direction-a-article.html">看文章页</a>
+      <a class="go" href="direction-a-digest.html">看日报样张(R2 夹具)</a>
+      <a class="go" href="hero-compare.html">主视觉两案对照(R2)</a>
+    </div>
+    <div class="card">
+      <span class="dir">B · 蓝晒</span>
+      <span class="tagline">整站是一张工程底图:俯视总平面+图纸目录即文章列表,尺寸标注写真实数量。白纸与蓝晒互为正负片。冷静、精确,但随笔温度不足。</span>
+      <span class="keys">总平面 / 尺寸链 / 图纸目录 / 修订戳</span>
+      <a class="go" href="direction-b.html">看首页</a>
+    </div>
+    <div class="card">
+      <span class="dir">C · 活字</span>
+      <span class="tagline">一色印刷的编辑部:主视觉是活字盘,字粒就是真实标题用字,空钉位如实空着;悬停翻成铅字反面。排印最纯粹,但表达维度单一。</span>
+      <span class="keys">活字盘 / 竖排题记 / 目录点线 / 一色墨</span>
+      <a class="go" href="direction-c.html">看首页</a>
+    </div>
+  </div>
+
+  <h2>主视觉动效分镜(方向 A · 本站施工图)</h2>
+  <table>
+    <thead><tr><th>镜</th><th>时间</th><th>画面</th><th>实现</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">0</td><td class="mono">0.0s</td><td>宣纸底,空院基</td><td class="mono">静态</td></tr>
+      <tr><td class="mono">1</td><td class="mono">0.0–1.2s</td><td>院基与台基墨线自绘</td><td class="mono">stroke-dashoffset, pathLength=1</td></tr>
+      <tr><td class="mono">2</td><td class="mono">0.3–0.7s</td><td>正房墙面起线、填色</td><td class="mono">同上 + fill-opacity 渐入</td></tr>
+      <tr><td class="mono">3</td><td class="mono">0.6–1.0s</td><td>屋顶合拢,屋脊压线</td><td class="mono">同上</td></tr>
+      <tr><td class="mono">4</td><td class="mono">1.25s</td><td>窗灯亮起(夜览时带辉光)</td><td class="mono">fill-opacity + drop-shadow</td></tr>
+      <tr><td class="mono">5</td><td class="mono">1.4–1.5s</td><td>引线标注、指北针、图签落定</td><td class="mono">opacity 渐入</td></tr>
+      <tr><td class="mono">终</td><td class="mono">静止</td><td>悬停房间:沿轴测轴抬升 6px,引线加粗;点按进栏目</td><td class="mono">CSS transform,纯 :hover/:focus-visible</td></tr>
+    </tbody>
+  </table>
+  <p class="note">全程一次、2.1 秒内落定(末项=图签/指北针 1.5s 延迟 + 0.6s 渐入),之后完全静止。无 WebGL、无持续动画、无粒子。</p>
+
+  <h2>微交互清单(方向 A)</h2>
+  <table>
+    <thead><tr><th>位置</th><th>动作</th><th>反馈</th><th>实现</th></tr></thead>
+    <tbody>
+      <tr><td>导航</td><td>悬停</td><td>朱砂墨线自左绘出;当前页为常置墨线</td><td class="mono">::after scaleX 0→1</td></tr>
+      <tr><td>文章列表行</td><td>悬停</td><td>行首显出朱砂点,标题右移 4px</td><td class="mono">::before scale + transform</td></tr>
+      <tr><td>正文链接</td><td>悬停</td><td>朱砂下划线 1px→2px,字色转朱砂</td><td class="mono">box-shadow inset</td></tr>
+      <tr><td>主题切换</td><td>点按「夜览/昼览」</td><td>全页 250ms 交叠;夜览时窗灯点亮</td><td class="mono">CSS 变量过渡(切换需一行演示脚本,正式站待 ADR)</td></tr>
+      <tr><td>印章</td><td>常置</td><td>「文」单线章=手写,「机」双线章=AI 生成,全站一致</td><td class="mono">border 样式</td></tr>
+    </tbody>
+  </table>
+
+  <h2>降级矩阵</h2>
+  <table>
+    <thead><tr><th>环境</th><th>呈现</th></tr></thead>
+    <tbody>
+      <tr><td>手机 / 触屏</td><td>施工图等比缩放,图内小字标注隐藏,改为图下方的文字图例;点按房间直接进栏目,无悬停依赖</td></tr>
+      <tr><td>prefers-reduced-motion</td><td>自绘/落盘/渐入全部跳过,直接呈现完成态;悬停位移关闭</td></tr>
+      <tr><td>无客户端 JS(正式站现状)</td><td>全部视觉与栏目跳转可用;仅手动主题切换缺席,主题跟随系统</td></tr>
+      <tr><td>无 WebGL</td><td>无影响——主视觉是轴测 SVG,不经过 WebGL</td></tr>
+      <tr><td>字体加载失败</td><td>回退系统宋体/黑体,版式骨架不变(本原型字体为本地子集 woff2,总计约 500KB)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>真实状态核对</h2>
+  <ul>
+    <li>文章数 1、日报数 0,与线上 nanmu.xyz 一致;没有虚构统计、读者数或 RAG 入口。</li>
+    <li>日报空状态说明「第一期尚未发布 · 引擎调试中」,并声明费用标注规则(含未决上界)。</li>
+    <li>正文全文取自真实文章《你好,nanmu-blog》;文末「排版基准样张」块已标注为演示。</li>
+  </ul>
+</div>
+<script>
+/* 【原型演示专用】 */
+(function(){
+  var b=document.getElementById('theme-btn'),root=document.documentElement;
+  function cur(){return root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);}
+  function sync(){b.textContent=cur()?'昼览':'夜览';}
+  b.addEventListener('click',function(){root.dataset.theme=cur()?'light':'dark';sync();});
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',sync);
+  sync();
+})();
+</script>
+</body>
+</html>

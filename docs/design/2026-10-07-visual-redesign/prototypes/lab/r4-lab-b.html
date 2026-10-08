@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R4 试验 B · 光束书房 Beamstudy — nanmu-blog</title>
+<!-- R4 视觉试验 B:一道主光组织的书写桌面。原型试验,非最终交付 -->
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{--ink:#14161A; --paper:#F2F1EC; --line:#D8D5CB; --seal:#C2402A; --ink2:#5C6068; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace; --serif:"Noto Serif SC","Songti SC",serif}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--serif)}
+.lab-head{display:flex; align-items:baseline; gap:18px; padding:16px 24px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.lab-head b{font-size:18px; font-weight:900}
+.lab-head span{font-family:var(--mono); font-size:12px; color:var(--ink2)}
+.lab-head .btns{margin-left:auto; display:flex; gap:8px}
+.lab-head button{font-family:var(--mono); font-size:12px; background:none; border:1px solid var(--line); padding:5px 14px; cursor:pointer; color:var(--ink2)}
+.lab-head button:hover{border-color:var(--seal); color:var(--seal)}
+.stage{position:relative; height:calc(100vh - 60px); min-height:480px}
+.stage canvas{display:block; width:100%; height:100%; touch-action:pan-y; cursor:grab}
+.overlay{position:absolute; left:clamp(20px,5vw,72px); bottom:clamp(24px,6vh,64px); pointer-events:none; mix-blend-mode:multiply}
+.overlay.night{mix-blend-mode:screen; color:#E8E4D8}
+.overlay .k{font-family:var(--mono); font-size:12px; letter-spacing:.2em; color:var(--ink2)}
+.overlay.night .k{color:#8A94A8}
+.overlay h1{font-size:clamp(34px,5.4vw,64px); font-weight:900; line-height:1.25; margin:8px 0 0}
+</style>
+</head>
+<body>
+<header class="lab-head">
+  <b>试验 B · 光束书房</b><span>Beamstudy · 主光组织的悬浮桌面 · 拖拽环顾</span>
+  <div class="btns">
+    <button id="b-day" type="button">昼</button>
+    <button id="b-night" type="button">夜</button>
+    <button id="b-replay" type="button">重放入场</button>
+  </div>
+</header>
+<div class="stage" id="stage">
+  <div class="overlay" id="overlay">
+    <div class="k">NANMU · 书写空间试验</div>
+    <h1>光照到的地方,<br>字就在那里。</h1>
+  </div>
+</div>
+<script type="module">
+import * as THREE from '../site/3d/three.module.min.js';
+
+const P = {
+  cam: {fov: 36, r: 15.5, az: 0.45, el: 0.30, azSpan: 0.28, elMin: 0.18, elMax: 0.55, ty: 2.2},
+  desk: {w: 6.4, d: 2.8, h: 0.28, y: 1.9},          // 悬浮桌板
+  books: 5,                                          // 书堆=文章
+  lamp: {x: -2.2, h: 2.1},                           // 台灯
+  crate: {x: 2.6, s: 1.3, y: 1.4},                   // 虚线箱=日报(计划)
+  beam: {from: [-7, 11, -4], to: [0.5, 1.6, 0.5], r: 4.2},  // 主光束
+  dust: 220,
+};
+const LIGHT = {
+  day:   {sky: 0xEDEFF2, fogD: 0.020, hemiS: 0xE4EAF2, hemiG: 0x8F8B7E, hemiI: 0.9,
+          sunI: 2.2, sunC: 0xFFF4E0, beamI: 0.0, beamOp: 0.05, lampI: 0.0, deskEm: 0.0},
+  night: {sky: 0x07090E, fogD: 0.024, hemiS: 0x1A2334, hemiG: 0x06080C, hemiI: 0.42,
+          sunI: 0.0, sunC: 0x8FA8D8, beamI: 55, beamOp: 0.16, lampI: 1.8, deskEm: 0.05},
+};
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(P.cam.fov, 1, 0.1, 120);
+let az = P.cam.az, el = P.cam.el;
+function placeCam(){
+  camera.position.set(Math.sin(az)*Math.cos(el)*P.cam.r, Math.sin(el)*P.cam.r + P.cam.ty, Math.cos(az)*Math.cos(el)*P.cam.r);
+  camera.lookAt(0, P.cam.ty, 0);
+}
+function resize(){ const w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+function rng(seed){ let s=seed>>>0; return ()=>(s=s*1664525+1013904223>>>0)/4294967296; }
+function woodTex(seed){
+  const c=document.createElement('canvas'); c.width=256; c.height=128;
+  const g=c.getContext('2d'), r=rng(seed);
+  g.fillStyle='#6B5B45'; g.fillRect(0,0,256,128);
+  for(let i=0;i<34;i++){
+    g.strokeStyle=`rgba(40,30,18,${0.08+r()*0.15})`; g.lineWidth=0.8+r()*2;
+    const y=r()*128; g.beginPath(); g.moveTo(0,y);
+    g.bezierCurveTo(80,y+(r()-.5)*10, 180,y+(r()-.5)*10, 256,y+(r()-.5)*6); g.stroke();
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+function pageTex(seed, lines){
+  const c=document.createElement('canvas'); c.width=128; c.height=180;
+  const g=c.getContext('2d'), r=rng(seed);
+  g.fillStyle='#F5F2E8'; g.fillRect(0,0,128,180);
+  let y=18;
+  for(let i=0;i<lines;i++){ g.fillStyle=`rgba(30,32,38,${.45+r()*.25})`; g.fillRect(14,y,70+r()*36,3); y+=11; }
+  g.strokeStyle='#C2402A'; g.lineWidth=2; g.strokeRect(5,5,118,170);
+  return new THREE.CanvasTexture(c);
+}
+
+const M = {
+  wood: new THREE.MeshStandardMaterial({map: woodTex(5), roughness: 0.7, metalness: 0.05}),
+  inkMetal: new THREE.MeshStandardMaterial({color: 0x16181D, roughness: 0.3, metalness: 0.7}),
+  paper: new THREE.MeshStandardMaterial({color: 0xF5F2E8, roughness: 0.9}),
+  ground: new THREE.MeshStandardMaterial({color: 0x3A3F47, roughness: 0.55, metalness: 0.35}),
+  seal: new THREE.MeshStandardMaterial({color: 0xC2402A, roughness: 0.5}),
+};
+const root = new THREE.Group(); scene.add(root);
+const track = [];
+function reg(o,t0,t1,kind){ o.userData.ent={t0,t1,kind,from:{},to:{}}; track.push(o); }
+
+// 悬浮桌板
+const desk = new THREE.Mesh(new THREE.BoxGeometry(P.desk.w, P.desk.h, P.desk.d), M.wood);
+desk.position.y = P.desk.y; desk.castShadow = desk.receiveShadow = true;
+root.add(desk); reg(desk, 0.3, 1.1, 'rise');
+// 桌板墨金属缘
+const edge = new THREE.Mesh(new THREE.BoxGeometry(P.desk.w+0.06, 0.05, P.desk.d+0.06), M.inkMetal);
+edge.position.y = P.desk.y - P.desk.h/2 + 0.02; root.add(edge);
+
+// 书堆(文章):错落 5 本
+const bookMeshes = [];
+for (let i = 0; i < P.books; i++){
+  const r = rng(100+i);
+  const bw = 0.9 + r()*0.3, bh = 0.14 + r()*0.1, bd = 1.2 + r()*0.25;
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd),
+    new THREE.MeshStandardMaterial({color: new THREE.Color().setHSL(0.08+r()*0.06, 0.25+r()*0.2, 0.32+r()*0.25), roughness: 0.8}));
+  const bx = -1.4 + i*0.28, by = P.desk.y + P.desk.h/2 + bh/2 + i*0.16, bz = 0.5 - i*0.12;
+  cover.position.set(bx, by, bz); cover.rotation.y = (r()-.5)*0.5;
+  cover.castShadow = true;
+  root.add(cover); bookMeshes.push(cover);
+  reg(cover, 0.8+i*0.18, 1.5+i*0.18, 'drop');
+}
+// 翻开的发光书(当前文章)
+const openTex = pageTex(9, 10);
+const openMat = new THREE.MeshStandardMaterial({map: openTex, roughness: 0.85, side: THREE.DoubleSide,
+  emissive: 0xFFE9BE, emissiveMap: openTex, emissiveIntensity: 0.04});
+const openBook = new THREE.Group();
+[-1, 1].forEach(s => {
+  const pg = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 1.2), openMat);
+  pg.rotation.x = -Math.PI/2; pg.rotation.y = s * 0.22;
+  pg.position.set(s*0.42, 0.06, 0);
+  openBook.add(pg);
+});
+openBook.position.set(0.6, P.desk.y + P.desk.h/2 + 0.02, 0.2);
+root.add(openBook); reg(openBook, 1.9, 2.5, 'drop');
+// 朱砂书签
+const mark = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.5), M.seal);
+mark.position.set(0.6, P.desk.y + P.desk.h/2 + 0.1, 0.75); root.add(mark);
+
+// 台灯(墨金属,夜间主暖光)
+const lampGrp = new THREE.Group();
+const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, P.lamp.h, 8), M.inkMetal);
+pole.position.y = P.lamp.h/2; lampGrp.add(pole);
+const shade = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.36, 20, 1, true), M.inkMetal);
+shade.position.y = P.lamp.h; shade.rotation.x = Math.PI; lampGrp.add(shade);
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8),
+  new THREE.MeshStandardMaterial({color: 0xFFE3B0, emissive: 0xFFC96E, emissiveIntensity: 0.15}));
+bulb.position.y = P.lamp.h - 0.12; lampGrp.add(bulb);
+lampGrp.position.set(P.lamp.x, P.desk.y + P.desk.h/2, -0.7);
+root.add(lampGrp); reg(lampGrp, 1.4, 2.0, 'rise');
+const lampLight = new THREE.PointLight(0xFFC06A, 0, 9, 1.9);
+lampLight.position.set(P.lamp.x, P.desk.y + P.desk.h/2 + P.lamp.h - 0.2, -0.55); scene.add(lampLight);
+
+// 虚线箱(日报计划)
+const crateGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(P.crate.s, P.crate.s, P.crate.s));
+const crate = new THREE.LineSegments(crateGeo, new THREE.LineDashedMaterial({color: 0x9AA2B0, dashSize: 0.14, gapSize: 0.1, transparent: true}));
+crate.computeLineDistances();
+crate.position.set(P.crate.x, P.crate.y, 0.9); crate.rotation.y = 0.4;
+root.add(crate); reg(crate, 2.2, 2.7, 'fade');
+
+// 地面(暗色微反光)
+const ground = new THREE.Mesh(new THREE.CircleGeometry(24, 64), M.ground);
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
+scene.add(ground); reg(ground, 0, 0.5, 'fade');
+
+// 主光束(夜):SpotLight + 可见光锥
+const beamDir = new THREE.Vector3().fromArray(P.beam.to).sub(new THREE.Vector3().fromArray(P.beam.from));
+const beamLen = beamDir.length();
+const spot = new THREE.SpotLight(0xBFD6FF, 0, 40, 0.38, 0.55, 1.1);
+spot.position.fromArray(P.beam.from);
+spot.target.position.fromArray(P.beam.to);
+spot.castShadow = true; spot.shadow.mapSize.set(1024,1024); spot.shadow.bias = -0.0004;
+scene.add(spot, spot.target);
+const coneGeo = new THREE.ConeGeometry(P.beam.r, beamLen, 32, 1, true);
+const coneMat = new THREE.MeshBasicMaterial({color: 0xAFCBFF, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false});
+const cone = new THREE.Mesh(coneGeo, coneMat);
+cone.position.set((P.beam.from[0]+P.beam.to[0])/2, (P.beam.from[1]+P.beam.to[1])/2, (P.beam.from[2]+P.beam.to[2])/2);
+cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0), beamDir.clone().normalize());
+scene.add(cone);
+// 尘埃粒子
+const dustGeo = new THREE.BufferGeometry();
+{
+  const pos = new Float32Array(P.dust*3), r = rng(77);
+  for (let i=0;i<P.dust;i++){
+    const t = r();
+    pos[i*3]   = P.beam.from[0] + beamDir.x*t + (r()-.5)*P.beam.r*1.6*t;
+    pos[i*3+1] = P.beam.from[1] + beamDir.y*t + (r()-.5)*P.beam.r*1.2*t;
+    pos[i*3+2] = P.beam.from[2] + beamDir.z*t + (r()-.5)*P.beam.r*1.6*t;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+}
+const dustMat = new THREE.PointsMaterial({color: 0xCFE0FF, size: 0.045, transparent: true, opacity: 0, depthWrite: false});
+const dust = new THREE.Points(dustGeo, dustMat);
+scene.add(dust);
+
+// 昼光
+const hemi = new THREE.HemisphereLight(0xE4EAF2, 0x8F8B7E, 0.9); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xFFF4E0, 2.2);
+sun.position.set(8, 12, 5); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=sun.shadow.camera.bottom=-14; sun.shadow.camera.right=sun.shadow.camera.top=14;
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+
+let themeT = 0, themeTarget = 0;
+const cA = new THREE.Color(), cB = new THREE.Color();
+function lerpC(t,a,b,k){ cA.setHex(a); cB.setHex(b); t.copy(cA).lerp(cB,k); }
+function applyTheme(t){
+  const D=LIGHT.day,N=LIGHT.night;
+  lerpC(scene.background=scene.background||new THREE.Color(), D.sky,N.sky,t);
+  lerpC(scene.fog.color, D.sky,N.sky,t);
+  scene.fog.density = D.fogD+(N.fogD-D.fogD)*t;
+  lerpC(hemi.color,D.hemiS,N.hemiS,t); lerpC(hemi.groundColor,D.hemiG,N.hemiG,t);
+  hemi.intensity = D.hemiI+(N.hemiI-D.hemiI)*t;
+  lerpC(sun.color,D.sunC,N.sunC,t); sun.intensity = D.sunI+(N.sunI-D.sunI)*t;
+  spot.intensity = D.beamI+(N.beamI-D.beamI)*t;
+  coneMat.opacity = D.beamOp+(N.beamOp-D.beamOp)*t;
+  dustMat.opacity = t*0.75;
+  lampLight.intensity = D.lampI+(N.lampI-D.lampI)*t;
+  bulb.material.emissiveIntensity = 0.15 + t*1.6;
+  openMat.emissiveIntensity = 0.04 + t*0.5;
+  lerpC(M.ground.color, 0x4A4F58, 0x141920, t);
+  document.getElementById('overlay').classList.toggle('night', t>0.5);
+}
+scene.fog = new THREE.FogExp2(0xEDEFF2, 0.02);
+applyTheme(0);
+
+function prepEntrance(){
+  track.forEach(o => {
+    const e=o.userData.ent;
+    if(e.kind==='rise'){ e.from.y=o.position.y-4; e.to.y=o.position.y; }
+    if(e.kind==='drop'){ e.from.y=o.position.y+3.5; e.to.y=o.position.y; }
+    if(e.kind==='fade'){ e.from.op=0; e.to.op=o.material.opacity??1; }
+  });
+}
+prepEntrance();
+const easeOut = x => 1-Math.pow(1-x,3);
+let entT = -1;
+function playEntrance(){
+  entT=0;
+  track.forEach(o => {
+    const e=o.userData.ent;
+    if(e.kind==='rise'||e.kind==='drop') o.position.y=e.from.y;
+    if(o.material) o.material.transparent=true;
+  });
+}
+function stepEntrance(dt){
+  if(entT<0) return;
+  entT+=dt;
+  track.forEach(o => {
+    const e=o.userData.ent, k=easeOut(Math.min(Math.max((entT-e.t0)/(e.t1-e.t0),0),1));
+    if(e.kind==='rise'||e.kind==='drop') o.position.y=e.from.y+(e.to.y-e.from.y)*k;
+    if(e.kind==='fade') o.material.opacity=e.to.op*k;
+  });
+  if(entT>3.2){ entT=-1; track.forEach(o=>{ if(o.userData.ent.kind==='fade') o.material.opacity=o.userData.ent.to.op; }); }
+}
+
+let dragging=false,px=0,py=0;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;});
+addEventListener('pointermove',e=>{
+  if(!dragging) return;
+  az=Math.min(Math.max(az-(e.clientX-px)*0.0032,P.cam.az-P.cam.azSpan),P.cam.az+P.cam.azSpan);
+  el=Math.min(Math.max(el+(e.clientY-py)*0.0026,P.cam.elMin),P.cam.elMax);
+  px=e.clientX;py=e.clientY;
+});
+addEventListener('pointerup',()=>dragging=false);
+
+const clock = new THREE.Clock();
+let amb = 0;
+function tick(){
+  const dt=Math.min(clock.getDelta(),0.05); amb+=dt;
+  themeT += (themeTarget-themeT)*Math.min(dt*2.2,1);
+  applyTheme(themeT);
+  stepEntrance(dt);
+  desk.position.y = P.desk.y + Math.sin(amb*0.5)*0.03;   // 桌面极轻浮动
+  openBook.rotation.y = Math.sin(amb*0.35)*0.04;
+  dust.rotation.y = amb*0.008;
+  placeCam();
+  renderer.render(scene,camera);
+}
+resize(); placeCam(); playEntrance();
+renderer.setAnimationLoop(tick);
+
+document.getElementById('b-day').onclick=()=>themeTarget=0;
+document.getElementById('b-night').onclick=()=>themeTarget=1;
+document.getElementById('b-replay').onclick=()=>playEntrance();
+let tris=0; scene.traverse(o=>{ if(o.geometry){const g=o.geometry; tris+=(g.index?g.index.count:g.attributes.position.count)/3; }});
+console.log('lab-B triangles:', Math.round(tris));
+window.__lab={setTheme:d=>themeTarget=d?1:0, setThemeNow:d=>{themeT=themeTarget=d?1:0;applyTheme(themeT);}, replay:playEntrance};
+</script>
+</body>
+</html>

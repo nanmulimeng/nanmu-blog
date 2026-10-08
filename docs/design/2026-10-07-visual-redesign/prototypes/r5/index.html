@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanmu — 首页(R5 字场 · 碑页)</title>
+<!-- R5 首页原型:碑页场景 + 竖排标题 + 朱砂装订线。真实状态:文章 1 篇,日报 0 期;夹具已标注 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens5.css">
+<link rel="stylesheet" href="assets/base5.css">
+</head>
+<body>
+<div class="frame">
+  <header class="top on-hero">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html" aria-current="page">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+</div>
+
+<!-- 首屏:碑页场景(右)与竖排标题(左)对望;无 JS/WebGL 失败时 poster 静态图同样成立 -->
+<section class="hero-full" id="scene3d" data-link-post="post-hello.html" data-link-digest="digest.html">
+  <img class="poster poster-light" src="3d/poster-light.png" alt="首页主视觉(静态图):一页立着的发光稿纸,印着最新文章《你好,nanmu-blog》,左缘朱砂线装订">
+  <img class="poster poster-dark" src="3d/poster-dark.png" alt="">
+  <div class="hero-title">
+    <p class="v-kicker">NANMU · 手写博客</p>
+    <h1 class="v-title">先把最小的东西做完</h1>
+    <p class="v-sub">上线,能用——手写文章为主,日报与检索在计划中</p>
+  </div>
+  <div class="hero-actions">
+    <a class="btn primary" href="post-hello.html">读最新一篇</a>
+    <a class="btn" href="about.html">了解这个站</a>
+  </div>
+  <span class="scroll-hint">向下读</span>
+</section>
+
+<main class="flow">
+  <!-- 朱砂装订线:碑页左缘的线落进正文,随滚动延伸(JS 增强,无 JS 不影响内容) -->
+  <div class="thread" aria-hidden="true">
+    <span class="line"></span>
+    <span class="knot" data-for="#posts"></span>
+    <span class="knot" data-for="#digest"></span>
+    <span class="knot" data-for="#about"></span>
+    <span class="knot" data-for="#subscribe"></span>
+  </div>
+
+  <div class="frame">
+    <!-- 精选文章:碑页上那篇,落到纸上 -->
+    <section class="featured" id="posts">
+      <div class="f-text" data-reveal>
+        <div class="sect-head">
+          <span class="seal-w">文</span><h2>文章</h2>
+          <span class="count mono">1 篇 · 手写</span>
+        </div>
+        <p class="f-label">目前唯一的一篇 · 也是第一篇</p>
+        <h3>你好,nanmu-blog</h3>
+        <div class="meta mono">2026-10-02 <span class="tags">随笔 / 建站</span></div>
+        <p class="excerpt">今年上半年,我做过一个功能很多的博客,十二周半之后写不动,烂尾收场。它留下的教训很具体:先把最小的东西做完、上线、能用,再谈别的。这次重开博客,就从那段历史里长出来。</p>
+        <p class="excerpt">这个站放着三样东西,各管各的:手写文章是本体;AI 日报与个人检索还在计划里,现在并不能用。</p>
+        <div class="f-actions">
+          <a class="btn primary" href="post-hello.html">读全文</a>
+          <span class="f-note">约 600 字 · 两分钟</span>
+        </div>
+      </div>
+      <a class="cover-card" href="post-hello.html" data-reveal aria-label="读文章:你好,nanmu-blog">
+        <span class="cb-line" aria-hidden="true"></span>
+        <span class="cb-hole" aria-hidden="true"></span><span class="cb-hole" aria-hidden="true"></span>
+        <span class="cb-hole" aria-hidden="true"></span><span class="cb-hole" aria-hidden="true"></span>
+        <span class="cb-seal" aria-hidden="true">文</span>
+        <span class="cb-kicker">NANMU · 手写文章</span>
+        <h4>你好,<br>nanmu-blog</h4>
+        <span class="cb-meta">2026-10-02 · 第 1 篇</span>
+        <span class="cb-rows" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      </a>
+    </section>
+
+    <!-- 日报:与整体美术一致的栏目空态(零期是真实状态,不是缺陷) -->
+    <section class="digest-empty" id="digest">
+      <div class="sect-head" data-reveal>
+        <span class="seal-m">机</span><h2>AI 日报</h2>
+        <span class="count mono">AI 生成栏目</span>
+      </div>
+      <div class="blank-sheet" data-reveal>
+        <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="bs-state">暂无已发布日报</p>
+        <p class="bs-desc">这一页还空着。日报将由一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。引擎已通过设计评审,还在做上线前最后的核验。</p>
+        <p class="bs-act"><a href="digest.html">查看日报栏目与样张 →</a></p>
+      </div>
+    </section>
+
+    <!-- 关于:窄栏短文,只用已知事实 -->
+    <section class="about-strip" id="about">
+      <div class="sect-head" data-reveal>
+        <span class="seal-w" style="border-style:dashed">站</span><h2>这个站</h2>
+      </div>
+      <div class="prose-s" data-reveal>
+        <p>我是 nanmu,这个站是我手写的博客,已在 nanmu.xyz 上线:文章写完推送,服务器自动构建、自动切换。此前一个功能很多的博客烂尾在第十二周半;这一个是按它的教训重开的——先做最小的闭环,再慢慢往上叠。</p>
+        <p>计划中的两层是 AI 日报与个人检索,都由独立的引擎承担:任何一层挂掉,博客照常在线。<a class="more" href="about.html">完整的站点来历 →</a></p>
+      </div>
+    </section>
+
+    <!-- 订阅:书签卡收尾 -->
+    <section class="subscribe-zone" id="subscribe">
+      <div class="sect-head" data-reveal>
+        <span class="seal-w" style="border-style:double">阅</span><h2>订阅</h2>
+        <span class="count mono">RSS · 无账号</span>
+      </div>
+      <div class="sub-cards" data-reveal>
+        <div class="sub-card">
+          <span class="sc-type">手写文章 · 更新不定</span>
+          <h3><span class="seal-w" style="width:20px;height:20px;font-size:11px">文</span>文章 RSS</h3>
+          <div class="sc-addr">https://nanmu.xyz/rss.xml</div>
+          <div class="sc-row">
+            <button class="copy-link" type="button" data-copy="https://nanmu.xyz/rss.xml">复制链接</button>
+            <p class="hint">粘进你的阅读器即可</p>
+          </div>
+        </div>
+        <div class="sub-card">
+          <span class="sc-type">AI 日报 · 计划每日一期</span>
+          <h3><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>日报 RSS</h3>
+          <div class="sc-addr">https://nanmu.xyz/digest.xml</div>
+          <div class="sc-row">
+            <button class="copy-link" type="button" data-copy="https://nanmu.xyz/digest.xml">复制链接</button>
+            <p class="hint">第一期到了会送到</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site">
+      <span>© 2026 nanmu · 手工搭建,缓慢施工</span>
+      <span><a href="about.html">关于</a> · <a href="../site/map.html">原型总览</a></span>
+    </footer>
+  </div>
+</main>
+<script src="assets/site5.js"></script>
+<script type="module" src="3d/boot5.js"></script>
+</body>
+</html>

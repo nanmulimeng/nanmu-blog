@@ -1,5 +1,7 @@
 # 文档索引
 
+**前端设计专项入口(2026-10-08)**：[全站设计冲刺任务书](design/2026-10-07-visual-redesign/FULL-SITE-BRIEF.md) → [专项交接](sessions/2026-10-08-frontend-creative-research.md)。用户要求集中完成全站页面、动效和 3D 原型，科技感与创意参考已补充；尚非正式站实施或发布验收。**R5「字场 · 碑页」首页深化原型已交付**：[r5/index.html](design/2026-10-07-visual-redesign/prototypes/r5/index.html)，取舍与验证见 [R5 会话报告](sessions/2026-10-08-r5-homepage-creative.md)。
+
 **Agent接手路线**:[AGENTS.md](../AGENTS.md)→ 最新session → workflow的Git/文件核对 → 本轮相关spec/plan。初次进入补读背景与教训;环境、引擎与RAG文档按任务加载。
 
 | 文档 | 内容 | 状态 |

@@ -16,6 +16,8 @@
 
 ## 从哪里读
 
+- 前端设计专项：[全站页面/动效/3D 任务书](docs/design/2026-10-07-visual-redesign/FULL-SITE-BRIEF.md)与[最新交接](docs/sessions/2026-10-08-frontend-creative-research.md)(2026-10-08，创意参考已补充，允许科技感与大胆美术探索；原型扩展待执行，不代表正式站改版完成)。**R4「纸筑」全站原型已交付（2026-10-08）**：入口 [r4/index.html](docs/design/2026-10-07-visual-redesign/prototypes/r4/index.html)，R3→R4 对照图与四项定点修复验证见 [batch4 交接](docs/sessions/2026-10-08-visual-redesign-batch4.md)；仍为原型，未接入正式站。**R5「字场 · 碑页」首页深化原型已交付（2026-10-08）**：入口 [r5/index.html](docs/design/2026-10-07-visual-redesign/prototypes/r5/index.html)，两案取舍与验证见 [R5 会话报告](docs/sessions/2026-10-08-r5-homepage-creative.md)；评审后完成集中修正（五组交界问题+夜间纸质感+落线衔接），见 [R5 修正轮报告](docs/sessions/2026-10-08-r5-fix-round.md)；仅首页，内页沿用 R4。
+
 - [AGENTS.md](AGENTS.md):边界、工作流与阅读顺序。
 - [项目背景](docs/context/project-background.md):旧博客教训、topic-digest 数据基础、外部借鉴。
 - [文档索引](docs/README.md):设计、计划、证据各自的责任位置。

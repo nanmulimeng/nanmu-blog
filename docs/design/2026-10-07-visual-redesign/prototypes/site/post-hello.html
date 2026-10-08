@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>你好,nanmu-blog · nanmu(全站原型)</title>
+<!-- 全站原型 · 文章详情:正文为真实第一篇全文;「排版样张」段为标注的演示块 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/base.css">
+<style>
+.article-wrap{padding:clamp(28px,5vw,56px) 0 0}
+h1.title{font-size:clamp(28px,4.6vw,40px); font-weight:900; line-height:1.3;
+  margin:0 0 14px; letter-spacing:.01em; max-width:22em; view-transition-name:latest-title}
+.meta-line{color:var(--ink2); padding-bottom:22px; border-bottom:1px solid var(--line);
+  margin-bottom:30px}
+.meta-line .tags{color:var(--seal-text)}
+.specimen{margin-top:72px; border:1px dashed var(--draw); padding:8px 28px 28px; position:relative;
+  max-width:none}
+.specimen::before{content:"排版基准样张 · 演示用,非正文"; position:absolute; top:-11px; left:20px;
+  background:var(--paper); padding:0 10px; font-family:var(--mono); font-size:11.5px; color:var(--seal)}
+.specimen .prose{max-width:34em}
+</style>
+</head>
+<body>
+<div class="progress-bar" aria-hidden="true"></div>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html" aria-current="page">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="article-wrap narrow">
+    <div class="crumb">
+      <span class="seal-w">文</span>
+      <a href="index.html">首页</a><span>/</span><a href="posts.html">文章</a><span>/</span><span>正文</span>
+    </div>
+    <h1 class="title">你好,nanmu-blog</h1>
+    <div class="meta-line mono">2026-10-02 · <span class="tags">随笔 / 建站</span> · 手写</div>
+
+    <nav class="toc" aria-label="本页目录">
+      <b>目录</b>
+      <ol>
+        <li><a href="#s1">烂尾与重启</a></li>
+        <li><a href="#s2">站里的三样东西</a></li>
+        <li><a href="#s3">现在完成的部分</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h2 id="s1">烂尾与重启</h2>
+      <p>今年上半年,我做过一个功能很多的博客:文章、采集、日报、自动优化,设计越铺越大,十二周半之后写不动,烂尾收场。它留下的教训很具体:先把最小的东西做完、上线、能用,再谈别的。八月末,我又搭了个小爬取试点 topic-digest,并在八月三十一日完成上线。它用定时采集和静态页面,把收集信息到展示内容这条流程串了起来,规模比前一个项目小得多。这次重开博客,就从这两段历史里长出来——前一段告诉我别做什么,后一段告诉我最小闭环长什么样。设计时还参考了两个外部项目 AIHOT 和 PowerContext,各借了一点模式,都没有整体照搬。</p>
+
+      <h2 id="s2">站里的三样东西</h2>
+      <p>这个站里放着三样东西,各管各的:手写文章是博客本体,我自己写、自己发;AI 日报是计划中的能力,将来由一个独立的引擎读采集数据、自己挑题、自己写摘要,发在单独的栏目,并标明是 AI 生成的;个人检索也是计划中的能力,把我自己的文章和精选内容做成可问答的知识库,先自用。后两样都还在计划里,现在并不能用。</p>
+
+      <h2 id="s3">现在完成的部分</h2>
+      <p>目前真正完成的是博客本身:这个静态站已经在 <a href="https://nanmu.xyz">nanmu.xyz</a> 上线,文章写完推送,服务器自动构建、自动切换;AI 引擎的设计与实施计划通过了评审。接下来先做日报,再做检索。博客已经在了,后面的东西慢慢叠上去。</p>
+
+      <div class="colophon">
+        <span class="fin">完</span><span class="line"></span><span class="mono">2026-10-02</span>
+      </div>
+
+      <!-- ═══ 以下为排版基准样张(原型演示,不属于正文) ═══ -->
+      <div class="specimen">
+        <div class="prose">
+        <h2 id="sp1">章节标题:带朱砂引条的二级标题</h2>
+        <p>正文混入<strong>强调</strong>、<a href="#">文内链接</a>与行内代码 <code>git push server main</code> 时的灰度关系。中文两端对齐,标点悬挂,行距 2.05,行长不超过 34 字。再来一段中英混排:使用 Astro 5 的 content collections 与 <code>z.object()</code> 校验 frontmatter;以及一个很长很长的 URL 用以检验折行:https://example.com/a/very/long/path/that/keeps/going/and/going/to/test/word-break/behavior。</p>
+        <h3 id="sp2">三级标题</h3>
+        <blockquote>
+          <p>引文用楷体,与宋体正文区分——这是中文书刊的老规矩,搬到屏幕上仍然成立。</p>
+        </blockquote>
+        <pre><code># 发布一篇文章(真实命令,M0 已验证)
+git push server main
+# 服务器自动构建、自动切换,计时约 12 秒</code></pre>
+        <figure>
+          <img data-zoom data-cap="图注样张:站里的三层各管各的,任何一层挂掉博客都在线。"
+               src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 160'%3E%3Crect x='1' y='1' width='638' height='158' fill='none' stroke='%23888'/%3E%3Cline x1='40' y1='120' x2='600' y2='120' stroke='%23888'/%3E%3Crect x='60' y='60' width='90' height='60' fill='none' stroke='%23888'/%3E%3Crect x='275' y='30' width='90' height='90' fill='none' stroke='%23888'/%3E%3Crect x='490' y='80' width='90' height='40' fill='none' stroke='%23888' stroke-dasharray='4 3'/%3E%3Ctext x='105' y='145' font-size='12' fill='%23888' text-anchor='middle'%3E博客%3C/text%3E%3Ctext x='320' y='145' font-size='12' fill='%23888' text-anchor='middle'%3E引擎%3C/text%3E%3Ctext x='535' y='145' font-size='12' fill='%23888' text-anchor='middle'%3E检索%3C/text%3E%3C/svg%3E"
+               alt="三层结构线稿示意图:博客、引擎、检索三个方框">
+          <figcaption>图注:站里的三层各管各的,任何一层挂掉博客都在线。插图可点击展开,Esc 或点击关闭。</figcaption>
+        </figure>
+        <table>
+          <tr><th>栏目</th><th>状态</th><th>说明</th></tr>
+          <tr><td>文章</td><td>已上线</td><td>手写,push 即发布</td></tr>
+          <tr><td>AI 日报</td><td>计划中</td><td>引擎自动选题与摘要</td></tr>
+          <tr><td>检索</td><td>计划中</td><td>先自用</td></tr>
+        </table>
+        <ul>
+          <li>列表项与正文同字距,不另起字号</li>
+          <li>第二项,观察行间关系</li>
+        </ul>
+        <hr>
+        <p>分隔线收为一小段墨线,不横贯版面。</p>
+        </div>
+      </div>
+    </article>
+
+    <nav class="prev-next" aria-label="上下文文章">
+      <span class="none" style="border:1px dashed var(--line); padding:14px 18px">
+        <span class="lab mono">上一篇</span><div class="t" style="color:var(--ink2)">这是最早的一篇</div>
+      </span>
+      <span class="none next" style="border:1px dashed var(--line); padding:14px 18px">
+        <span class="lab mono">下一篇</span><div class="t" style="color:var(--ink2)">还没有</div>
+      </span>
+    </nav>
+  </div>
+
+  <footer class="site">
+    <span>© 2026 nanmu · 手工搭建,缓慢施工</span>
+    <span><a href="posts.html">全部文章</a> · <a href="map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

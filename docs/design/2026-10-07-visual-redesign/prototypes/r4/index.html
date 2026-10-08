@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanmu — 首页(R4 纸筑)</title>
+<!-- R4 全站原型 · 首页:满幅「纸筑」场景 + 叠印标题。真实状态:文章 1 篇,日报 0 期;夹具已标注 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens4.css">
+<link rel="stylesheet" href="assets/base4.css">
+</head>
+<body>
+<div class="frame">
+  <header class="top on-hero">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html" aria-current="page">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+</div>
+
+<!-- 首屏:场景满幅到视口边缘,标题叠印于纸上(昼 multiply / 夜 screen) -->
+<section class="hero-full" id="scene3d" data-link-post="post-hello.html" data-link-digest="digest.html">
+  <img class="poster poster-light" src="3d/poster-light.png" alt="纸筑主视觉(静态图):一本正在写的发光的书,页扇展开,朱砂书签垂落">
+  <img class="poster poster-dark" src="3d/poster-dark.png" alt="">
+  <div class="hero-title">
+    <p class="kicker">NANMU 的博客 · 一个正在写的发光的书</p>
+    <h1>先把最小的东西<br>做完,上线,能用。</h1>
+    <p class="sub">发光的是最新一篇 · 虚线页是还在计划的日报</p>
+  </div>
+  <span class="scroll-hint">向下读 ↓</span>
+</section>
+
+<div class="frame">
+  <section id="posts">
+    <div class="sect-head">
+      <span class="seal-w">文</span><h2>文章</h2>
+      <span class="count mono">1 篇 · 手写</span>
+    </div>
+    <a class="row-item" href="post-hello.html" data-reveal>
+      <h3>你好,nanmu-blog</h3>
+      <div class="meta mono">2026-10-02 <span class="tags">随笔 / 建站</span></div>
+      <p>今年上半年,我做过一个功能很多的博客,十二周半之后烂尾收场。这次重开,就从那段历史里长出来——先把最小的东西做完、上线、能用。</p>
+    </a>
+    <details class="fixture">
+      <summary>设计夹具 · 文章多起来以后(2 篇虚构样张)</summary>
+      <div class="inner">
+        <a class="row-item" href="posts.html">
+          <h3>夹具样张:把发布链路压到一条命令之后</h3>
+          <div class="meta mono">2026-10-09 <span class="tags">工程 / 运维</span></div>
+          <p>虚构内容,仅用于排版评审——多篇文章时列表的节奏、分隔线与摘要比对。</p>
+        </a>
+        <a class="row-item" href="posts.html">
+          <h3>夹具样张:一个足够长的中文标题用来检验两行折行时列表行高与朱砂点的对齐关系是否稳定</h3>
+          <div class="meta mono">2026-10-06 <span class="tags">随笔</span></div>
+          <p>虚构内容,仅用于排版评审。</p>
+        </a>
+      </div>
+    </details>
+    <p style="margin-top:14px"><a href="posts.html">全部文章 →</a></p>
+  </section>
+
+  <section id="digest">
+    <div class="sect-head">
+      <span class="seal-m">机</span><h2>AI 日报</h2>
+      <span class="count mono">AI 生成栏目</span>
+    </div>
+    <div class="titleblock">
+      <div class="tb-row"><span class="k">状态</span><span class="v">暂无已发布日报</span></div>
+      <div class="tb-row"><span class="k">说明</span><span class="v" style="font-family:var(--serif); font-size:.85rem">由引擎自动选题与摘要,每日一期;发布后将在此列出</span></div>
+    </div>
+    <p><a href="digest.html">查看日报栏目(含夹具样张)→</a></p>
+  </section>
+
+  <div class="subscribe" id="subscribe">
+    <span class="s-title">订阅</span>
+    <span class="s-item"><span class="seal-w" style="width:20px;height:20px;font-size:11px">文</span>
+      文章 RSS <code>nanmu.xyz/rss.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/rss.xml">复制链接</button></span>
+    <span class="s-item"><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>
+      日报 RSS <code>nanmu.xyz/digest.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/digest.xml">复制链接</button></span>
+    <span class="hint">把链接粘进你的阅读器即可。无脚本时直接选中地址复制。</span>
+  </div>
+
+  <footer class="site">
+    <span>© 2026 nanmu · 手工搭建,缓慢施工</span>
+    <span><a href="about.html">关于</a> · <a href="../site/map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="assets/site4.js"></script>
+<script type="module" src="3d/boot4.js"></script>
+</body>
+</html>
