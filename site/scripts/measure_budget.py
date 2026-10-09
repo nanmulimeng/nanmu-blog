@@ -11,7 +11,11 @@
      下用 CDP Network 记录 fromDiskCache 与 encodedDataLength:冷访文章页
      装载字体后,重访同页与跨页的实际网络字节、磁盘缓存命中数;
   D. fonts.css 原始与 gzip 体积(gzip level 6、mtime=0,Python zlib——
-     固定工具与等级,不同实现的数字不混比)。
+     固定工具与等级,不同实现的数字不混比);
+  E. 首页批次 2 预算——E1 请求时间线(CDP requestWillBeSent 发起序:
+     poster <img> 必须先于任何 3D 资源请求,且仅当前主题单张 poster;
+     INTEGRATION-PLAN §5 触发顺序断言,不靠 defer 语义自证);E2 资产
+     分型(3D 四件 gzip-6 ≤220KB;poster 两张合计 ≤450KB)。
 浏览器:环境变量 NM_VERIFY_CHROME 指定 chrome 可执行文件;未设时扫描
 ms-playwright 已装版本(取最大 build 号),再退 Playwright 默认解析——
 不绑定固定用户名或 build 号。
@@ -24,6 +28,7 @@ import os
 import socketserver
 import sys
 import threading
+import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -244,6 +249,45 @@ def main():
                                              fails_c[0][1].split("/")[-1])))
             pg.close()
             ctx.close()
+
+            # ── E1. 首页请求时间线:poster 先于任何 3D 字节(发起序)──
+            ctx = b.new_context(viewport={"width": 1440, "height": 900})
+            pg = ctx.new_page()
+            cdp2 = ctx.new_cdp_session(pg)
+            order = []
+
+            def on_req(e):
+                try:  # 部分 Network 事件无 params(如 V2 变体),跳过
+                    order.append(e["params"]["request"]["url"])
+                except (KeyError, TypeError):
+                    pass
+            cdp2.on("Network.requestWillBeSent", on_req)
+            cdp2.send("Network.enable")
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            deadline = time.time() + 20
+            while time.time() < deadline:
+                if pg.evaluate("!!window.__bookscene"):
+                    break
+                pg.wait_for_timeout(250)
+            pg.wait_for_timeout(500)
+            poster_reqs = [(i, u) for i, u in enumerate(order) if "poster" in u]
+            three_reqs = [(i, u) for i, u in enumerate(order)
+                          if "/3d/" in u and "poster" not in u]
+            print("E1 首页请求时间线(CDP 发起序;昼上下文,期望仅 "
+                  "poster-light 单张):")
+            for i, u in poster_reqs:
+                print("   poster  #%d %s" % (i, u.rsplit("/", 1)[-1]))
+            for i, u in three_reqs:
+                print("   3d      #%d %s" % (i, u.rsplit("/", 1)[-1]))
+            ok_order = (len(poster_reqs) == 1
+                        and "poster-light" in poster_reqs[0][1]
+                        and len(three_reqs) >= 2
+                        and poster_reqs[0][0] < min(i for i, _ in three_reqs))
+            print("   poster 单张且先于 3D:%s%s"
+                  % ("✓" if ok_order else "✗",
+                     "" if three_reqs else "(无 3D 请求——场景未接入?)"))
+            pg.close()
+            ctx.close()
             b.close()
     finally:
         httpd.shutdown()
@@ -258,6 +302,41 @@ def main():
     else:
         print("D fonts.css 不存在")
         return 1
+
+    # E2. 批次 2 首页资产分型(磁盘;gzip 同 D 工具口径)
+    # 3D 四件 gzip-6 ≤220KB;poster 两张合计 ≤450KB(首访仅传当前主题单张)
+    td = SITE / "dist" / "3d"
+    print("E2 首页 3D/poster 资产分型(dist/3d/,gzip-6 同 D 工具):")
+    four = ("three.module.min.js", "three.core.min.js", "scene6.js", "boot6.js")
+    raw_sum = gz_sum = 0
+    missing = False
+    for f in four:
+        p = td / f
+        if not p.exists():
+            print("   缺失 %s" % f)
+            missing = True
+            continue
+        raw = p.read_bytes()
+        gz = gzip.compress(raw, 6, mtime=0)
+        raw_sum += len(raw)
+        gz_sum += len(gz)
+        print("   %-20s 原始 %7d B  gzip-6 %7d B" % (f, len(raw), len(gz)))
+    if not missing:
+        print("   3D 四件合计 原始 %d B(%s),gzip-6 %d B(%s)≤220KB=%s"
+              % (raw_sum, kib(raw_sum), gz_sum, kib(gz_sum),
+                 "✓" if gz_sum <= 220 * 1024 else "✗"))
+    posters = sorted(td.glob("poster-*.png"))
+    p_raw = sum(p.stat().st_size for p in posters)
+    for p in posters:
+        print("   %-20s 原始 %7d B" % (p.name, p.stat().st_size))
+    if len(posters) == 2:
+        print("   poster 两张合计 %d B(%s)≤450KB(=450 KiB)=%s(首访单张)"
+              % (p_raw, kib(p_raw),
+                 "✓" if p_raw <= 450 * 1024 else "✗"))
+    else:
+        print("   poster 期望 2 张,实际 %d 张%s"
+              % (len(posters),
+                 "" if posters else "(未入库)"))
     return 0
 
 

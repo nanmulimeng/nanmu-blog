@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-"""site 浏览器验收(批次 1+,Playwright/Chromium;入库可复跑)。
+"""site 浏览器验收(批次 2+,Playwright/Chromium;入库可复跑)。
 
 前置:npm run build(验收 dist/);本机 playwright + chromium。
-覆盖:页面矩阵(昼/夜 × 全站真实页)、手机 390、无 JS、键盘、reduced-
-motion、直接访问与返回路径、文章页挂名、脚本入口数(应恰为 2:site.js
-+ 首帧内联)、字体分片实际命中(仅 2xx + 中文样本逐字重 fonts.check
-实测装载,含改名 NM Plex Mono)。只断言浏览器实测状态。
+覆盖:页面矩阵(昼/夜 × 全站真实页)、手机 360/390/430、无 JS、键盘、
+reduced-motion、直接访问与返回路径、文章页挂名、脚本入口数(内页 2:
+site.js+首帧内联;首页 4:另加 home.js 与 boot6 模块)、字体分片实际命中
+(仅 2xx + 中文样本逐字重 fonts.check 实测装载,含改名 NM Plex Mono)。
+批次 2 增:首页静态结构/内容同源(#scene3d data-* JSON 与封面卡/
+页签面板同源)、W5-W8 行为、3D 场景(__bookscene/select 双向/快速连选/
+暂停组合)、WebGL 不可用零 3D 请求、模块失败终态、字体挂起超时接替、
+封面挂名回程不残留。只断言浏览器实测状态。
 浏览器:环境变量 NM_VERIFY_CHROME 指定 chrome 可执行文件;未设时扫描
 ms-playwright 已装版本(取最大 build 号),再退 Playwright 默认解析——
 不绑定固定用户名或 build 号。
@@ -16,6 +20,7 @@ import os
 import socketserver
 import sys
 import threading
+import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -65,10 +70,28 @@ def check(label, ok, detail=""):
     print("[%s] %s => %s" % (label, detail, "PASS" if ok else "FAIL"))
 
 
-def serve(root):
+def poll_js(pg, expr, timeout_ms, interval=250):
+    """轮询求值 expr 直到真值或超时;返回最后一次取值。"""
+    deadline = time.time() + timeout_ms / 1000.0
+    val = None
+    while time.time() < deadline:
+        val = pg.evaluate(expr)
+        if val:
+            return val
+        pg.wait_for_timeout(interval)
+    return val
+
+
+def serve(root, port=PORT, fonts_delay=0):
+    """fonts_delay>0 时对 /fonts/ 路径 sleep(模拟字体挂起,测超时接替)。"""
     class H(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *a, **k):
             super().__init__(*a, directory=root, **k)
+
+        def do_GET(self):
+            if fonts_delay and "/fonts/" in self.path:
+                time.sleep(fonts_delay)
+            super().do_GET()
 
         def end_headers(self):
             self.send_header("Cache-Control", "no-store")
@@ -82,7 +105,7 @@ def serve(root):
         def handle_error(self, request, client_address):
             pass  # 本地验收:连接中断噪声不值得打印
     socketserver.TCPServer.allow_reuse_address = True
-    httpd = TS(("127.0.0.1", PORT), H)
+    httpd = TS(("127.0.0.1", port), H)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd
 
@@ -154,7 +177,7 @@ def main():
                       dt: document.documentElement.dataset.theme || '',
                       title: document.title})""", cur)
                     ok = (st["top"] and st["navLinks"] >= 4 and st["themeBtn"]
-                          and st["scripts"] == 2 and st["ox"] <= 0
+                          and st["ox"] <= 0
                           and (cur is None or (st["cur"] or "").endswith(cur))
                           and st["title"] != "")
                     if theme == "dark":
@@ -170,6 +193,12 @@ def main():
                           "nav=%d script=%d ox=%d fonts=%d/%d fontck=%s cur=%s" %
                           (st["navLinks"], st["scripts"], st["ox"],
                            sum(font_hits), len(font_hits), fontck, st["cur"]))
+                    # 脚本入口数单列(ADR-0010 白名单):内页恰 2(site.js
+                    # +首帧内联);首页 4(+home.js 与 boot6 模块,批次 2)
+                    exp_scripts = 4 if key == "index" else 2
+                    check("matrix/%s/scripts/%s" % (key, theme),
+                          st["scripts"] == exp_scripts,
+                          "scripts=%d expect=%d" % (st["scripts"], exp_scripts))
                     pg.close()
                 check("matrix/console/%s" % theme, not errs, str(errs[:3]))
                 ctx.close()
@@ -222,33 +251,59 @@ def main():
             pg.close()
             ctx.close()
 
-            # ── C. 手机 390:布局 + 菜单按钮接管 ──
-            ctx = b.new_context(viewport={"width": 390, "height": 844})
-            for path, key, _ in PAGES[:5]:
-                pg = ctx.new_page()
-                pg.goto(base + path, wait_until="domcontentloaded")
-                pg.wait_for_timeout(200)
-                st = pg.evaluate("""() => {
-                  const mt = document.querySelector('.menu-toggle');
-                  return {
-                  ox: document.documentElement.scrollWidth
-                    - document.documentElement.clientWidth,
-                  toggle: mt ? getComputedStyle(mt).display : 'missing'};}""")
-                check("mobile/%s" % key,
-                      st["ox"] <= 0 and st["toggle"] not in ("none", "missing"),
-                      "ox=%d toggle=%s" % (st["ox"], st["toggle"]))
-                pg.close()
-            ctx.close()
+            # ── C. 手机 360/390/430:布局 + 菜单按钮接管(首页含 hero)──
+            for w in (360, 390, 430):
+                ctx = b.new_context(viewport={"width": w, "height": 844})
+                for path, key, _ in PAGES[:5]:
+                    pg = ctx.new_page()
+                    pg.goto(base + path, wait_until="domcontentloaded")
+                    pg.wait_for_timeout(200)
+                    st = pg.evaluate("""() => {
+                      const mt = document.querySelector('.menu-toggle');
+                      return {
+                      ox: document.documentElement.scrollWidth
+                        - document.documentElement.clientWidth,
+                      toggle: mt ? getComputedStyle(mt).display : 'missing',
+                      hero: !!document.querySelector('#scene3d')};}""")
+                    check("mobile%s/%s" % (w, key),
+                          st["ox"] <= 0
+                          and st["toggle"] not in ("none", "missing")
+                          and (key != "index" or st["hero"]),
+                          "ox=%d toggle=%s hero=%s" %
+                          (st["ox"], st["toggle"], st["hero"]))
+                    pg.close()
+                ctx.close()
 
-            # ── D. 无 JS:内容与导航完整 ──
+            # ── D. 无 JS:内容与导航完整(首页:hero/文章面板/三层全开) ──
             ctx = b.new_context(java_script_enabled=False,
                                 viewport={"width": 1440, "height": 900})
-            for path, key, sel in (("posts/", "posts", ".row-item h3"),
+            for path, key, sel in (("", "index", None),
+                                   ("posts/", "posts", ".row-item h3"),
                                    ("posts/hello-nanmu-blog/", "post", ".prose p"),
                                    ("digest/", "digest", ".blank-sheet .bs-state"),
                                    ("about/", "about", ".about-grid .prose p")):
                 pg = ctx.new_page()
                 pg.goto(base + "/" + path, wait_until="domcontentloaded")
+                if key == "index":
+                    st = pg.evaluate("""() => ({
+                      hero: !!document.querySelector('#scene3d'),
+                      posters: document.querySelectorAll('#scene3d img.poster').length,
+                      panelPosts: !(document.getElementById('panel-posts')
+                          || {hasAttribute: () => true}).hasAttribute('hidden'),
+                      readBtn: !!document.querySelector('#panel-posts a.btn'),
+                      bodies: Array.from(document.querySelectorAll('.li-body'))
+                          .filter(b => !b.hasAttribute('hidden')).length,
+                      cover: !!document.querySelector('.cover-card'),
+                      js: document.documentElement.classList.contains('js')})""")
+                    check("nojs/index",
+                          st["hero"] and st["posters"] == 2
+                          and st["panelPosts"] and st["readBtn"]
+                          and st["bodies"] == 3 and st["cover"] and not st["js"],
+                          "hero=%s posters=%d panel=%s read=%s bodies=%d js=%s"
+                          % (st["hero"], st["posters"], st["panelPosts"],
+                             st["readBtn"], st["bodies"], st["js"]))
+                    pg.close()
+                    continue
                 st = pg.evaluate("""(sel) => {
                   const nav = document.querySelector('nav.main');
                   return {
@@ -359,6 +414,383 @@ def main():
             check("keyboard/tab", ok, str(focused))
             pg.close()
             ctx.close()
+
+            # ── I. 首页静态结构 + 内容同源(昼,桌面)──
+            # 内容同源契约:#scene3d 的 data-article JSON 与封面卡 href、
+            # 页签面板「读全文」href、featured 标题四方一致;poster 为
+            # 装饰性主视觉(alt 不提文章标题),先于任何 3D 字节请求。
+            ctx = b.new_context(viewport={"width": 1440, "height": 900})
+            pg = ctx.new_page()
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            st = pg.evaluate("""() => {
+              const host = document.querySelector('#scene3d');
+              const art = host && host.dataset.article
+                ? JSON.parse(host.dataset.article) : null;
+              const posters = Array.from(
+                document.querySelectorAll('#scene3d img.poster'));
+              const light = posters.find(p => p.classList.contains('poster-light'));
+              const cover = document.querySelector('.cover-card');
+              const read = document.querySelector('#panel-posts a.btn');
+              return {
+              hero: !!host, heroClass: host ? host.className : '',
+              h1: (document.querySelector('.hero-title h1')
+                   || {textContent: ''}).textContent.trim(),
+              posters: posters.length,
+              lightAlt: light ? light.alt : '(missing)',
+              fp: light ? (light.getAttribute('fetchpriority') || '') : '',
+              lazy: light ? (light.getAttribute('loading') || '') : '',
+              tabs: document.querySelectorAll('.ptab').length,
+              panels: document.querySelectorAll('.tpanel').length,
+              panelPostsOn: !(document.getElementById('panel-posts')
+                  || {hasAttribute: () => true}).hasAttribute('hidden'),
+              knots: Array.from(document.querySelectorAll('.thread .knot'))
+                  .map(k => k.dataset.for),
+              coverHref: cover ? cover.getAttribute('href') : null,
+              coverVT: cover ? cover.style.viewTransitionName : '(missing)',
+              cbTitle: (document.querySelector('.cb-title')
+                   || {textContent: ''}).textContent,
+              readHref: read ? read.getAttribute('href') : null,
+              layers: document.querySelectorAll('.layer-item').length,
+              copies: document.querySelectorAll('.subscribe-zone .copy-link').length,
+              digestState: (document.querySelector('.digest-empty .bs-state')
+                   || {textContent: ''}).textContent,
+              article: art};}""")
+            art = st["article"] or {}
+            ok = (st["hero"] and "hero-full" in (st["heroClass"] or "")
+                  and st["h1"] != "" and st["posters"] == 2
+                  and st["lightAlt"] != "" and st["fp"] == "high"
+                  and st["lazy"] == ""
+                  and st["tabs"] == 3 and st["panels"] == 3
+                  and st["panelPostsOn"]
+                  and st["knots"] == ["#posts", "#digest", "#about", "#subscribe"]
+                  and st["coverVT"] == "" and st["copies"] == 2
+                  and "暂无" in st["digestState"])
+            if art:
+                # 四方同源 + 装饰性 alt(不含文章标题)
+                ok = ok and art.get("url") and art["url"] == st["coverHref"] \
+                    == st["readHref"] and st["cbTitle"].replace("\n", "") \
+                    and art.get("title") in st["cbTitle"].replace("\n", "") \
+                    and art.get("title", "X") not in st["lightAlt"]
+            check("home/static", ok,
+                  "hero=%s posters=%d fp=%s tabs=%d/%d knots=%d copies=%d "
+                  "art.url=%s cover=%s read=%s" %
+                  (st["hero"], st["posters"], st["fp"], st["tabs"],
+                   st["panels"], len(st["knots"]), st["copies"],
+                   (art or {}).get("url"), st["coverHref"], st["readHref"]))
+            # 无静态/残留挂名:封面卡与页头之外的元素不挂 latest-cover
+            extra_vt = pg.evaluate(
+                "[...document.querySelectorAll('[style*=view-transition-name],"
+                ".vt-named')].length")
+            check("home/vt-clean", extra_vt == 0, "vt-named=%s" % extra_vt)
+            pg.close()
+            ctx.close()
+
+            # ── J. W5-W8 页面侧行为(home.js;昼,桌面)──
+            ctx = b.new_context(viewport={"width": 1440, "height": 900})
+            pg = ctx.new_page()
+            errs = []
+            pg.on("pageerror", lambda e: errs.append(str(e)))
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            pg.wait_for_timeout(300)
+            present = pg.evaluate(
+                "!!document.querySelector('#scene3d')"
+                " && !!document.getElementById('panel-digest')")
+            if not present:
+                for lbl in ("home/tabs", "home/tabs-keyboard", "home/layers"):
+                    check(lbl, False, "#scene3d/页签面板缺失")
+                check("home/console", not errs, str(errs[:2]))
+            else:
+                st = pg.evaluate("""() => {
+                  const t = document.querySelector('#tab-digest');
+                  return {tab: t ? t.tabIndex : '(missing)',
+                          sel: t ? t.getAttribute('aria-selected') : '',
+                          hidden: document.getElementById('panel-digest')
+                              .hasAttribute('hidden')};}""")
+                pg.click("#tab-digest")
+                pg.wait_for_timeout(150)
+                st2 = pg.evaluate("""() => ({
+                  sel: document.querySelector('#tab-digest')
+                      .getAttribute('aria-selected'),
+                  tab: document.querySelector('#tab-digest').tabIndex,
+                  postsTab: document.querySelector('#tab-posts').tabIndex,
+                  digestOn: !document.getElementById('panel-digest')
+                      .hasAttribute('hidden'),
+                  postsHidden: document.getElementById('panel-posts')
+                      .hasAttribute('hidden')})""")
+                check("home/tabs", st["tab"] == -1 and st["sel"] == "false"
+                      and st["hidden"] and st2["sel"] == "true"
+                      and st2["tab"] == 0 and st2["postsTab"] == -1
+                      and st2["digestOn"] and st2["postsHidden"],
+                      "before(tab=%s sel=%s) after(sel=%s tab=%s postsTab=%s "
+                      "on=%s postsHidden=%s)" % (st["tab"], st["sel"],
+                      st2["sel"], st2["tab"], st2["postsTab"],
+                      st2["digestOn"], st2["postsHidden"]))
+                # 键盘漫游:End 直达末页签
+                pg.click("#tab-posts")
+                pg.keyboard.press("End")
+                pg.wait_for_timeout(120)
+                kb = pg.evaluate("""() => ({
+                  sel: (document.querySelector('#tab-about')
+                      || {getAttribute: () => null})
+                      .getAttribute('aria-selected'),
+                  focus: document.activeElement.id})""")
+                check("home/tabs-keyboard", kb["sel"] == "true"
+                      and kb["focus"] == "tab-about", str(kb))
+                # W8:三层手风琴(点层头)与分层图联动(点图卡)
+                pg.click(".layer-item[data-layer=digest] .li-head")
+                pg.wait_for_timeout(120)
+                ly = pg.evaluate("""() => ({
+                  dOn: (document.querySelector(
+                      '.layer-item[data-layer=digest]')
+                      || {classList: {contains: () => false}})
+                      .classList.contains('on'),
+                  pOff: !(document.querySelector(
+                      '.layer-item[data-layer=posts]')
+                      || {classList: {contains: () => true}})
+                      .classList.contains('on'),
+                  bodyOpen: !(document.querySelector(
+                      '.layer-item[data-layer=digest] .li-body')
+                      || {hasAttribute: () => true})
+                      .hasAttribute('hidden')})""")
+                pg.click(".layers-fig .ly-search")
+                pg.wait_for_timeout(120)
+                ly2 = pg.evaluate("""() => ({
+                  sOn: (document.querySelector(
+                      '.layer-item[data-layer=search]')
+                      || {classList: {contains: () => false}})
+                      .classList.contains('on'),
+                  pressed: (document.querySelector('.ly-search')
+                      || {getAttribute: () => null})
+                      .getAttribute('aria-pressed')})""")
+                check("home/layers", ly["dOn"] and ly["pOff"] and ly["bodyOpen"]
+                      and ly2["sOn"] and ly2["pressed"] == "true",
+                      "head=%s fig=%s" % (ly, ly2))
+                check("home/console", not errs, str(errs[:2]))
+            pg.close()
+            ctx.close()
+
+            # ── K. 3D 场景(批次 2 终态:boot→联动→连选→暂停组合)──
+            ctx = b.new_context(viewport={"width": 1440, "height": 900})
+            pg = ctx.new_page()
+            errs = []
+            pg.on("pageerror", lambda e: errs.append(str(e)))
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            boot = poll_js(pg, "!!window.__bookscene", 15000)
+            pg.wait_for_timeout(300)
+            st = pg.evaluate("""(() => {
+              const s = window.__bookscene;
+              if (!s) return {boot: false};
+              const pbb = s.projectBindingBottom();
+              return {boot: true,
+                      tris: s.stats().triangles,
+                      posters: document.querySelectorAll('#scene3d img.poster').length,
+                      hud: document.querySelectorAll('.scene-hud button').length,
+                      pbb: pbb ? [pbb.x, pbb.y] : null};})()""")
+            check("home3d/boot", bool(boot) and st.get("boot")
+                  and st.get("tris", 0) > 0 and st.get("posters") == 0
+                  and st.get("hud") == 2 and st.get("pbb"),
+                  "book=%s tris=%s posters=%s hud=%s pbb=%s" %
+                  (bool(boot), st.get("tris"), st.get("posters"),
+                   st.get("hud"), st.get("pbb")))
+            if not boot:
+                for lbl in ("home3d/tab-to-scene", "home3d/scene-to-tab",
+                            "home3d/fast-select", "home3d/reselect",
+                            "home3d/pause-combo"):
+                    check(lbl, False, "无 __bookscene(3D 未接入)")
+            else:
+                # 页签 → 3D(点击 tab 后场景 current 跟随)
+                pg.click("#tab-digest")
+                cur = poll_js(pg, "window.__bookscene"
+                              " && window.__bookscene.current() === 'digest'",
+                              4000)
+                check("home3d/tab-to-scene", bool(cur), "current=%s"
+                      % pg.evaluate("window.__bookscene.current()"))
+                # 3D → 页签(select 后 tab aria-selected 同步)
+                pg.evaluate("window.__bookscene.select('about')")
+                tabok = poll_js(pg, "(document.querySelector('#tab-about')"
+                               " || {getAttribute: () => null})"
+                               ".getAttribute('aria-selected') === 'true'",
+                               4000)
+                check("home3d/scene-to-tab", bool(tabok), "about selected=%s"
+                      % pg.evaluate("(document.querySelector('#tab-about')"
+                                    " || {getAttribute: () => null})"
+                                    ".getAttribute('aria-selected')"))
+                # 快速连选:只保留最后一次
+                pg.evaluate("window.__bookscene.select('posts');"
+                            "window.__bookscene.select('digest');"
+                            "window.__bookscene.select('about')")
+                fast = poll_js(pg, "window.__bookscene.current() === 'about'"
+                               " && (document.querySelector('#tab-about')"
+                               " || {getAttribute: () => null})"
+                               ".getAttribute('aria-selected') === 'true'",
+                               4000)
+                check("home3d/fast-select", bool(fast), "current=%s"
+                      % pg.evaluate("window.__bookscene.current()"))
+                # 选回正在进入前景的页(动画中重复同目标)
+                pg.evaluate("window.__bookscene.select('posts')")
+                pg.wait_for_timeout(200)
+                pg.evaluate("window.__bookscene.select('posts')")
+                reSel = poll_js(pg, "window.__bookscene.current() === 'posts'",
+                                4000)
+                check("home3d/reselect", bool(reSel), "current=%s"
+                      % pg.evaluate("window.__bookscene.current()"))
+                # 暂停→选择→拖拽→resize→复位→恢复(needsLoop 下即时重绘)
+                st = pg.evaluate("""(() => {
+                  const s = window.__bookscene;
+                  s.setAmbient(false);
+                  const paused = s.isAmbientOn();
+                  s.select('digest');
+                  return {paused, cur: s.current()};})()""")
+                cv = pg.query_selector("#scene3d canvas")
+                if cv:
+                    box = cv.bounding_box()
+                    if box:
+                        cx, cy = box["x"] + box["width"] / 2, box["y"] + 30
+                        pg.mouse.move(cx, cy)
+                        pg.mouse.down()
+                        pg.mouse.move(cx + 60, cy + 20, steps=5)
+                        pg.mouse.up()
+                pg.set_viewport_size({"width": 1280, "height": 800})
+                pg.wait_for_timeout(200)
+                st2 = pg.evaluate("""(() => {
+                  const s = window.__bookscene;
+                  s.resetView();
+                  s.setAmbient(true);
+                  const pbb = s.projectBindingBottom();
+                  return {amb: s.isAmbientOn(), cur: s.current(),
+                          tris: s.stats().triangles,
+                          pbb: pbb ? [pbb.x, pbb.y] : null};})()""")
+                check("home3d/pause-combo", st["paused"] is False
+                      and st["cur"] == "digest" and st2["amb"] is True
+                      and st2["cur"] == "digest" and st2["tris"] > 0
+                      and st2["pbb"] and not errs,
+                      "paused=%s cur=%s amb=%s cur2=%s tris=%s pbb=%s errs=%s"
+                      % (st["paused"], st["cur"], st2["amb"], st2["cur"],
+                         st2["tris"], st2["pbb"], errs[:2]))
+            pg.close()
+            ctx.close()
+
+            # ── L. WebGL 不可用:零 3D 请求,poster 常显,页签仍切换 ──
+            b2 = p.chromium.launch(
+                **({"executable_path": CHROME} if CHROME else {}),
+                args=["--disable-webgl", "--disable-webgl2"])
+            try:
+                ctx = b2.new_context(viewport={"width": 1440, "height": 900})
+                pg = ctx.new_page()
+                reqs = []
+                pg.on("request", lambda r: reqs.append(r.url))
+                errs = []
+                pg.on("pageerror", lambda e: errs.append(str(e)))
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                pg.wait_for_timeout(2500)
+                st = pg.evaluate("""() => ({
+                  noWebgl: (document.querySelector('#scene3d')
+                      || {classList: {contains: () => false}})
+                      .classList.contains('no-webgl'),
+                  posters: document.querySelectorAll('#scene3d img.poster').length,
+                  hud: !!document.querySelector('.scene-hud')})""")
+                pg.click("#tab-digest", timeout=3000)
+                pg.wait_for_timeout(150)
+                tabok = pg.evaluate(
+                    "!(document.getElementById('panel-digest')"
+                    " || {hasAttribute: () => true}).hasAttribute('hidden')")
+                three = [u for u in reqs if "/3d/" in u and "poster" not in u]
+                poster = [u for u in reqs if "poster" in u]
+                check("home3d/no-webgl", st["noWebgl"] and st["posters"] >= 1
+                      and not st["hud"] and tabok and not three and poster
+                      and not errs,
+                      "no-webgl=%s posters=%d hud=%s tab=%s 3d-reqs=%d "
+                      "poster-reqs=%d errs=%s" %
+                      (st["noWebgl"], st["posters"], st["hud"], tabok,
+                       len(three), len(poster), errs[:2]))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("home3d/no-webgl", False, str(exc)[:80])
+            b2.close()
+
+            # ── M. 模块失败(scene6 abort):.no-webgl 终态,poster 常显 ──
+            try:
+                ctx = b.new_context(viewport={"width": 1440, "height": 900})
+                pg = ctx.new_page()
+                pg.route("**/3d/scene6.js", lambda r: r.abort())
+                errs = []
+                pg.on("pageerror", lambda e: errs.append(str(e)))
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                pg.wait_for_timeout(2500)
+                st = pg.evaluate("""() => ({
+                  noWebgl: (document.querySelector('#scene3d')
+                      || {classList: {contains: () => false}})
+                      .classList.contains('no-webgl'),
+                  posters: document.querySelectorAll('#scene3d img.poster').length,
+                  hud: !!document.querySelector('.scene-hud')})""")
+                pg.click("#tab-about", timeout=3000)
+                pg.wait_for_timeout(150)
+                tabok = pg.evaluate(
+                    "!(document.getElementById('panel-about')"
+                    " || {hasAttribute: () => true}).hasAttribute('hidden')")
+                check("home3d/module-fail", st["noWebgl"] and st["posters"] >= 1
+                      and not st["hud"] and tabok and not errs,
+                      "no-webgl=%s posters=%d hud=%s tab=%s errs=%s" %
+                      (st["noWebgl"], st["posters"], st["hud"], tabok,
+                       errs[:2]))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("home3d/module-fail", False, str(exc)[:80])
+
+            # ── N. 字体挂起:texReady 3.5s 超时后素纸场景接替 poster ──
+            httpd_slow = serve(str(SITE / "dist"), PORT + 1, fonts_delay=9)
+            slow_base = "http://127.0.0.1:%d" % (PORT + 1)
+            try:
+                ctx = b.new_context(viewport={"width": 1440, "height": 900})
+                pg = ctx.new_page()
+                errs = []
+                pg.on("pageerror", lambda e: errs.append(str(e)))
+                pg.goto(slow_base + "/", wait_until="domcontentloaded",
+                        timeout=30000)
+                hung = poll_js(pg, "window.__bookscene ? "
+                               "(document.querySelectorAll("
+                               "'#scene3d img.poster').length === 0"
+                               " ? 'scene' : 'pending') : false", 12000)
+                check("home3d/font-hang", hung == "scene" and not errs,
+                      "state=%s errs=%s" % (hung, errs[:2]))
+                pg.close()
+                ctx.close()
+            finally:
+                httpd_slow.shutdown()
+
+            # ── O. 封面挂名生命周期:两条去程回程后均不残留 ──
+            try:
+                ctx = b.new_context(viewport={"width": 1440, "height": 900})
+                pg = ctx.new_page()
+                errs = []
+                pg.on("pageerror", lambda e: errs.append(str(e)))
+                ok = True
+                details = []
+                for label, sel in (("cover", ".cover-card"),
+                                   ("readbtn", ".featured .f-actions a.btn")):
+                    pg.goto(base + "/", wait_until="domcontentloaded")
+                    pg.wait_for_selector(sel, timeout=8000)
+                    pg.click(sel)
+                    pg.wait_for_url("**/posts/*", timeout=8000)
+                    head = pg.evaluate(
+                        "(document.querySelector('.paper-head')"
+                        "||{style:{}}).style.viewTransitionName")
+                    pg.evaluate("history.back()")
+                    pg.wait_for_url(base + "/", timeout=8000)
+                    pg.wait_for_timeout(1200)  # VT finished 后摘除
+                    vt = pg.evaluate(
+                        "(document.querySelector('.cover-card')"
+                        "||{style:{}}).style.viewTransitionName")
+                    details.append("%s:head=%s back=%s" % (label, head, vt))
+                    ok = ok and head == "latest-cover" and vt == ""
+                check("home/cover-vt", ok and not errs, " ".join(details)
+                      + " errs=%s" % errs[:2])
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("home/cover-vt", False, str(exc)[:80])
             b.close()
     finally:
         httpd.shutdown()
