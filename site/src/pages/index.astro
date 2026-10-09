@@ -24,7 +24,7 @@ const excerpt = (post) => {
 const wordsOf = (post) => (post.body || '').replace(/\s+/g, '').length;
 
 /* #scene3d 宿主数据(内容同源契约,INTEGRATION-PLAN §5):页面侧封面卡/
-   页签面板与场景侧 scene6 均以此为准,JS 内零内容副本;无公开文章时
+   页签面板/层列表与场景侧 scene6 均以此为准,JS 内零内容副本;无公开文章时
    data-article 为空串,场景排「暂无文章」空态 */
 const article = latest
   ? {
@@ -37,6 +37,19 @@ const article = latest
       words: wordsOf(latest),
     }
   : null;
+
+/* 日报状态与站点说明同源(同一契约):digestInfo 零期为 null(空串属性),
+   有期给最新一期;siteLayers 是页面层列表与 3D 站点页共用的三层状态,
+   AI 日报层随是否有已发布期数切换「计划/在线」——3D 内不再持有会过期的
+   固定状态文案 */
+const digestInfo = digests[0]
+  ? { latest: { date: digests[0].data.date, count: digests[0].data.entry_count } }
+  : null;
+const siteLayers = [
+  { name: '手写文章', state: '在线 · 博客本体', solid: true },
+  { name: 'AI 日报', state: digests.length ? '在线 · 每日一期' : '计划 · 引擎评审通过', solid: digests.length > 0 },
+  { name: '个人检索', state: '计划 · 尚未开工', solid: false },
+];
 
 const rssUrl = new URL('rss.xml', Astro.site).toString();
 const digestUrl = new URL('digest.xml', Astro.site).toString();
@@ -51,7 +64,9 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     data-link-post={latest ? `/posts/${latest.id}/` : '/posts/'}
     data-link-digest="/digest/"
     data-link-about="/about/"
-    data-article={article ? JSON.stringify(article) : ''}>
+    data-article={article ? JSON.stringify(article) : ''}
+    data-digest={digestInfo ? JSON.stringify(digestInfo) : ''}
+    data-site={JSON.stringify(siteLayers)}>
     <img class="poster poster-light" src="/3d/poster-light.png"
       fetchpriority="high"
       alt="首页主视觉(静态图):一叠立着的稿纸,左缘朱砂线装订" />
@@ -207,7 +222,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
         <div class="layers-list">
           <div class="layer-item on" data-layer="posts">
             <button class="li-head" type="button" aria-expanded="true">
-              <span class="li-dot"></span><b>手写文章</b><span class="li-state ok">在线 · 博客本体</span>
+              <span class="li-dot"></span><b>手写文章</b><span class={`li-state ${siteLayers[0].solid ? 'ok' : 'plan'}`}>{siteLayers[0].state}</span>
             </button>
             <div class="li-body">
               <p>博客本身已经在 nanmu.xyz 上线:我手写 Markdown,推送后服务器自动构建、原子切换。这是这个站唯一"必须活着"的部分,目前一切正常。</p>
@@ -215,7 +230,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           </div>
           <div class="layer-item" data-layer="digest">
             <button class="li-head" type="button" aria-expanded="false">
-              <span class="li-dot"></span><b>AI 日报</b><span class="li-state plan">计划 · 引擎评审通过</span>
+              <span class="li-dot"></span><b>AI 日报</b><span class={`li-state ${siteLayers[1].solid ? 'ok' : 'plan'}`}>{siteLayers[1].state}</span>
             </button>
             <div class="li-body">
               <p>一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。设计已通过评审,正在做上线前核验。它挂掉,博客不受影响。</p>
@@ -223,7 +238,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           </div>
           <div class="layer-item" data-layer="search">
             <button class="li-head" type="button" aria-expanded="false">
-              <span class="li-dot"></span><b>个人检索</b><span class="li-state plan">计划 · 尚未开工</span>
+              <span class="li-dot"></span><b>个人检索</b><span class={`li-state ${siteLayers[2].solid ? 'ok' : 'plan'}`}>{siteLayers[2].state}</span>
             </button>
             <div class="li-body">
               <p>把我的文章和精选内容做成可问答的知识库,先自用。排在日报之后开工;它挂掉,博客和日报都不受影响。</p>

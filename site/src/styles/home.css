@@ -249,6 +249,10 @@ html.js .layer-item:not(.on) .li-body{display:none}
   .hero-full{height:auto; min-height:100dvh; display:flex; flex-direction:column; overflow:visible}
   .hero-full .scene-host{position:relative; inset:auto; height:56dvh; flex:none; order:-2}
   .hero-full img.poster{position:relative; inset:auto; height:56dvh; object-fit:cover; flex:none; order:-2}
+  /* 场景容器入 DOM 后(has-scene,boot6 维护):poster 脱流叠加到
+     scene-host 同格,交接区恒一格 56dvh;初始化失败清 host+class 回退,
+     no-webgl/无 JS 时无此类,poster 独撑 */
+  .hero-full.has-scene img.poster{position:absolute; top:0; left:0; width:100%; height:56dvh; flex:none}
   .hero-title{position:relative; left:0; top:0; bottom:0; flex:1;
     flex-direction:column; align-items:flex-start; justify-content:center;
     gap:8px; padding:18px 20px 0; pointer-events:none}

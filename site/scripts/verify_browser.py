@@ -438,6 +438,8 @@ def main():
               const host = document.querySelector('#scene3d');
               const art = host && host.dataset.article
                 ? JSON.parse(host.dataset.article) : null;
+              const site = host && host.dataset.site
+                ? JSON.parse(host.dataset.site) : null;
               const posters = Array.from(
                 document.querySelectorAll('#scene3d img.poster'));
               const light = posters.find(p => p.classList.contains('poster-light'));
@@ -454,6 +456,8 @@ def main():
               darkLazy: (document.querySelector('img.poster-dark')
                   || {getAttribute: () => null})
                   .getAttribute('loading'),
+              ddRaw: host ? host.getAttribute('data-digest') : null,
+              site: site,
               tabs: document.querySelectorAll('.ptab').length,
               panels: document.querySelectorAll('.tpanel').length,
               panelPostsOn: !(document.getElementById('panel-posts')
@@ -469,8 +473,12 @@ def main():
               copies: document.querySelectorAll('.subscribe-zone .copy-link').length,
               digestState: (document.querySelector('.digest-empty .bs-state')
                    || {textContent: ''}).textContent,
+              liDigest: (document.querySelector(
+                  '.layer-item[data-layer=digest] .li-state')
+                   || {textContent: ''}).textContent.trim(),
               article: art};}""")
             art = st["article"] or {}
+            site = st["site"] or []
             ok = (st["hero"] and "hero-full" in (st["heroClass"] or "")
                   and st["h1"] != "" and st["posters"] == 2
                   and st["lightAlt"] != "" and st["fp"] == "high"
@@ -480,6 +488,12 @@ def main():
                   and st["knots"] == ["#posts", "#digest", "#about", "#subscribe"]
                   and st["coverVT"] == "" and st["copies"] == 2
                   and "暂无" in st["digestState"])
+            # 日报状态/站点说明同源:data-digest 空串(零期现状)、
+            # data-site 三层与页面层列表 li-state 逐字一致(改一处即不同步)
+            dig_layer = site[1] if len(site) == 3 else {}
+            ok = ok and st["ddRaw"] == "" and len(site) == 3 \
+                and site[0].get("solid") is True \
+                and dig_layer.get("state") == st["liDigest"]
             if art:
                 # 四方同源 + 装饰性 alt(不含文章标题)
                 ok = ok and art.get("url") and art["url"] == st["coverHref"] \
@@ -488,11 +502,12 @@ def main():
                     and art.get("title", "X") not in st["lightAlt"]
             check("home/static", ok,
                   "hero=%s posters=%d fp=%s lazy=%s/%s tabs=%d/%d knots=%d"
-                  " copies=%d art.url=%s cover=%s read=%s" %
+                  " copies=%d art.url=%s cover=%s read=%s dd=%s li=%s" %
                   (st["hero"], st["posters"], st["fp"], st["lazy"],
                    st["darkLazy"], st["tabs"],
                    st["panels"], len(st["knots"]), st["copies"],
-                   (art or {}).get("url"), st["coverHref"], st["readHref"]))
+                   (art or {}).get("url"), st["coverHref"], st["readHref"],
+                   st["ddRaw"], st["liDigest"]))
             # 无静态/残留挂名:封面卡与页头之外的元素不挂 latest-cover
             extra_vt = pg.evaluate(
                 "[...document.querySelectorAll('[style*=view-transition-name],"
@@ -646,6 +661,20 @@ def main():
                                4000)
                 check("home3d/fast-select", bool(fast), "current=%s"
                       % pg.evaluate("window.__bookscene.current()"))
+                # 历史排队反例:动画中 digest→about→digest 变向——
+                # 第一次 select 启动换页动画,中途 about 排队又被 digest
+                # 覆盖;等待稳定终态 digest(页签同步)
+                pg.evaluate("window.__bookscene.select('digest')")
+                pg.wait_for_timeout(200)   # 落在换页动画中
+                pg.evaluate("window.__bookscene.select('about')")
+                pg.evaluate("window.__bookscene.select('digest')")
+                back = poll_js(pg, "window.__bookscene.current() === 'digest'"
+                               " && (document.querySelector('#tab-digest')"
+                               " || {getAttribute: () => null})"
+                               ".getAttribute('aria-selected') === 'true'",
+                               6000)
+                check("home3d/requeue-digest", bool(back), "current=%s"
+                      % pg.evaluate("window.__bookscene.current()"))
                 # 选回正在进入前景的页(动画中重复同目标)
                 pg.evaluate("window.__bookscene.select('posts')")
                 pg.wait_for_timeout(200)
@@ -777,6 +806,15 @@ def main():
                 pg.on("pageerror", lambda e: errs.append(str(e)))
                 pg.goto(slow_base + "/", wait_until="domcontentloaded",
                         timeout=30000)
+                # 挂起窗口内的主题切换:host 已入 DOM(暗色快照已过)、
+                # 场景未就绪时连点两次(auto→light→dark)——就绪后场景
+                # 必须采用最新有效主题,而不是加载开始时的旧快照
+                hostUp = poll_js(pg, "!!document.querySelector("
+                                 "'#scene3d .scene-host')", 12000)
+                pg.click("#theme-btn")
+                pg.click("#theme-btn")
+                mode = pg.evaluate(
+                    "document.documentElement.dataset.theme || 'auto'")
                 # 窗口 20s:挂起分片让 rIC 与 race 顺延(DCL~1s + idle 至
                 # 迟~10s + import + race 3.5s + poster 淡出 0.7s),终态不变。
                 # 表达式必须纯布尔:poll_js 按真值返回,'pending' 之类的
@@ -786,10 +824,15 @@ def main():
                                "'#scene3d img.poster').length === 0", 20000)
                 after = pg.evaluate(
                     "({book: !!window.__bookscene, posters: "
-                    "document.querySelectorAll('#scene3d img.poster').length})")
-                check("home3d/font-hang", bool(hung) and not errs,
-                      "book=%s posters=%s errs=%s"
-                      % (after["book"], after["posters"], errs[:2]))
+                    "document.querySelectorAll('#scene3d img.poster').length, "
+                    "dark: window.__bookscene"
+                    " && window.__bookscene.themeDark"
+                    " ? window.__bookscene.themeDark() : null})")
+                check("home3d/font-hang", bool(hostUp) and mode == "dark"
+                      and bool(hung) and after["dark"] is True and not errs,
+                      "host=%s mode=%s book=%s posters=%s dark=%s errs=%s"
+                      % (bool(hostUp), mode, after["book"], after["posters"],
+                         after["dark"], errs[:2]))
                 pg.close()
                 ctx.close()
             finally:

@@ -50,16 +50,23 @@ const FIXED_SAMPLE =
   '你好,nanmu-blogAI日报这个站手写文章个人检索NANMU·nanmu.xyzdigest' +
   '计划每日一期发出后注明生成引擎已通过设计评审正在做上线前核验第到达时会出现在栏目暂无发布' +
   '三层各管任何挂掉博客照常在线已在服务器的自动发布链路上线随笔建站篇全文约字0123456789-·:;,。——/()「」' +
-  '无题第一写。文章';
-async function fontsReady(article){
-  /* 样本 = 动态文章文本(标题/日期/标签/摘要/落款数字)+ 固定文案,
-     覆盖三张纹理实际排印的全部字符 */
+  '无题第一写。文章最新往正文见';
+async function fontsReady(article, digest, site){
+  /* 样本 = 动态文本(文章四要素 + 日报最新期 + 三层名/状态)
+     + 固定文案,覆盖三张纹理实际排印的全部字符 */
   const dyn = article
     ? (String(article.title || '') + String(article.date || '') +
        String(article.tags || '') + String(article.excerpt || '') +
        '第' + article.no + '篇全文约' + article.words + '字')
     : '暂无文章第一篇正在写。';
-  const SAMPLE = dyn + FIXED_SAMPLE;
+  const dynDig = digest && digest.latest
+    ? (String(digest.latest.date) + String(digest.latest.count) +
+       '最新一期已发布引擎每日发出后注明生成往期与正文见栏目在线每')
+    : '';
+  const dynSite = site && site.length
+    ? site.map(x => String(x.name || '') + String(x.state || '')).join('')
+    : '';
+  const SAMPLE = dyn + dynDig + dynSite + FIXED_SAMPLE;
   try { await Promise.all([
     document.fonts.load('900 88px "Noto Serif SC"', SAMPLE),
     document.fonts.load('400 35px "Noto Serif SC"', SAMPLE),
@@ -192,14 +199,18 @@ function articleTex(art){
                  : '文章 · nanmu.xyz', TM, TH - 92);
   return paperFinish(g);
 }
-/* 日报页:空态稿纸——栏目抬头 + 虚线行 + 准确状态(不虚构内容) */
-function digestTex(){
+/* 日报页:稿纸——栏目抬头 + 虚线行 + 状态(内容同源:dig 最新期来自
+   data-digest,零期排空态,不虚构内容) */
+function digestTex(dig){
+  const live = !!(dig && dig.latest);
   const [, g] = paperBase(41);
   pageHead(g, '机', 'NANMU · AI 日报');
   g.fillStyle = '#14161A'; g.font = '900 88px "Noto Serif SC", serif';
   g.fillText('AI 日报', TM, 240);
   g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 27px "Noto Serif SC", serif';
-  g.fillText('计划每日一期 · 发出后注明 AI 生成', TM, 330);
+  g.fillText(live
+    ? (dig.latest.date + ' 已发布 · 共 ' + dig.latest.count + ' 条 · AI 生成')
+    : '计划每日一期 · 发出后注明 AI 生成', TM, 330);
   g.strokeStyle = 'rgba(29,31,36,0.4)'; g.lineWidth = 1.5;
   g.beginPath(); g.moveTo(TM, 376); g.lineTo(TW - 84, 376); g.stroke();
   /* 虚线行:待填的稿纸 */
@@ -209,18 +220,32 @@ function digestTex(){
     g.beginPath(); g.moveTo(TM, yy); g.lineTo(TW - 84 - (i === 3 ? 260 : 0), yy); g.stroke();
   }
   g.setLineDash([]);
-  /* 空态说明:准确状态 */
-  g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
-  g.fillText('暂无已发布日报', TM, 920);
-  g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
-  g.fillText('引擎已通过设计评审,正在做上线前核验。', TM, 986);
-  g.fillText('第一期到达时会出现在这个栏目。', TM, 1040);
+  /* 状态说明:与页面层列表同源 */
+  if (live){
+    g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
+    g.fillText('最新一期:' + dig.latest.date, TM, 920);
+    g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
+    g.fillText('引擎每日一期,发出后注明 AI 生成。', TM, 986);
+    g.fillText('往期与正文见日报栏目。', TM, 1040);
+  } else {
+    g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
+    g.fillText('暂无已发布日报', TM, 920);
+    g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
+    g.fillText('引擎已通过设计评审,正在做上线前核验。', TM, 986);
+    g.fillText('第一期到达时会出现在这个栏目。', TM, 1040);
+  }
   g.fillStyle = 'rgba(29,31,36,0.45)'; g.font = '400 24px "Noto Serif SC", serif';
   g.fillText('栏目: digest · nanmu.xyz', TM, TH - 92);
   return paperFinish(g);
 }
-/* 站点页:三层结构简图——博客本体 / AI 日报 / 个人检索,层间分离表达独立 */
-function aboutTex(){
+/* 站点页:三层结构简图——博客本体 / AI 日报 / 个人检索,层间分离表达独立;
+   层名与状态来自 data-site(页面层列表同源),缺省退内置默认 */
+function aboutTex(layers){
+  const L = (layers && layers.length === 3)
+    ? layers
+    : [{name: '手写文章', state: '在线 · 博客本体', solid: true},
+       {name: 'AI 日报',  state: '计划 · 引擎评审通过', solid: false},
+       {name: '个人检索', state: '计划 · 尚未开工', solid: false}];
   const [, g] = paperBase(63);
   pageHead(g, '站', 'NANMU · 这个站');
   g.fillStyle = '#14161A'; g.font = '900 88px "Noto Serif SC", serif';
@@ -229,24 +254,22 @@ function aboutTex(){
   g.fillText('三层各管各的:任何一层挂掉,博客照常在线', TM, 330);
   g.strokeStyle = 'rgba(29,31,36,0.4)'; g.lineWidth = 1.5;
   g.beginPath(); g.moveTo(TM, 376); g.lineTo(TW - 84, 376); g.stroke();
-  const layers = [
-    {name: '手写文章', state: '在线 · 博客本体', y: 470, solid: true},
-    {name: 'AI 日报',  state: '计划 · 引擎评审通过', y: 680, solid: false},
-    {name: '个人检索', state: '计划 · 尚未开工', y: 890, solid: false},
-  ];
-  for (const L of layers){
+  const ys = [470, 680, 890];
+  for (let i = 0; i < 3; i++){
+    const name = String(L[i].name || ''), state = String(L[i].state || '');
+    const solid = !!L[i].solid, y = ys[i];
     /* 纸层:矩形带厚度(下缘暗线),计划层用虚线框 */
-    g.fillStyle = L.solid ? 'rgba(194,64,42,0.07)' : 'rgba(29,31,36,0.03)';
-    g.fillRect(TM, L.y, TW - TM - 84, 120);
-    if (L.solid){ g.strokeStyle = 'rgba(194,64,42,0.65)'; g.setLineDash([]); }
+    g.fillStyle = solid ? 'rgba(194,64,42,0.07)' : 'rgba(29,31,36,0.03)';
+    g.fillRect(TM, y, TW - TM - 84, 120);
+    if (solid){ g.strokeStyle = 'rgba(194,64,42,0.65)'; g.setLineDash([]); }
     else { g.strokeStyle = 'rgba(29,31,36,0.4)'; g.setLineDash([9, 8]); }
-    g.lineWidth = 2; g.strokeRect(TM, L.y, TW - TM - 84, 120);
+    g.lineWidth = 2; g.strokeRect(TM, y, TW - TM - 84, 120);
     g.setLineDash([]);
-    g.fillStyle = 'rgba(20,18,14,0.16)'; g.fillRect(TM, L.y + 120, TW - TM - 84, 10);
+    g.fillStyle = 'rgba(20,18,14,0.16)'; g.fillRect(TM, y + 120, TW - TM - 84, 10);
     g.fillStyle = '#14161A'; g.font = '700 44px "Noto Serif SC", serif';
-    g.fillText(L.name, TM + 34, L.y + 58);
-    g.fillStyle = L.solid ? '#A83622' : 'rgba(29,31,36,0.55)'; g.font = '400 27px "Noto Serif SC", serif';
-    g.fillText(L.state, TM + 34, L.y + 100);
+    g.fillText(name, TM + 34, y + 58);
+    g.fillStyle = solid ? '#A83622' : 'rgba(29,31,36,0.55)'; g.font = '400 27px "Noto Serif SC", serif';
+    g.fillText(state, TM + 34, y + 100);
   }
   g.fillStyle = 'rgba(29,31,36,0.45)'; g.font = '400 24px "Noto Serif SC", serif';
   g.fillText('nanmu.xyz · 已在服务器的自动发布链路上线', TM, TH - 92);
@@ -288,9 +311,12 @@ export async function createScene(host, opts = {}){
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const links = Object.assign({post: '/posts/', digest: '/digest/', about: '/about/'}, opts.links || {});
   const onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : null;
-  /* 内容同源:article = {title,date,tags,excerpt,url,no,words} | null,
-     由 boot6 从 #scene3d data-article(构建期生成)解析传入 */
+  /* 内容同源:article = {title,date,tags,excerpt,url,no,words} | null、
+     digest = {latest:{date,count}} | null、site = [{name,state,solid}] | null,
+     均由 boot6 从 #scene3d data-* JSON(构建期生成)解析传入 */
   const article = opts.article || null;
+  const digest = opts.digest || null;
+  const site = opts.site || null;
 
   const renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth < 760 ? 1.5 : 2));
@@ -373,8 +399,8 @@ export async function createScene(host, opts = {}){
   /* 三张内容页:先素纸占位,字体就绪后换正式纹理 */
   const PAGES = [
     {pid: 'posts',  label: '文章',   link: links.post,   tex: () => articleTex(article)},
-    {pid: 'digest', label: '日报',   link: links.digest, tex: digestTex},
-    {pid: 'about',  label: '这个站', link: links.about,  tex: aboutTex},
+    {pid: 'digest', label: '日报',   link: links.digest, tex: () => digestTex(digest)},
+    {pid: 'about',  label: '这个站', link: links.about,  tex: () => aboutTex(site)},
   ];
   const pages = PAGES.map((def, i) => {
     const mat = new THREE.MeshStandardMaterial({
@@ -395,7 +421,7 @@ export async function createScene(host, opts = {}){
   });
   const pageMats = pages.map(m => m.material);
   /* 字体就绪后换正式纹理(每张纹理含纸底+内容+明暗带) */
-  const texReady = fontsReady(article).then(() => {
+  const texReady = fontsReady(article, digest, site).then(() => {
     PAGES.forEach((def, i) => {
       const t = def.tex();
       pageMats[i].map = t; pageMats[i].emissiveMap = t; pageMats[i].needsUpdate = true;
@@ -661,6 +687,8 @@ export async function createScene(host, opts = {}){
       if (immediate || reduced()){ themeT = themeTarget; applyTheme(themeT); renderOnce(); }
       else start();
     },
+    /* 目标主题只读(渐变中即目标值):验收脚本观测首帧是否采用最新主题 */
+    themeDark(){ return themeTarget === 1; },
     resetView(){ az = PARAMS.cam.az; el = PARAMS.cam.el; if (reduced()) renderOnce(); else start(); },
     replay(){ if (reduced()){ finishEntrance(); renderOnce(); } else { playEntrance(); start(); } },
     setAmbient(on){ ambientOn = on; if (on) start(); else if (!needsLoop()) stop(); },
