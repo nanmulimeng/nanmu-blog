@@ -6,14 +6,57 @@ import { assertDigestIds } from '../../lib/content';
 export async function getStaticPaths() {
   const all = await getCollection('digest');
   assertDigestIds(all);
-  return all.map((d) => ({ params: { id: d.id }, props: { digest: d } }));
+  const digests = all
+    .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
+  // 上一期=更早日期,下一期=更新日期(与文章页方向语义一致)
+  return digests.map((d, i) => ({
+    params: { id: d.id },
+    props: { digest: d, older: digests[i + 1] ?? null, newer: digests[i - 1] ?? null },
+  }));
 }
-const { digest } = Astro.props;
+const { digest, older, newer } = Astro.props;
 const { Content } = await render(digest);
 ---
 <Base title={`${digest.data.date} 日报`} description={`AI 生成 · ${digest.data.entry_count} 条`}>
-  <h1>{digest.data.date} 日报</h1>
-  <p class="muted">AI 生成({digest.data.ai_model})· {digest.data.entry_count} 条 · 成本 ¥{digest.data.cost_cny}{digest.data.cost_pending ? '(含未决预占,为保守上界)' : ''}</p>
-  <hr />
-  <article><Content /></article>
+  <div class="frame">
+    <div class="issue-wrap narrow">
+      <div class="crumb">
+        <span class="seal-m">机</span>
+        <a href="/">首页</a><span>/</span><a href="/digest/">日报</a><span>/</span><span>{digest.data.date}</span>
+      </div>
+      <h1 class="title">{digest.data.date} 日报</h1>
+
+      <!-- 图签:frontmatter 溯源字段的固定位置 -->
+      <div class="titleblock" role="table" aria-label="本期溯源信息">
+        <div class="tb-row"><span class="k">生成方式</span><span class="v">AI 自动生成 · {digest.data.ai_model}</span></div>
+        <div class="tb-row"><span class="k">条目数</span><span class="v">{digest.data.entry_count} 条</span></div>
+        <div class="tb-row"><span class="k">成本</span><span class="v">¥{digest.data.cost_cny}{digest.data.cost_pending && <span class="pending"> 含未决预占,为保守上界</span>}</span></div>
+      </div>
+
+      <div class="issue-body">
+        <Content />
+      </div>
+
+      <div class="issue-foot">
+        本期内容由 AI 引擎自动选题与摘要生成,模型与成本见顶部图签;条目附原始来源链接。页面为预生成静态内容,不实时调用模型。成本为引擎记账口径;<b>含未决预占</b>表示当期存在尚未出账单的调用,所示金额为保守上界。
+      </div>
+
+      <nav class="prev-next" aria-label="上下文日报">
+        {older ? (
+          <a class="prev" href={`/digest/${older.id}/`}>
+            <span class="lab mono">上一期</span><div class="t">{older.data.date} 日报</div>
+          </a>
+        ) : (
+          <span class="none"><span class="lab mono">上一期</span><div class="t">这是最早的一期</div></span>
+        )}
+        {newer ? (
+          <a class="next" href={`/digest/${newer.id}/`}>
+            <span class="lab mono">下一期</span><div class="t">{newer.data.date} 日报</div>
+          </a>
+        ) : (
+          <span class="none next"><span class="lab mono">下一期</span><div class="t">还没有</div></span>
+        )}
+      </nav>
+    </div>
+  </div>
 </Base>
