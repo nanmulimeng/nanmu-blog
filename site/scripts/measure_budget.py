@@ -19,6 +19,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 PORT = 8936
+SITE = Path(__file__).resolve().parents[1]  # site/
 CHROME = (r"C:\Users\nanmu\AppData\Local\ms-playwright\chromium-1248"
           r"\chrome-win64\chrome.exe")
 
@@ -53,6 +54,17 @@ def classify(url):
     return "other"
 
 
+def size_of(r):
+    """响应字节:content-length 头优先(本地 server 恒有),退 body()。"""
+    cl = r.headers.get("content-length")
+    if cl and cl.isdigit():
+        return int(cl)
+    try:
+        return len(r.body())
+    except Exception:  # noqa: BLE001 本地服务,仅统计
+        return 0
+
+
 def fetch_bytes(page, url, seen):
     """访问 url,返回 (本页分类字节, 新增 woff2 数, 新增 woff2 字节)。"""
     page_bytes = {}
@@ -63,10 +75,7 @@ def fetch_bytes(page, url, seen):
         nonlocal new_shards, new_bytes
         if r.request.resource_type == "document" or r.url.endswith(
                 (".css", ".js", ".woff2")):
-            try:
-                n = len(r.body())
-            except Exception:  # noqa: BLE001 本地服务,仅统计
-                return
+            n = size_of(r)
             page_bytes[classify(r.url)] = page_bytes.get(classify(r.url), 0) + n
             if r.url.endswith(".woff2") and r.url not in seen:
                 seen.add(r.url)
@@ -82,8 +91,8 @@ def fetch_bytes(page, url, seen):
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    fonts_css = Path("public/fonts/fonts.css")
-    httpd = serve("dist")
+    fonts_css = SITE / "public/fonts/fonts.css"
+    httpd = serve(str(SITE / "dist"))
     base = "http://127.0.0.1:%d" % PORT
     try:
         with sync_playwright() as p:

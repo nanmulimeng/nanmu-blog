@@ -11,10 +11,12 @@ import http.server
 import socketserver
 import sys
 import threading
+from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
 PORT = 8935
+SITE = Path(__file__).resolve().parents[1]  # site/
 CHROME = (r"C:\Users\nanmu\AppData\Local\ms-playwright\chromium-1248"
           r"\chrome-win64\chrome.exe")
 
@@ -62,7 +64,7 @@ PAGES = [
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    httpd = serve("dist")
+    httpd = serve(str(SITE / "dist"))
     base = "http://127.0.0.1:%d" % PORT
     try:
         with sync_playwright() as p:
@@ -78,12 +80,16 @@ def main():
                 for path, key, cur in PAGES:
                     pg = ctx.new_page()
                     pg.on("pageerror", lambda e: errs.append("%s:%s" % (key, e)))
-                    font_urls = []
+                    font_hits = []
                     pg.on("response",
-                          lambda r: font_urls.append(r.url)
+                          lambda r: font_hits.append(r.ok)
                           if r.url.endswith(".woff2") else None)
                     pg.goto(base + path, wait_until="domcontentloaded")
                     pg.wait_for_timeout(300)
+                    serif = pg.evaluate(
+                        "document.fonts ? document.fonts.ready.then("
+                        "() => document.fonts.check(\"17px 'Noto Serif SC'\")) "
+                        ": Promise.resolve(false)") if key == "post" else None
                     st = pg.evaluate("""(cur) => ({
                       top: !!document.querySelector('header.top'),
                       navLinks: document.querySelectorAll('nav.main a').length,
@@ -105,11 +111,13 @@ def main():
                         ok = ok and st["dt"] == "dark" \
                             and st["bg"] != "rgb(240, 237, 229)"
                     if key == "post":
-                        ok = ok and len(font_urls) >= 5  # 分片实际命中
+                        # 分片实际命中:≥5 个且全部 2xx,且正文族已就位
+                        ok = ok and sum(font_hits) >= 5 and all(font_hits) \
+                            and serif is True
                     check("matrix/%s/%s" % (key, theme), ok,
-                          "nav=%d script=%d ox=%d fonts=%d cur=%s" %
+                          "nav=%d script=%d ox=%d fonts=%d/%d serif=%s cur=%s" %
                           (st["navLinks"], st["scripts"], st["ox"],
-                           len(font_urls), st["cur"]))
+                           sum(font_hits), len(font_hits), serif, st["cur"]))
                     pg.close()
                 check("matrix/console/%s" % theme, not errs, str(errs[:3]))
                 ctx.close()

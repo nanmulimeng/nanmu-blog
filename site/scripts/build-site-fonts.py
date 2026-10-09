@@ -52,20 +52,23 @@ def main() -> int:
 
     kept = 0
     out_css = []
+    # 原型 fonts.css 位于 prototypes/ 根,url 前缀为 fonts/…;生产
+    # fonts.css 与分片同在 public/fonts/ 下,url 前缀需剥掉 fonts/
     for face in faces:
         if "'Noto Serif SC'" in face:
             m = re.search(r"noto-serif-sc-(\d{3})-\d+\.woff2", face)
             if not m or m.group(1) not in SERIF_WEIGHTS:
                 continue
             shutil.copy2(shards_src / m.group(0), shards_dst / m.group(0))
-            out_css.append(face)
+            out_css.append(face.replace("url('fonts/", "url('"))
             kept += 1
         elif "'IBM Plex Mono'" in face:
             m = re.search(r"plex-mono-(\d{3})\.woff2", face)
             weight = m.group(1)
             rename_plex(SRC / m.group(0), weight)
             new_face = face.replace("'IBM Plex Mono'", f"'{PLEX_NEW_FAMILY}'") \
-                           .replace(m.group(0), f"nm-plex-mono-{weight}.woff2")
+                           .replace(m.group(0), f"nm-plex-mono-{weight}.woff2") \
+                           .replace("url('fonts/", "url('")
             out_css.append(new_face)
 
     for lic in ("OFL-noto.txt", "OFL-ibm-plex.txt"):
