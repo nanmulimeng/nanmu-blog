@@ -1,0 +1,5 @@
+﻿[dstates/zero] {'dd': '', 'li': '计划 · 引擎评审通过', 'liCls': 'li-state plan', 'blank': True, 'tp': 'AI 日报 暂无已发布日报', 'dsDig': '计划 · 引擎评审通过'} => PASS
+[dstates/one] {'dd': '{"latest":{"date":"2026-10-04","count":2}}', 'li': '在线 · 每日一期', 'liCls': 'li-state ok', 'blank': False, 'tp': '2026-10-04 日报 2 条 · AI 生成', 'dsDig': '在线 · 每日一期'} => PASS
+[dstates/updated] {'dd': '{"latest":{"date":"2026-10-05","count":5}}', 'li': '在线 · 每日一期', 'liCls': 'li-state ok', 'blank': False, 'tp': '2026-10-05 日报 5 条 · AI 生成', 'dsDig': '在线 · 每日一期'} => PASS
+
+== 3/3 PASS ==

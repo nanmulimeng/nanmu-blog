@@ -1,0 +1,78 @@
+﻿[matrix/index/light] nav=4 script=4 ox=0 fonts=22/22 fontck=None cur=http://127.0.0.1:8935/ => PASS
+[matrix/index/scripts/light] scripts=4 expect=4 => PASS
+[matrix/posts/light] nav=4 script=2 ox=0 fonts=16/16 fontck=None cur=http://127.0.0.1:8935/posts/ => PASS
+[matrix/posts/scripts/light] scripts=2 expect=2 => PASS
+[matrix/post/light] nav=4 script=2 ox=0 fonts=28/28 fontck={'w400': True, 'w600': True, 'w900': True, 'mono': True} cur=http://127.0.0.1:8935/posts/ => PASS
+[matrix/post/scripts/light] scripts=2 expect=2 => PASS
+[matrix/digest/light] nav=4 script=2 ox=0 fonts=17/17 fontck=None cur=http://127.0.0.1:8935/digest/ => PASS
+[matrix/digest/scripts/light] scripts=2 expect=2 => PASS
+[matrix/about/light] nav=4 script=2 ox=0 fonts=19/19 fontck=None cur=http://127.0.0.1:8935/about/ => PASS
+[matrix/about/scripts/light] scripts=2 expect=2 => PASS
+[matrix/404/light] nav=4 script=2 ox=0 fonts=15/15 fontck=None cur=n/a => PASS
+[matrix/404/scripts/light] scripts=2 expect=2 => PASS
+[matrix/console/light] [] => PASS
+[matrix/index/dark] nav=4 script=4 ox=0 fonts=36/36 fontck=None cur=http://127.0.0.1:8935/ => PASS
+[matrix/index/scripts/dark] scripts=4 expect=4 => PASS
+[matrix/posts/dark] nav=4 script=2 ox=0 fonts=16/16 fontck=None cur=http://127.0.0.1:8935/posts/ => PASS
+[matrix/posts/scripts/dark] scripts=2 expect=2 => PASS
+[matrix/post/dark] nav=4 script=2 ox=0 fonts=28/28 fontck={'w400': True, 'w600': True, 'w900': True, 'mono': True} cur=http://127.0.0.1:8935/posts/ => PASS
+[matrix/post/scripts/dark] scripts=2 expect=2 => PASS
+[matrix/digest/dark] nav=4 script=2 ox=0 fonts=17/17 fontck=None cur=http://127.0.0.1:8935/digest/ => PASS
+[matrix/digest/scripts/dark] scripts=2 expect=2 => PASS
+[matrix/about/dark] nav=4 script=2 ox=0 fonts=19/19 fontck=None cur=http://127.0.0.1:8935/about/ => PASS
+[matrix/about/scripts/dark] scripts=2 expect=2 => PASS
+[matrix/404/dark] nav=4 script=2 ox=0 fonts=15/15 fontck=None cur=n/a => PASS
+[matrix/404/scripts/dark] scripts=2 expect=2 => PASS
+[matrix/console/dark] [] => PASS
+[posts/rows] rows=1 h3=你好,nanmu-blog => PASS
+[posts/subscribe]  文 文章 RSS https://nanmu.xyz/rss.xml 复制链接 => PASS
+[post/content] {'head': True, 'vt': 'latest-cover', 'paras': 3, 'fin': True, 'none': 2, 'bar': True} => PASS
+[digest/blank] state=暂无已发布日报 => PASS
+[about/content] {'grid': True, 'todo': 2, 'svg': True, 'facts': 4} => PASS
+[404/gate] 这一页还没有写出来 links=3 => PASS
+[mobile360/index] ox=0 toggle=block hero=True => PASS
+[mobile360/posts] ox=0 toggle=block hero=False => PASS
+[mobile360/post] ox=0 toggle=block hero=False => PASS
+[mobile360/digest] ox=0 toggle=block hero=False => PASS
+[mobile360/about] ox=0 toggle=block hero=False => PASS
+[mobile390/index] ox=0 toggle=block hero=True => PASS
+[mobile390/posts] ox=0 toggle=block hero=False => PASS
+[mobile390/post] ox=0 toggle=block hero=False => PASS
+[mobile390/digest] ox=0 toggle=block hero=False => PASS
+[mobile390/about] ox=0 toggle=block hero=False => PASS
+[mobile430/index] ox=0 toggle=block hero=True => PASS
+[mobile430/posts] ox=0 toggle=block hero=False => PASS
+[mobile430/post] ox=0 toggle=block hero=False => PASS
+[mobile430/digest] ox=0 toggle=block hero=False => PASS
+[mobile430/about] ox=0 toggle=block hero=False => PASS
+[nojs/index] hero=True posters=2 panel=True read=True bodies=3 js=False => PASS
+[nojs/posts] content=True nav=flex js=False => PASS
+[nojs/post] content=True nav=flex js=False => PASS
+[nojs/digest] content=True nav=flex js=False => PASS
+[nojs/about] content=True nav=flex js=False => PASS
+[reduced/posts] scroll=auto dur=1e-05s => PASS
+[reduced/404] anim=none => PASS
+[theme/cycle] seq=['light', 'dark', 'auto'] stored=auto after=auto => PASS
+[path/chain] errs=[] => PASS
+[keyboard/tab] ['brand', 'A', 'A', 'A', 'A'] => PASS
+[home/static] hero=True posters=2 fp=high lazy=/lazy tabs=3/3 knots=4 copies=2 art.url=/posts/hello-nanmu-blog/ cover=/posts/hello-nanmu-blog/ read=/posts/hello-nanmu-blog/ dd= li=计划 · 引擎评审通过 => PASS
+[home/vt-clean] vt-named=0 => PASS
+[home/tabs] before(tab=-1 sel=false) after(sel=true tab=0 postsTab=-1 on=True postsHidden=True) => PASS
+[home/tabs-keyboard] {'sel': 'true', 'focus': 'tab-about'} => PASS
+[home/layers] head={'dOn': True, 'pOff': True, 'bodyOpen': True} fig={'sOn': True, 'pressed': 'true'} => PASS
+[home/console] [] => PASS
+[home3d/boot] book=True tris=4351 posters=0 hud=2 pbb=[722.883676707047, 602.6247234707753] => PASS
+[home3d/tab-to-scene] current=digest => PASS
+[home3d/scene-to-tab] about selected=true => PASS
+[home3d/fast-select] current=about => PASS
+[home3d/requeue-digest] current=digest => PASS
+[home3d/reselect] current=posts => PASS
+[home3d/pause-combo] paused=False cur=digest amb=True cur2=digest tris=4351 pbb=[588.1796043534331, 498.0898691118544] errs=[] => PASS
+[home3d/no-webgl] no-webgl=True posters=2 hud=False tab=True 3d-reqs=0 poster-reqs=1 errs=[] => PASS
+[home3d/module-fail] no-webgl=True posters=2 hud=False tab=True errs=[] => PASS
+[home3d/font-hang] host=True mode=dark book=True posters=0 dark=True errs=[] => PASS
+[home/cover-vt] cover:head=latest-cover back= readbtn:head=latest-cover back= errs=[] => PASS
+[home3d/handover-mobile] host=True posters=2 posterIn=473 hostIn=473 dvh=473 heroB=926 ox=0 => PASS
+[home3d/fail-cleanup] injected=True hosts=0 no-webgl=True has-scene=False posters=2 posterIn=473 dvh=473 ox=0 => PASS
+
+== 76/76 PASS ==

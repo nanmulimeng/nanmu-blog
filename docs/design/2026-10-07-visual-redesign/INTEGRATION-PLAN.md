@@ -1,6 +1,6 @@
 # R6 正式接入方案(v2,2026-10-09 修订)
 
-- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化,内页预算全部在线内;**批次 2 首页 3D 已完成并本地验收(2026-10-09)= 72a4c42 验收工具 + a498f05 静态首页 + ffffd6e 3D 接入**:浏览器验收 73/73、E1/E2 预算全过、手机三宽视检,两提交可独立回退;**批次 2 定点修正轮已完成(2026-10-09,审计后)= 手机交接区单格化+失败清理、就绪前主题切换不丢、日报/站点状态同源接线、排队反例入验收、文档口径校正与证据归档(shots/r6-b2-*)**,验收扩至 74/74、夹具三态、预算复测通过;下一批 = 批次 3 测量收尾;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
+- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化,内页预算全部在线内;**批次 2 首页 3D 已完成并本地验收(2026-10-09)= 72a4c42 验收工具 + a498f05 静态首页 + ffffd6e 3D 接入**:浏览器验收 73/73、E1/E2 预算全过、手机三宽视检,两提交可独立回退;**批次 2 定点修正轮已完成(2026-10-09,审计后)= 手机交接区单格化+失败清理、就绪前主题切换不丢、日报/站点状态同源接线、排队反例入验收、文档口径校正与证据归档(shots/r6-b2-*)**,验收扩至 74/74、夹具三态、预算复测通过;**批次 3 进行中(2026-10-09 复核通过后启动)**:开头三项收尾已完成——①修正轮反例固化入库(verify_browser P 段:交接高度+失败清理,验收 76/76;scripts/verify_digest_states.py:三态 3/3)②本文件 poster 请求/呈现与昼/夜口径原条款校正 ③回退路径隔离检出实测(§7 2R 行);Lighthouse/Firefox/真机/Caddy 基线测量待做;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
 - 对象:R6 全站统一原型(`prototypes/r6/`)→ 生产站 `site/`
 - 关联:[R3-REVIEW.md](R3-REVIEW.md) · [ADR-0010](../../decisions/0010-adr0002-client-js-exceptions.md)(已接受,客户端行为以其白名单为准) · [prototypes/site/map.html](prototypes/site/map.html)
 
@@ -73,11 +73,11 @@
   - 内页:HTML+CSS+JS 冷缓存合计 ≤ 500KB(**不含另列的 woff2 字体分片**;其中 JS gzip ≤ 8KB;fonts.css gzip 预期 ≤ 60KB);首访字体分片 ≤ 1.2MB,跨页新增以实测记录基线
   - 首页(批次 2):poster ≤ 450KB 且先于任何 3D 字节到达;3D(three+scene,gzip)≤ 220KB 且 idle 动态 import;LCP 以文档/poster 为准
 - **poster/3D 真实加载策略(批次 2 实施细则,2026-10-09 授权后定稿)**:
-  - **触发顺序(实现后以请求时间线断言验证,不靠 defer 语义自证)**:①poster `<img>` 在 HTML 内(解析即请求,`fetchpriority="high"`,不 lazy,按当前主题显示对应张、另一张不请求)→ ②`site.js`(defer,全站)与 `home.js`(defer,仅首页,承载 W5-W8 页面侧)执行 → ③`boot6.js`(type=module)执行,先 WebGL 探测(失败=加 `.no-webgl` 类结束,3D 零请求)→ ④探测通过后 `requestIdleCallback`(无则 2s 超时兜底)再动态 `import` scene6——此时才发出 three.module/three.core/scene6 请求 → ⑤`texReady`(字体就绪纹理,3.5s 超时)后场景淡入、poster 淡出移除、HUD 注入。验收时间线断言:poster 请求的发起序号先于任何 3D 资源请求。
+  - **触发顺序(实现后以请求时间线断言验证,不靠 defer 语义自证)**:①poster `<img>` 在 HTML 内,解析即请求,`fetchpriority="high"`——**请求口径昼/夜分述(2026-10-09 校正,与 §5 实测一致)**:昼首访仅 light 单张(dark 为 display:none+loading=lazy,不请求);夜首访**双张**(light 是 eager 的 HTML img,display:none 不阻止下载;既存行为,未改传输策略)→ ②`site.js`(defer,全站)与 `home.js`(defer,仅首页,承载 W5-W8 页面侧)执行 → ③`boot6.js`(type=module)执行,先 WebGL 探测(失败=加 `.no-webgl` 类结束,3D 零请求)→ ④探测通过后 `requestIdleCallback`(无则 2s 超时兜底)再动态 `import` scene6——此时才发出 three.module/three.core/scene6 请求 → ⑤`texReady`(字体就绪纹理,3.5s 超时)后场景淡入、poster 淡出移除、HUD 注入。验收时间线断言:poster 请求的发起序号先于任何 3D 资源请求(昼夜均成立)。
   - **失败结束状态(各有明确终态,无空白/遮罩/永久加载)**:WebGL 不可用或模块加载/初始化失败 → `.no-webgl`,poster 常显、无 HUD,页签仍切换 HTML 面板;字体挂起 → 3.5s 超时后素纸场景接替 poster(纹理无字,console 告警);poster 自身加载失败 → alt 文本与 hero 竖排标题/页签/正文照常(视觉层之外的内容零依赖)。
   - **poster 定位=装饰性主视觉**:固定图像内容(一叠稿纸),**不承载「最新文章」身份**,alt 不提具体文章标题;最新文章由 HTML 数据(data-* JSON)与 3D 文字纹理实时承载,新文章发布即自动更新,poster 无需同步机制。
   - **暂停/离屏/恢复**(沿用原型规则):`setAmbient` 暂停动态后,用户主动操作(拖拽/复位/换页)与 resize 仍即时 `renderOnce`;IntersectionObserver 离屏停、回视口续;`visibilitychange` 同理;reduced-motion=静态完成态+立即换页。
-  - **预算口径**:poster 按两张资产合计 ≤450KB(实测 428676 B=418.6 KiB;首访仅传输当前主题单张);3D 合计=three.module+three.core+scene6+boot6 四件,gzip-6 ≤220KB;home.js 计入全站脚本 gzip ≤8KB 线的**首页专属口径**(内页不含 home.js,site.js 字节不增)。
+  - **预算口径**:poster 按两张资产合计 ≤450KB(实测 428676 B=418.6 KiB;昼首访传输 light 单张,夜首访传输双张——呈现口径昼 light 夜 dark,与请求口径分开,见 §5 批次 2 实测);3D 合计=three.module+three.core+scene6+boot6 四件,gzip-6 ≤220KB;home.js 计入全站脚本 gzip ≤8KB 线的**首页专属口径**(内页不含 home.js,site.js 字节不增)。
   - **内容同源**:首页构建时把最新文章(标题/日期/分类/摘录/篇数/字数/URL)、日报状态、站点层说明以 `data-*` JSON 挂在 `#scene3d` 宿主;scene6 排印只读该数据,JS 内零内容副本。长标题按 measureText 换行(至多 3 行,超长截「…」);特殊字符原样排印;空摘要不排正文段、不虚构占位;无公开文章时模板层渲染空态、3D 文章页排「暂无文章」;草稿经 getCollection 过滤永不入数据。
 - **预算检查在批次内的位置**:批次 1 验收=内页预算实测;批次 2 验收=poster/3D 预算实测;批次 3=全站复核与真机。
 - **批次 1 实测记录(2026-10-09 审计收口后,measure_budget.py 修正版 + 交错 fonts.css,本地无压缩服务)**:
@@ -94,7 +94,7 @@
     - 请求(昼首访,浅色上下文):仅 poster-light 一张(#4,先于任何 3D 字节);poster-dark 因 display:none+loading=lazy 不发起请求
     - 请求(夜首访,dark 上下文):**双张**——poster-light 是 eager 的 HTML img(解析即请求,display:none 不阻止下载),poster-dark 可见即载;此为既存行为,修正轮未改变
     - 呈现:昼显 light、夜显 dark(CSS display 切换);3D 就绪(texReady 或 3.5s 超时)后 poster 淡出移除,此后昼夜切换由场景 setTheme 接管(poster 已退场);WebGL 不可用/初始化失败时 poster 常显不退
-  - E1 触发顺序(CDP requestWillBeSent 发起序,昼上下文):poster-light **#4** → boot6 #6 → scene6/three×2 **#30–32**——poster 先于任何 3D 字节,且**仅当前主题单张**(修正轮复测不变)
+  - E1 触发顺序(CDP requestWillBeSent 发起序,昼上下文):poster-light **#4** → boot6 #6 → scene6/three×2 **#30–32**——poster 先于任何 3D 字节;昼上下文下仅 light 单张(修正轮复测不变;夜首访双张,见上)
   - E2 预算(修正轮复测):3D 四件 gzip-6(zlib-6,mtime=0)合计 **197438 B(192.8 KiB)≤ 220KB ✓**(three.module 79012 + three.core 100875 + scene6 13875 + boot6 3676;较 ffffd6e 增 ~0.9KiB,为同源参数化与失败清理的代价);poster 两张合计 428676 B(418.6 KiB)≤ 450KiB ✓
   - 字体挂起路径(hang 前 2 个 woff2 各 9s):素纸场景接替 poster 终态 ~7s 达成(独立复现时间线:t=5.8s 场景就绪、t=6.8s poster 退场),`__bookscene` 可用、rAF 正常
   - 手机 360/390/430(has_touch):3D 场景就绪、56dvh(844 高实测 473px)、canvas `touch-action: pan-y`(水平拖转场景/垂直滚动页面)、零横向溢出;390 视检:纸面为真实文章内容(标题+摘要,内容同源生效)
@@ -127,8 +127,8 @@
 |---|---|---|---|
 | 0 资产入库 ✅ 5aa996e(+0562ae9 url 修复) | fonts(serif+改名 Plex+fonts.css,经 build-site-fonts.py)+ tokens.css/base.css(未被引用) | `npm run verify` 绿(页面仍旧版式);脚本重跑幂等 | revert 单提交,零影响 |
 | 1 公共布局与内页 ✅ c743993..e91d7c5 | Base/Header/site.js(W1-W4,W9-W12)/smoke 白名单/posts+post/digest 列表+详情/about/404/index 静态适配 | verify + `verify_browser.py`(昼/夜/手机 390/无 JS/键盘/直接访问与返回/reduced)+ 夹具构建浏览器抽验 + 预算实测(34/34;预算全过,§5 实测+勘误) | 见下方回退依赖 |
-| 2 首页 3D ✅ 72a4c42 + a498f05 + ffffd6e | 验收工具先行(RED 34/73)→ 静态首页(home.css/真实内容接线/W5-W8)→ 3D(public/3d 四件/boot6 idle/scene6 内容同源/poster 单张先行) | verify_browser **73/73** + measure E1/E2 + 手机三宽视检 + 3D 入口挂名录屏(§5 实测) | 3D 段独立 revert(ffffd6e),静态首页保留(a498f05 不依赖 3D 可读可用) |
-| 2R 定点修正 ✅(2026-10-09,审计后) | 手机交接区单格化+失败清理 / 就绪前主题不丢 / 日报·站点状态同源(data-digest·data-site) / 排队反例入验收 / poster 口径校正+证据归档 | verify_browser **74/74** + 夹具三态 + E1E2 复测(§5 修正轮实测) | 修正在批次 2 之上单提交;3D 段整体 revert 路径不变 |
+| 2 首页 3D ✅ 72a4c42 + a498f05 + ffffd6e | 验收工具先行(RED 34/73)→ 静态首页(home.css/真实内容接线/W5-W8)→ 3D(public/3d 四件/boot6 idle/scene6 内容同源/poster 先于 3D) | verify_browser **73/73** + measure E1/E2 + 手机三宽视检 + 3D 入口挂名录屏(§5 实测) | 3D 段独立 revert(ffffd6e),静态首页保留(a498f05 不依赖 3D 可读可用) |
+| 2R 定点修正 ✅(2026-10-09,审计后) | 手机交接区单格化+失败清理 / 就绪前主题不丢 / 日报·站点状态同源(data-digest·data-site) / 排队反例入验收 / poster 口径校正+证据归档 | verify_browser **74/74** + 夹具三态 + E1E2 复测(§5 修正轮实测) | 回退路径已隔离实测(2026-10-09):自 1e23049 起 **revert 809cdd8 → revert ffffd6e**(后进先出),两笔均无冲突;隔离检出 astro build+smoke 绿,浏览器验收 3/3(静态首页 hero/页签/封面卡完整、零 three/scene/boot 请求与引用、手机 poster 独撑一格)。注意:回退后 verify_browser.py 回到 72a4c42 工具先行版(3D 断言为 RED 设计),**回退态验收以 npm verify + 上述浏览器检查为准,不跑 verify_browser 全量** |
 | 3 测量收尾 | Lighthouse 复核、真机补测、预算回填 | 实测值回表 | 文档修正 |
 
 **回退依赖(提交序)**:批次 1 内按 C2 布局(Base/Header/site.js/smoke,global.css 暂与新样式并存兜住未迁移页)→ C3 posts 两页 → C4 digest 两页 → C5 about+404+index 适配并移除 global.css。每提交点 `npm run verify` 绿、站点完整可用;**revert C2 必须先 revert C3–C5**(页面模板依赖新布局类);C3/C4/C5 可单页 revert。验收脚本(verify_browser.py/measure_budget.py)独立提交于 C1,先于实现入库(RED 证据在 session 记录)。

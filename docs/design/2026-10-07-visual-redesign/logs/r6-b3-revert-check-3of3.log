@@ -1,0 +1,5 @@
+﻿[revert/static-home] {'hero': True, 'posters': 2, 'bootRef': False, 'moduleScripts': 0, 'tabs': 3, 'ddAttr': None, 'liDigest': '计划 · 引擎评审通过', 'cover': True, 'readBtn': True} tab=True => PASS
+[revert/zero-3d] 3d-reqs=0 errs=[] => PASS
+[revert/mobile-poster] {'hosts': 0, 'posterInHero': 473, 'dvh56': 473, 'ox': 0} => PASS
+
+== 3/3 PASS ==

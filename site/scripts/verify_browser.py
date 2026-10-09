@@ -9,7 +9,10 @@ site.js+首帧内联;首页 4:另加 home.js 与 boot6 模块)、字体分片实
 批次 2 增:首页静态结构/内容同源(#scene3d data-* JSON 与封面卡/
 页签面板同源)、W5-W8 行为、3D 场景(__bookscene/select 双向/快速连选/
 暂停组合)、WebGL 不可用零 3D 请求、模块失败终态、字体挂起超时接替、
-封面挂名回程不残留。只断言浏览器实测状态。
+封面挂名回程不残留。修正轮增:挂起期主题切换、排队变向。批次 3 收尾
+增(P 段):手机交接区单格高度、createScene 失败后半成品 host 清理。
+日报零期/一期/更新三态构建验收在 scripts/verify_digest_states.py。
+只断言浏览器实测状态。
 浏览器:环境变量 NM_VERIFY_CHROME 指定 chrome 可执行文件;未设时扫描
 ms-playwright 已装版本(取最大 build 号),再退 Playwright 默认解析——
 不绑定固定用户名或 build 号。
@@ -873,6 +876,100 @@ def main():
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("home/cover-vt", False, str(exc)[:80])
+
+            # ── P. 手机交接区高度 + createScene 失败清理(修正轮反例固化)──
+            # A(交接期):scene6 延迟到达,host 已插、poster 未退——两者
+            #    必须同格叠加(home.css 手机段 .has-scene),交接区恒一格
+            #    56dvh,hero 不因交接膨胀出第二格;
+            # B(失败清理):模块可载但 createScene 首行抛错——host 已入
+            #    DOM 的失败路径(区别于 M 段 import reject:那条 host 根本
+            #    未建),半成品 host 与 .has-scene 必须清离,poster 独撑
+            try:
+                ctx = b.new_context(viewport={"width": 390, "height": 844},
+                                    has_touch=True, is_mobile=True)
+                pg = ctx.new_page()
+
+                def slow_scene(route):
+                    time.sleep(2.5)
+                    route.continue_()
+                pg.route("**/3d/scene6.js", slow_scene)
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                hostUp = poll_js(pg, "!!document.querySelector("
+                                 "'#scene3d .scene-host')", 12000)
+                st = pg.evaluate("""(() => {
+                  const box = document.querySelector('#scene3d');
+                  const host = box.querySelector('.scene-host');
+                  const poster = box.querySelector('img.poster-light');
+                  const top = box.getBoundingClientRect().top;
+                  const hb = host.getBoundingClientRect();
+                  const pb = poster.getBoundingClientRect();
+                  return {posters: box.querySelectorAll('img.poster').length,
+                          posterInHero: Math.round(pb.bottom - top),
+                          hostInHero: Math.round(hb.bottom - top),
+                          dvh56: Math.round(innerHeight * 0.56),
+                          heroBottom: Math.round(
+                              box.getBoundingClientRect().bottom - top),
+                          ox: document.documentElement.scrollWidth
+                              - document.documentElement.clientWidth};})()""")
+                check("home3d/handover-mobile",
+                      bool(hostUp) and st["posters"] >= 1
+                      and st["posterInHero"] <= st["dvh56"] + 30
+                      and st["hostInHero"] <= st["dvh56"] + 30
+                      and st["ox"] <= 0
+                      and st["heroBottom"] <= st["dvh56"] + 620,
+                      "host=%s posters=%d posterIn=%s hostIn=%s dvh=%s "
+                      "heroB=%s ox=%s" % (bool(hostUp), st["posters"],
+                                          st["posterInHero"], st["hostInHero"],
+                                          st["dvh56"], st["heroBottom"],
+                                          st["ox"]))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("home3d/handover-mobile", False, str(exc)[:80])
+            try:
+                ctx = b.new_context(viewport={"width": 390, "height": 844})
+                pg = ctx.new_page()
+                raw = (SITE / "dist" / "3d" / "scene6.js").read_text(
+                    encoding="utf-8")
+                sig = "export async function createScene(host, opts = {}){"
+                broken = raw.replace(
+                    sig, sig + "\n  throw new Error("
+                    "'injected createScene failure');", 1)
+                pg.route("**/3d/scene6.js",
+                         lambda r: r.fulfill(
+                             content_type="application/javascript",
+                             body=broken))
+                errs = []
+                pg.on("pageerror", lambda e: errs.append(str(e)))
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                pg.wait_for_timeout(3500)
+                st = pg.evaluate("""(() => {
+                  const box = document.querySelector('#scene3d');
+                  const poster = box.querySelector('img.poster-light');
+                  const top = box.getBoundingClientRect().top;
+                  return {hosts: box.querySelectorAll('.scene-host').length,
+                          noWebgl: box.classList.contains('no-webgl'),
+                          hasScene: box.classList.contains('has-scene'),
+                          posters: box.querySelectorAll('img.poster').length,
+                          posterInHero: Math.round(
+                              poster.getBoundingClientRect().bottom - top),
+                          dvh56: Math.round(innerHeight * 0.56),
+                          ox: document.documentElement.scrollWidth
+                              - document.documentElement.clientWidth};})()""")
+                check("home3d/fail-cleanup",
+                      broken != raw and st["hosts"] == 0 and st["noWebgl"]
+                      and not st["hasScene"] and st["posters"] >= 1
+                      and st["posterInHero"] <= st["dvh56"] + 30
+                      and st["ox"] <= 0,
+                      "injected=%s hosts=%s no-webgl=%s has-scene=%s "
+                      "posters=%d posterIn=%s dvh=%s ox=%s"
+                      % (broken != raw, st["hosts"], st["noWebgl"],
+                         st["hasScene"], st["posters"], st["posterInHero"],
+                         st["dvh56"], st["ox"]))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("home3d/fail-cleanup", False, str(exc)[:80])
             b.close()
     finally:
         httpd.shutdown()
