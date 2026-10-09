@@ -1,6 +1,6 @@
 # R6 正式接入方案(v2,2026-10-09 修订)
 
-- 状态:执行中(批次 0–1 已本地落地;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
+- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;浏览器验收 34/34、verify 全绿、预算实测见 §5——**内页冷缓存实测超 §5 预算线,属预算条款修订事项,待用户裁决,未擅自放宽**;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
 - 对象:R6 全站统一原型(`prototypes/r6/`)→ 生产站 `site/`
 - 关联:[R3-REVIEW.md](R3-REVIEW.md) · [ADR-0010](../../decisions/0010-adr0002-client-js-exceptions.md)(已接受,客户端行为以其白名单为准) · [prototypes/site/map.html](prototypes/site/map.html)
 
@@ -74,6 +74,13 @@
   - 首页(批次 2):poster ≤ 450KB 且先于任何 3D 字节到达;3D(three+scene,gzip)≤ 220KB 且 idle 动态 import;LCP 以文档/poster 为准
 - **poster/3D 真实加载策略(批次 2)**:poster 两张 PNG 以 `<img>` 首屏直载(它是 LCP 候选与 3D 失败的常驻回退,**不 lazy**;`fetchpriority="high"`,随主题切换显示对应张);boot6 探测 WebGL 后动态 `import('./scene6.js')`(module,defer 后执行),失败零请求零报错;场景就绪后 poster 淡出让位。reduced-motion:场景静态完成态。
 - **预算检查在批次内的位置**:批次 1 验收=内页预算实测;批次 2 验收=poster/3D 预算实测;批次 3=全站复核与真机。
+- **批次 1 实测记录(2026-10-09,measure_budget.py,本地无压缩服务)**:
+  - 冷缓存 `/posts/hello-nanmu-blog/`:HTML 3954 B + CSS 321608 B + JS 7344 B + woff2 819288 B = **1125.2KB 原始字节**;按生产 Caddy gzip 口径折算(woff2 不再压缩,css/js 按实测 gzip 比)约 **920KB**——**超「≤500KB」预算线,已停在该项待裁决**(500KB 线与 CJK webfont 物理现实矛盾:仅 fonts.css gzip 92.7KB + 22 个命中分片 819KB 已超线;该线沿用无字体时代口径,修订建议=非字体资源(HTML+CSS+JS,生产 gzip)≤120KB + 字体单列沿用「首访 ≤1.2MB」)
+  - fonts.css:原始 304490 B,gzip 92707 B——**超「预期 ≤60KB」**(预估 20% 压缩率,实测 30%)
+  - 字体首访(四页累计新增分片):819288 + 42520 + 89784 + 74440 ≈ **1006KB ≤ 1.2MB** ✓(贴线,减字重为备选)
+  - 跨页新增分片:/posts/ +1(42.5KB)、/digest/ +2(89.8KB)、/about/ +2(74.4KB)——unicode-range 按需命中,同片跨页复用成立
+  - JS:7344 B 原始(gzip 约 3KB)≤ 8KB ✓
+  - 附:批次 0 资产曾有一处缺陷(分片 url 前缀未剥 `fonts/`,全站 404 静默回退系统字体),由加严后的验收断言(仅计 2xx + `document.fonts.check` 实测)抓出,已在 0562ae9 修复——首次「34/34」中字体断言为假阳性的教训记录在案
 
 ## 6. 内容契约保留(逐项核对,模板层不碰数据流)
 
@@ -92,8 +99,8 @@
 
 | 批 | 内容 | 验收 | 回退 |
 |---|---|---|---|
-| 0 资产入库 | fonts(serif+改名 Plex+fonts.css,经 build-site-fonts.py)+ tokens.css/base.css(未被引用) | `npm run verify` 绿(页面仍旧版式);脚本重跑幂等 | revert 单提交,零影响 |
-| 1 公共布局与内页 | Base/Header/site.js(W1-W4,W9-W12)/smoke 白名单/posts+post/digest 列表+详情/about/404/index 静态适配 | verify + `verify_browser.py`(昼/夜/手机 390/无 JS/键盘/直接访问与返回/reduced)+ 夹具构建浏览器抽验 + 预算实测 | 见下方回退依赖 |
+| 0 资产入库 ✅ 5aa996e(+0562ae9 url 修复) | fonts(serif+改名 Plex+fonts.css,经 build-site-fonts.py)+ tokens.css/base.css(未被引用) | `npm run verify` 绿(页面仍旧版式);脚本重跑幂等 | revert 单提交,零影响 |
+| 1 公共布局与内页 ✅ c743993..e91d7c5 | Base/Header/site.js(W1-W4,W9-W12)/smoke 白名单/posts+post/digest 列表+详情/about/404/index 静态适配 | verify + `verify_browser.py`(昼/夜/手机 390/无 JS/键盘/直接访问与返回/reduced)+ 夹具构建浏览器抽验 + 预算实测(34/34;预算偏差见 §5,待裁决) | 见下方回退依赖 |
 | 2 首页 3D | home.css + public/3d 入库 + boot/scene + W5-W8 + 封面卡 | 同矩阵 + WebGL 降级 + r6 回归移植 | 3D 段独立 revert,静态首页保留 |
 | 3 测量收尾 | Lighthouse 复核、真机补测、预算回填 | 实测值回表 | 文档修正 |
 
@@ -103,5 +110,6 @@
 
 - VT 跨页在旧浏览器退化为普通导航(无破坏);Safari/Firefox 未测(Chromium-only 验收,已标)。
 - three 720KB 未压缩(备选:移动端仅 poster,批次 2 实测后裁决)。
-- 字体首访 ~1MB(备选:减字重);fonts.css 原始 300KB 依赖部署层压缩(gzip 口径见 §5 实测)。
+- 字体首访 ~1MB(备选:减字重);fonts.css 原始 ~300KB 依赖部署层压缩(gzip 口径见 §5 实测)。
+- **批次 1 实测暴露**:§5「内页冷缓存 ≤500KB」与「fonts.css gzip ≤60KB」两条均被实测打破(920KB / 92.7KB,见 §5 实测记录)——预算条款与 CJK webfont 方案内在矛盾,修订待用户裁决,本批不擅自放宽也不删减字重(那会改变 R6 版式)。
 - 移动端 390 布局与真机触摸未实测(模拟器证据 only)。
