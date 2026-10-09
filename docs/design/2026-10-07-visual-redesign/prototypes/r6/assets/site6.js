@@ -104,17 +104,43 @@ document.addEventListener('nm-page',function(ev){
 });
 
 /* ── 4b. 封面→正文跨页过渡的挂名策略(渐进增强;reduced-motion 下 VT 整体禁用,以下为空操作) ──
-   CSS 不常驻封面名,按入口分别定义转场:
-   - 点击可见封面卡:点击时挂名,旧页快照在点击后采集,封面 morph 进文章页头;
-   - 「读全文」按钮 / 3D 前景页入口:不挂名,只走根过渡(屏幕外封面不无关飞入);
-   - 返回:文章页头常驻 latest-cover;本页 pagereveal 若处于 VT 中(即回程),补挂封面名接住 morph。 */
+   CSS 不常驻封面名。挂名是有生命周期的临时状态:只在即将发生的这一次
+   导航需要时挂上,转场完成/跳过/导航形态改变后恢复默认——否则残留挂名
+   会让后续无关入口(「读全文」按钮/3D 前景页)继承封面 morph,屏幕外
+   封面飞入文章页头。按入口分别定义:
+   - 去程:点击可见封面才挂名(修饰键/非左键=新窗口打开,无同窗 VT,不挂;
+     bfcache 往返恢复时摘除);
+   - 回程:文章页头常驻 latest-cover;本页新鲜加载、处于 VT 中、且来源是
+     文章页时补挂封面名接住 morph——"pagereveal 带 viewTransition"不等于
+     "从文章返回"(posts→首页同型导航),来源用 navigation.activation.from
+     (无则退 document.referrer,两者都读不到时保守不挂);
+     补挂后在该 VT finished(完成或跳过)即摘除。 */
 var coverCard=document.querySelector('.cover-card');
 if(coverCard){
-  coverCard.addEventListener('click',function(){
+  function clearCoverName(){coverCard.style.viewTransitionName='';}
+  function reducedMotion(){return matchMedia('(prefers-reduced-motion: reduce)').matches;}
+  function cameFromArticle(){
+    /* 文章页=文件名 post-*.html(现为 post-hello,将来新文章同型) */
+    var RE=/\/post-[^\/]*\.html(\?|#|$)/;
+    try{
+      if(window.navigation&&navigation.activation&&navigation.activation.from)
+        return RE.test(navigation.activation.from.url);
+    }catch(e){}
+    return RE.test(document.referrer||'');
+  }
+  coverCard.addEventListener('click',function(e){
+    if(reducedMotion())return;                    /* VT 已被 CSS 禁用,不挂名 */
+    if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
     coverCard.style.viewTransitionName='latest-cover';
   });
+  addEventListener('pageshow',function(ev){if(ev.persisted)clearCoverName();});
   addEventListener('pagereveal',function(ev){
-    if(ev.viewTransition)coverCard.style.viewTransitionName='latest-cover';
+    if(!ev.viewTransition)return;                 /* 无 VT(含 reduced-motion 禁用) */
+    if(!cameFromArticle())return;                 /* 非文章页来源,不补挂 */
+    coverCard.style.viewTransitionName='latest-cover';
+    /* 挂名只服务于这一次回程转场:完成或跳过都摘除(0.35s 窗口内再次
+       导航属极端边缘,不在原型范围) */
+    ev.viewTransition.finished.then(clearCoverName,clearCoverName);
   });
 }
 

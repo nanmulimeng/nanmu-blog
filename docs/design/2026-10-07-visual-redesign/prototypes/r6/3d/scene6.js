@@ -457,7 +457,20 @@ export async function createScene(host, opts = {}){
   function frontPage(){ return pages.find(p => p.userData.slot === 0); }
   function select(pid){
     const target = pages.find(p => p.userData.pid === pid);
-    if (!target || target.userData.slot === 0) return false;
+    if (!target) return false;
+    if (target.userData.slot === 0){
+      /* 目标已是前景(槽位在换页开始时即交换,动画可能仍在进行):
+         这是用户在动画期间把最后一次选择改回了正在换入的页——必须
+         取消排队中的旧选择,否则动画完成后旧排队执行,终态≠最后选择;
+         无动画时为重复选择,状态已一致,无动作。onSelect 把外部
+         (可能被旧排队链拉走的)页签/面板同步回用户的最后一次选择 */
+      if (swap){
+        pendingSelect = null;
+        if (onSelect) onSelect(pid);
+        return true;
+      }
+      return true;
+    }
     if (swap){ pendingSelect = pid; if (onSelect) onSelect(pid); return true; }
     const out = frontPage();
     const poseOut = slotPose(out.userData.slot), poseIn = slotPose(target.userData.slot);
