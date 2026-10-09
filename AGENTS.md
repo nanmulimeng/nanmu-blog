@@ -14,7 +14,7 @@
 
 前端设计专项(2026-10-08)：按用户新要求集中完成全站页面、动画与 3D 原型及源资产，允许科技感与更大胆的美术探索。先读 [全站设计任务书](docs/design/2026-10-07-visual-redesign/FULL-SITE-BRIEF.md) 与 [专项交接](docs/sessions/2026-10-08-frontend-creative-research.md)；此为独立原型设计，不代表生产 JS 规则已修订或全站已实施，M1 状态另行核对。
 
-R4–R6 进展与当前接手入口(2026-10-09):设计 AI 已完成 R1–R6 交出。当前基线为 **R6 换页碑交互原型**——仅首页 [prototypes/r6/index.html](docs/design/2026-10-07-visual-redesign/prototypes/r6/index.html) 为 R6 皮肤(三页 3D 目录+阅读转场),其余内页沿用 R4 资产,**尚未全站统一**;位于分支 `codex/r6-interaction`(879cdef + 本轮两处审计遗留修正,**未合入 main、未接生产 site/**)。接手先读 [R6 交接收口](docs/sessions/2026-10-09-r6-handoff-fixes.md);全轮记录见 [R6 交互轮](docs/sessions/2026-10-09-r6-interaction-round.md) 与设计目录 [README](docs/design/2026-10-07-visual-redesign/README.md)「当前从哪里读」。已关闭事项不重开;评审与生产接入归审计/用户裁决。
+R4–R6 进展与当前接手入口(2026-10-09 第二轮):设计基线为 **R6 换页碑 · 全站统一原型**——首页 3D 换页碑 + 内页全部迁入 R6 基座(tokens6/pages6.css/site6.js 全站化),入口 [prototypes/r6/index.html](docs/design/2026-10-07-visual-redesign/prototypes/r6/index.html) 与总览 [prototypes/site/map.html](docs/design/2026-10-07-visual-redesign/prototypes/site/map.html);位于分支 `codex/r6-interaction`(**未合入 main、未接生产 site/**)。本轮同批交付 [正式接入方案](docs/design/2026-10-07-visual-redesign/INTEGRATION-PLAN.md)(路由映射/资产共用/脚本清单/3D 与字体策略/内容契约/四批接入)与 [ADR-0010 提案](docs/decisions/0010-adr0002-client-js-exceptions.md)(ADR-0002 零 JS 条款四类有限例外,**提议未生效**)。接手先读 [R6 全站统一 session](docs/sessions/2026-10-09-r6-site-unification.md);此前进程见 [交接收口](docs/sessions/2026-10-09-r6-handoff-fixes.md) 与 [R6 交互轮](docs/sessions/2026-10-09-r6-interaction-round.md)。已关闭事项不重开;评审与生产接入归审计/用户裁决。
 
 1. 读本文与上方最新交接,先明确**本轮用户目标**。交接中的下一步不是自动执行授权。
 2. 按 [workflow](docs/development/workflow.md) 核对工作区、暂存区、分支与提交;保留已有修改,不要先清理工作区。
