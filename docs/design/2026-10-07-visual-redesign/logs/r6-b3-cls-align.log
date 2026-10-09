@@ -1,0 +1,16 @@
+﻿== r1 home | frames=50 首帧 t=218 ==
+  shift t= 3690ms v=0.2881 hri=True
+      SECTION#scene3d      y/h [335, 488] -> [74, 749]
+      DIV                  y/h [0, 0] -> [669, 154]
+== r1 post | frames=50 首帧 t=214 ==
+  main t= 4076ms y/h [74, 1514]->[74, 1478] | fonts=loading interactive
+  shift t= 2436ms v=0.2881 hri=True
+      MAIN                 y/h [335, 488] -> [74, 749]
+== r2 home | frames=50 首帧 t=220 ==
+  shift t= 3657ms v=0.2881 hri=True
+      SECTION#scene3d      y/h [335, 488] -> [74, 749]
+      DIV                  y/h [0, 0] -> [669, 154]
+== r2 post | frames=50 首帧 t=207 ==
+  main t= 4060ms y/h [74, 1514]->[74, 1478] | fonts=loading interactive
+  shift t= 2400ms v=0.2881 hri=True
+      MAIN                 y/h [335, 488] -> [74, 749]

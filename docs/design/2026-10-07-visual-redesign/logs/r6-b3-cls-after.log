@@ -1,0 +1,11 @@
+﻿== post | all shifts=3 | sum(v)=0.0046 | sum(no-hri)=0.0046 ==
+  t= 3171ms v=0.0026 hadRecentInput=False
+      #text                    [20, 337, 456] -> [20, 333, 456]
+      #text                    [360, 32, 19] -> [360, 29, 19]
+      SPAN                     [164, 103, 27] -> [160, 103, 27]
+  t= 3495ms v=0.0017 hadRecentInput=False
+      P                        [19, 823, 0] -> [20, 787, 36]
+== home | all shifts=2 | sum(v)=0.0008 | sum(no-hri)=0.0008 ==
+  t= 4405ms v=0.0006 hadRecentInput=False
+      #text                    [20, 593, 51] -> [20, 585, 51]
+      #text                    [34, 29, 27] -> [34, 25, 27]

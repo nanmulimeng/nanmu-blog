@@ -1,0 +1,21 @@
+Lighthouse 13.4.1(launcher chromium-1248)· 2026-10-09 · 移动档 412x823 DSF2
+gzip-6 服务 8982(贴近生产 Caddy;无压缩 8981 组略)· 节流口径见各行
+
+—— 修前(simulate 节流;CLS 与真节流互证) ——
+home-mobile-gz           perf= 44 FCP=6.5 s  LCP=9.2 s  TBT=0 ms    CLS=0.299 (1 layout shift found) | simulate
+post-mobile-gz           perf= 46 FCP=6.3 s  LCP=6.5 s  TBT=0 ms    CLS=0.315 (2 layout shifts found) | simulate
+
+—— 修前(devtools 真节流,CLS 来源组) ——
+home-mobile-gz-dt        perf= 34 FCP=2.2 s  LCP=7.1 s  TBT=930 ms  CLS=0.288 (3 layout shifts found) | devtools 修前
+post-mobile-gz-dt        perf= 83 FCP=2.0 s  LCP=2.0 s  TBT=0 ms    CLS=0.288 (4 layout shifts found) | devtools 修前
+
+—— 修后(devtools 真节流,js 类提前) ——
+home-after               perf= 50 FCP=2.1 s  LCP=7.1 s  TBT=850 ms  CLS=0.001 (2 layout shifts found) | devtools 修后
+post-after               perf= 98 FCP=1.9 s  LCP=1.9 s  TBT=0 ms    CLS=0.005 (3 layout shifts found) | devtools 修后
+
+同口径(devtools)对照:home CLS 0.288->0.001 perf 34->50;
+post CLS 0.288->0.005 perf 83->98。TBT 850ms(home 修后)= 3D idle
+场景构建在 4x CPU 下的执行,发生在首屏可用后(设计内,不改动)。
+CLS 归因:0.2881 单事件 = 渐进增强 nav 占位塌陷(main 上移 261px,
+site.js classList.add(js) 后 2ms);Playwright 全量口径修前 0.2927/
+0.2889、修后 0.0046/0.0008(logs/r6-b3-cls-*.log)。

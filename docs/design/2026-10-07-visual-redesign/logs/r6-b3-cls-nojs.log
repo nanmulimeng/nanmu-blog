@@ -1,0 +1,17 @@
+﻿== A 正常加载 ==
+  html.class 变 'js' @ t=2417ms
+  main 顶>200 的帧: 0 个 (t=[])
+  首帧 hdr=[0, 74] nav=[0, 0] @2417ms | 末帧 hdr=[0, 74] nav=[0, 0] @9375ms
+  shift t= 2419ms v=0.2881 hri=True
+  scroll/resize 事件: []
+  DCL 后帧 readyState: ['interactive']
+== B site.js 挂起 3.5s ==
+  html.class 变 'js' @ t=2406ms
+  main 顶>200 的帧: 0 个 (t=[])
+  首帧 hdr=[0, 74] nav=[0, 0] @2406ms | 末帧 hdr=[0, 74] nav=[0, 0] @9223ms
+  shift t= 2409ms v=0.2881 hri=True
+  scroll/resize 事件: []
+  DCL 后帧 readyState: ['interactive']
+== C site.js abort 后 3s ==
+  html.class='' main=[339, 1478] hdr=[0, 339] nav=[73, 249]
+  shifts: [{'t': 3093, 'v': 0.0003, 'hri': False}, {'t': 3129, 'v': 0.0037, 'hri': False}]

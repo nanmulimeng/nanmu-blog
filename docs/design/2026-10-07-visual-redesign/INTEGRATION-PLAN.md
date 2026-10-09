@@ -1,6 +1,6 @@
 # R6 正式接入方案(v2,2026-10-09 修订)
 
-- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化,内页预算全部在线内;**批次 2 首页 3D 已完成并本地验收(2026-10-09)= 72a4c42 验收工具 + a498f05 静态首页 + ffffd6e 3D 接入**:浏览器验收 73/73、E1/E2 预算全过、手机三宽视检,两提交可独立回退;**批次 2 定点修正轮已完成(2026-10-09,审计后)= 手机交接区单格化+失败清理、就绪前主题切换不丢、日报/站点状态同源接线、排队反例入验收、文档口径校正与证据归档(shots/r6-b2-*)**,验收扩至 74/74、夹具三态、预算复测通过;**批次 3 进行中(2026-10-09 复核通过后启动)**:开头三项收尾已完成——①修正轮反例固化入库(verify_browser P 段:交接高度+失败清理,验收 76/76;scripts/verify_digest_states.py:三态 3/3)②本文件 poster 请求/呈现与昼/夜口径原条款校正 ③回退路径隔离检出实测(§7 2R 行);Lighthouse/Firefox/真机/Caddy 基线测量待做;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
+- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化,内页预算全部在线内;**批次 2 首页 3D 已完成并本地验收(2026-10-09)= 72a4c42 验收工具 + a498f05 静态首页 + ffffd6e 3D 接入**:浏览器验收 73/73、E1/E2 预算全过、手机三宽视检,两提交可独立回退;**批次 2 定点修正轮已完成(2026-10-09,审计后)= 手机交接区单格化+失败清理、就绪前主题切换不丢、日报/站点状态同源接线、排队反例入验收、文档口径校正与证据归档(shots/r6-b2-*)**,验收扩至 74/74、夹具三态、预算复测通过;**批次 3 进行中(2026-10-09 复核通过后启动)**:开头三项收尾已完成——①修正轮反例固化入库(verify_browser P 段:交接高度+失败清理,验收 76/76;scripts/verify_digest_states.py:三态 3/3)②本文件 poster 请求/呈现与昼/夜口径原条款校正 ③回退路径隔离检出实测(§7 2R 行);**Lighthouse 测量与 CLS 修复完成(2026-10-09)**:移动档 CLS 0.288 全部来自渐进增强 nav 占位塌陷(main 上移 261px,shift 实测发生在 `classList.add('js')` 后 2ms)——`.js` 类提前到 head 内联首帧脚本,验收 Q 段固化(78/78),修后 Lighthouse CLS home 0.001/post 0.005,Playwright 全量口径同值;verify_digest_states 经 junction 落盘的持久 store 残留同批修复;Firefox/真机/Caddy 基线测量待做;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
 - 对象:R6 全站统一原型(`prototypes/r6/`)→ 生产站 `site/`
 - 关联:[R3-REVIEW.md](R3-REVIEW.md) · [ADR-0010](../../decisions/0010-adr0002-client-js-exceptions.md)(已接受,客户端行为以其白名单为准) · [prototypes/site/map.html](prototypes/site/map.html)
 
@@ -35,7 +35,7 @@
 
 ## 3. 客户端行为白名单(= ADR-0010 清单;生产入口逐项)
 
-全站脚本入口(批次 2 起):`<head>` 内联首帧主题脚本(内容签名进 smoke 断言)+ `public/scripts/site.js`(`<script src defer>`,W2-W4、W9-W12,全站);**首页额外两个**——`public/scripts/home.js`(`<script src defer>`,仅 `index.astro` 引用,W5-W8 页面侧)+ `public/3d/boot6.js`(`<script type="module">`,场景加载器)。smoke.mjs 为**白名单断言**:全站页仅允许前两者;`index.html` 额外允许 home.js 与 boot6.js 两个入口且**限定页面范围**(其余任何页出现即构建失败)。
+全站脚本入口(批次 2 起):`<head>` 内联首帧脚本(主题引导 + `js` 类,内容签名进 smoke 断言;`js` 类批次 3 起在此首帧添加——原先等 body 尾 site.js 才加,移动端首帧渲染无 `.js` 的展开 nav 再塌成按钮,main 上移 261px,即 Lighthouse 移动档 CLS 0.288 的全部来源,详见 §7 批次 3 行)+ `public/scripts/site.js`(`<script src defer>`,W2-W4、W9-W12,全站);**首页额外两个**——`public/scripts/home.js`(`<script src defer>`,仅 `index.astro` 引用,W5-W8 页面侧)+ `public/3d/boot6.js`(`<script type="module">`,场景加载器)。smoke.mjs 为**白名单断言**:全站页仅允许前两者;`index.html` 额外允许 home.js 与 boot6.js 两个入口且**限定页面范围**(其余任何页出现即构建失败)。
 
 | # | 行为 | 段 | 进入批次 | 无 JS / 失败时 |
 |---|---|---|---|---|
@@ -130,6 +130,7 @@
 | 2 首页 3D ✅ 72a4c42 + a498f05 + ffffd6e | 验收工具先行(RED 34/73)→ 静态首页(home.css/真实内容接线/W5-W8)→ 3D(public/3d 四件/boot6 idle/scene6 内容同源/poster 先于 3D) | verify_browser **73/73** + measure E1/E2 + 手机三宽视检 + 3D 入口挂名录屏(§5 实测) | 3D 段独立 revert(ffffd6e),静态首页保留(a498f05 不依赖 3D 可读可用) |
 | 2R 定点修正 ✅(2026-10-09,审计后) | 手机交接区单格化+失败清理 / 就绪前主题不丢 / 日报·站点状态同源(data-digest·data-site) / 排队反例入验收 / poster 口径校正+证据归档 | verify_browser **74/74** + 夹具三态 + E1E2 复测(§5 修正轮实测) | 回退路径已隔离实测(2026-10-09):自 1e23049 起 **revert 809cdd8 → revert ffffd6e**(后进先出),两笔均无冲突;隔离检出 astro build+smoke 绿,浏览器验收 3/3(静态首页 hero/页签/封面卡完整、零 three/scene/boot 请求与引用、手机 poster 独撑一格)。注意:回退后 verify_browser.py 回到 72a4c42 工具先行版(3D 断言为 RED 设计),**回退态验收以 npm verify + 上述浏览器检查为准,不跑 verify_browser 全量** |
 | 3 测量收尾 | Lighthouse 复核、真机补测、预算回填 | 实测值回表 | 文档修正 |
+| 3a Lighthouse+CLS 修复 ✅(2026-10-09) | 本地 Lighthouse 13.4.1(移动档 RTT150/1.6Mbps/4xCPU,devtools 节流;无压缩 8981 与 gzip 8982 双服务对照,gzip 贴近生产 Caddy)+ CLS 0.288 归因链(trace LayoutShift 提取、真节流 PerformanceObserver、site.js 挂起/abort 对照、nojs 截图存证)→ **修复:`js` 类提前到 head 内联首帧脚本**(Base.astro+smoke 签名同步);verify_browser 增 Q 段(RED 77/78→GREEN **78/78**);verify_digest_states 增经 junction 持久 store 清理 | 修前 home CLS 0.299/post 0.315(Lighthouse)与 Playwright 全量 0.2927/0.2889 互证,0.2881 单事件=渐进增强 nav 占位塌陷(main 上移 261px,hadRecentInput=True 系 Chromium/CDP 环境标记,页面 scroll/resize 事件为空);**修后 Lighthouse home 0.001/post 0.005,Playwright 全量同值**,post perf 83→98、home 34→50;TBT 850ms(home)为 3D idle 场景构建,发生在首屏可用后,按「不为分数削弱设计」记录不改动;日志/报告/截图归档 logs/r6-b3-* | 单提交 revert(Base.astro 内联一行+smoke 常量+Q 段断言,Q 段回 RED 即提示) |
 
 **回退依赖(提交序)**:批次 1 内按 C2 布局(Base/Header/site.js/smoke,global.css 暂与新样式并存兜住未迁移页)→ C3 posts 两页 → C4 digest 两页 → C5 about+404+index 适配并移除 global.css。每提交点 `npm run verify` 绿、站点完整可用;**revert C2 必须先 revert C3–C5**(页面模板依赖新布局类);C3/C4/C5 可单页 revert。验收脚本(verify_browser.py/measure_budget.py)独立提交于 C1,先于实现入库(RED 证据在 session 记录)。
 
