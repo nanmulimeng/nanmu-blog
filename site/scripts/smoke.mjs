@@ -17,6 +17,21 @@ for (const f of ['rss.xml', 'digest.xml']) {
   if (xml.includes('drafts-example')) problems.push(`草稿泄漏到 ${f}`);
 }
 if (existsSync(new URL('posts/drafts-example/index.html', dist))) problems.push('草稿详情泄漏');
+// 客户端脚本白名单(ADR-0010):允许且仅允许 /scripts/site.js 与
+// Base.astro 的首帧内联主题脚本(内容逐字比对,防白名单内夹带)
+const INLINE_THEME = "try{var m=localStorage.getItem('nm-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m}catch(e){}";
+function checkScripts(html, pathname) {
+  const tags = html.match(/<script\b[\s\S]*?<\/script>/gi) || [];
+  for (const tag of tags) {
+    const src = (tag.match(/\ssrc=["']([^"']+)["']/) || [])[1];
+    if (src !== undefined) {
+      if (src !== '/scripts/site.js') problems.push(`非白名单脚本 src=${src}: ${pathname}`);
+      continue;
+    }
+    const body = tag.replace(/^<script\b[^>]*>/i, '').replace(/<\/script>\s*$/i, '').trim();
+    if (body !== INLINE_THEME) problems.push(`非白名单内联脚本: ${pathname}`);
+  }
+}
 function checkHtml(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
@@ -24,7 +39,7 @@ function checkHtml(dir) {
     else if (entry.name.endsWith('.html')) {
       const html = readFileSync(url, 'utf8');
       if (html.includes('drafts-example')) problems.push(`草稿链接泄漏: ${url.pathname}`);
-      if (/<script\b/i.test(html)) problems.push(`客户端脚本: ${url.pathname}`);
+      checkScripts(html, url.pathname);
     }
   }
 }
@@ -74,4 +89,4 @@ if (problems.length) {
   console.error('SMOKE FAIL:\n' + problems.join('\n'));
   process.exit(1);
 }
-console.log('smoke ok: 必需产物/永久草稿/零script/RSS基本结构检查通过(XML解析另验)');
+console.log('smoke ok: 必需产物/永久草稿/脚本白名单/RSS基本结构检查通过(XML解析另验)');

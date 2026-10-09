@@ -1,22 +1,25 @@
 ---
 const { pathname } = Astro.url;
+const p = pathname.replace(/\/+$/, '');
 const links = [
   { href: '/', label: '首页' },
   { href: '/posts/', label: '文章' },
   { href: '/digest/', label: '日报' },
   { href: '/about/', label: '关于' },
 ];
+// 首页精确匹配,栏目前缀匹配(构建期 pathname 无尾斜杠,统一归一后比较)
+const isActive = (href: string) => {
+  const h = href.replace(/\/+$/, '');
+  return h === '' ? p === '' : p === h || p.startsWith(h + '/');
+};
 ---
-<header>
-  <nav>
+<header class="top frame">
+  <a class="brand" href="/"><span class="mark">n</span><b>nanmu</b></a>
+  <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+  <nav class="main" id="main-nav" aria-label="主导航">
     {links.map((l) => (
-      <a href={l.href} class={pathname.startsWith(l.href) && l.href !== '/' ? 'active' : ''}>{l.label}</a>
+      <a href={l.href} aria-current={isActive(l.href) ? 'page' : undefined}>{l.label}</a>
     ))}
+    <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
   </nav>
 </header>
-<style>
-  header { border-bottom: 1px solid var(--border); }
-  nav { max-width: 42rem; margin: 0 auto; padding: 0.9rem 1.5rem; display: flex; gap: 1.1rem; }
-  a { color: var(--muted); }
-  a.active, a:hover { color: var(--fg); text-decoration: none; }
-</style>

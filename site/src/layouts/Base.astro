@@ -1,7 +1,9 @@
 ---
 import Header from '../components/Header.astro';
 import { SITE_TITLE, SITE_DESC } from '../consts';
-import '../styles/global.css';
+import '../styles/global.css'; /* 批次 1 过渡:兜住未迁移页,C5 收口删除 */
+import '../styles/tokens.css';
+import '../styles/base.css';
 
 interface Props { title?: string; description?: string; }
 const { title, description = SITE_DESC } = Astro.props;
@@ -14,14 +16,17 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <!-- W1 首帧主题(ADR-0010):防夜览闪白;内容签名由 smoke.mjs 断言 -->
+    <script is:inline>try{var m=localStorage.getItem('nm-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m}catch(e){}</script>
   </head>
   <body>
     <Header />
     <main><slot /></main>
-    <footer class="muted" style="max-width:42rem;margin:0 auto;padding:1.5rem">
-      © {new Date().getFullYear()} nanmu ·
-      <a href="/rss.xml">文章 RSS</a> ·
-      <a href="/digest.xml">日报 RSS</a>
+    <footer class="site frame">
+      <span>© {new Date().getFullYear()} nanmu</span>
+      <span><a href="/rss.xml">文章 RSS</a> · <a href="/digest.xml">日报 RSS</a></span>
     </footer>
+    <script is:inline src="/scripts/site.js" defer></script>
   </body>
 </html>
