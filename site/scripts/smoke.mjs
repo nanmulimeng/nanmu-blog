@@ -19,8 +19,9 @@ for (const f of ['rss.xml', 'digest.xml']) {
 if (existsSync(new URL('posts/drafts-example/index.html', dist))) problems.push('草稿详情泄漏');
 // 客户端脚本白名单(ADR-0010):全站页允许且仅允许 /scripts/site.js 与
 // Base.astro 的首帧内联主题脚本(内容逐字比对,防白名单内夹带);
-// 首页(dist 根 index.html)额外允许 /scripts/home.js(W5-W8 页面侧,
-// 批次 2)——其余任何页出现即失败(页面范围限定)
+// 首页(dist 根 index.html)额外允许 /scripts/home.js(W5-W8 页面侧)
+// 与 /3d/boot6.js(module 场景加载器,批次 2)——其余任何页出现即
+// 失败(页面范围限定)
 const INLINE_THEME = "try{var m=localStorage.getItem('nm-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m}catch(e){}";
 function checkScripts(html, pathname, extraSrcs = []) {
   const allowed = new Set(['/scripts/site.js', ...extraSrcs]);
@@ -43,7 +44,7 @@ function checkHtml(dir, atDistRoot) {
       const html = readFileSync(url, 'utf8');
       if (html.includes('drafts-example')) problems.push(`草稿链接泄漏: ${url.pathname}`);
       const isIndex = atDistRoot && entry.name === 'index.html';
-      checkScripts(html, url.pathname, isIndex ? ['/scripts/home.js'] : []);
+      checkScripts(html, url.pathname, isIndex ? ['/scripts/home.js', '/3d/boot6.js'] : []);
     }
   }
 }

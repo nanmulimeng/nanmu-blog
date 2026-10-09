@@ -82,8 +82,14 @@ def poll_js(pg, expr, timeout_ms, interval=250):
     return val
 
 
-def serve(root, port=PORT, fonts_delay=0):
-    """fonts_delay>0 时对 /fonts/ 路径 sleep(模拟字体挂起,测超时接替)。"""
+def serve(root, port=PORT, fonts_delay=0, hang_first_fonts=0):
+    """fonts_delay>0:全部 /fonts/ 请求 sleep(模拟全站字体慢)。
+    hang_first_fonts>0:前 N 个 .woff2 分片各 sleep 9s(N 段用——挂起
+    少量分片触发 texReady 3.5s 超时接替,同时不占满 HTTP/1.1 的 6 连接
+    池;全挂会把场景字节也饿到 40s+,测的是连接极限而非超时路径)。"""
+    hang_n = [0]
+    hang_lock = threading.Lock()
+
     class H(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *a, **k):
             super().__init__(*a, directory=root, **k)
@@ -91,6 +97,12 @@ def serve(root, port=PORT, fonts_delay=0):
         def do_GET(self):
             if fonts_delay and "/fonts/" in self.path:
                 time.sleep(fonts_delay)
+            elif hang_first_fonts and self.path.endswith(".woff2"):
+                with hang_lock:
+                    i = hang_n[0]
+                    hang_n[0] += 1
+                if i < hang_first_fonts:
+                    time.sleep(9)
             super().do_GET()
 
         def end_headers(self):
@@ -439,6 +451,9 @@ def main():
               lightAlt: light ? light.alt : '(missing)',
               fp: light ? (light.getAttribute('fetchpriority') || '') : '',
               lazy: light ? (light.getAttribute('loading') || '') : '',
+              darkLazy: (document.querySelector('img.poster-dark')
+                  || {getAttribute: () => null})
+                  .getAttribute('loading'),
               tabs: document.querySelectorAll('.ptab').length,
               panels: document.querySelectorAll('.tpanel').length,
               panelPostsOn: !(document.getElementById('panel-posts')
@@ -459,7 +474,7 @@ def main():
             ok = (st["hero"] and "hero-full" in (st["heroClass"] or "")
                   and st["h1"] != "" and st["posters"] == 2
                   and st["lightAlt"] != "" and st["fp"] == "high"
-                  and st["lazy"] == ""
+                  and st["lazy"] == "" and st["darkLazy"] == "lazy"
                   and st["tabs"] == 3 and st["panels"] == 3
                   and st["panelPostsOn"]
                   and st["knots"] == ["#posts", "#digest", "#about", "#subscribe"]
@@ -472,9 +487,10 @@ def main():
                     and art.get("title") in st["cbTitle"].replace("\n", "") \
                     and art.get("title", "X") not in st["lightAlt"]
             check("home/static", ok,
-                  "hero=%s posters=%d fp=%s tabs=%d/%d knots=%d copies=%d "
-                  "art.url=%s cover=%s read=%s" %
-                  (st["hero"], st["posters"], st["fp"], st["tabs"],
+                  "hero=%s posters=%d fp=%s lazy=%s/%s tabs=%d/%d knots=%d"
+                  " copies=%d art.url=%s cover=%s read=%s" %
+                  (st["hero"], st["posters"], st["fp"], st["lazy"],
+                   st["darkLazy"], st["tabs"],
                    st["panels"], len(st["knots"]), st["copies"],
                    (art or {}).get("url"), st["coverHref"], st["readHref"]))
             # 无静态/残留挂名:封面卡与页头之外的元素不挂 latest-cover
@@ -575,7 +591,11 @@ def main():
             errs = []
             pg.on("pageerror", lambda e: errs.append(str(e)))
             pg.goto(base + "/", wait_until="domcontentloaded")
-            boot = poll_js(pg, "!!window.__bookscene", 15000)
+            # boot 终态 = __bookscene 就绪且 poster 已退场(remove 有
+            # 700ms 淡出定时器,合并进同一个 poll 等到终态)
+            boot = poll_js(pg, "!!window.__bookscene"
+                           " && document.querySelectorAll('#scene3d img.poster')"
+                           ".length === 0", 15000)
             pg.wait_for_timeout(300)
             st = pg.evaluate("""(() => {
               const s = window.__bookscene;
@@ -634,13 +654,17 @@ def main():
                                 4000)
                 check("home3d/reselect", bool(reSel), "current=%s"
                       % pg.evaluate("window.__bookscene.current()"))
-                # 暂停→选择→拖拽→resize→复位→恢复(needsLoop 下即时重绘)
+                # 暂停→选择→拖拽→resize→复位→恢复(needsLoop 下即时重绘)。
+                # select 在换页动画中只排队(pendingSelect),current() 要等
+                # 排队链消化——用 poll 等到 current 终态,不赌立即生效
                 st = pg.evaluate("""(() => {
                   const s = window.__bookscene;
                   s.setAmbient(false);
-                  const paused = s.isAmbientOn();
-                  s.select('digest');
-                  return {paused, cur: s.current()};})()""")
+                  return {paused: s.isAmbientOn()};})()""")
+                pg.evaluate("window.__bookscene.select('digest')")
+                curOk = poll_js(pg, "window.__bookscene"
+                                ".current() === 'digest'", 6000)
+                st["cur"] = pg.evaluate("window.__bookscene.current()")
                 cv = pg.query_selector("#scene3d canvas")
                 if cv:
                     box = cv.bounding_box()
@@ -661,7 +685,8 @@ def main():
                           tris: s.stats().triangles,
                           pbb: pbb ? [pbb.x, pbb.y] : null};})()""")
                 check("home3d/pause-combo", st["paused"] is False
-                      and st["cur"] == "digest" and st2["amb"] is True
+                      and curOk and st["cur"] == "digest"
+                      and st2["amb"] is True
                       and st2["cur"] == "digest" and st2["tris"] > 0
                       and st2["pbb"] and not errs,
                       "paused=%s cur=%s amb=%s cur2=%s tris=%s pbb=%s errs=%s"
@@ -694,7 +719,10 @@ def main():
                 tabok = pg.evaluate(
                     "!(document.getElementById('panel-digest')"
                     " || {hasAttribute: () => true}).hasAttribute('hidden')")
-                three = [u for u in reqs if "/3d/" in u and "poster" not in u]
+                # boot6 是探测入口(module 标签必然加载,gzip ~2.7KB),
+                # 不属场景资源;断言语义=WebGL 不可用时零 three/scene 请求
+                three = [u for u in reqs if "/3d/" in u
+                         and "poster" not in u and "boot6" not in u]
                 poster = [u for u in reqs if "poster" in u]
                 check("home3d/no-webgl", st["noWebgl"] and st["posters"] >= 1
                       and not st["hud"] and tabok and not three and poster
@@ -739,8 +767,8 @@ def main():
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("home3d/module-fail", False, str(exc)[:80])
 
-            # ── N. 字体挂起:texReady 3.5s 超时后素纸场景接替 poster ──
-            httpd_slow = serve(str(SITE / "dist"), PORT + 1, fonts_delay=9)
+            # ── N. 字体分片挂起:texReady 3.5s 超时后素纸场景接替 poster ──
+            httpd_slow = serve(str(SITE / "dist"), PORT + 1, hang_first_fonts=2)
             slow_base = "http://127.0.0.1:%d" % (PORT + 1)
             try:
                 ctx = b.new_context(viewport={"width": 1440, "height": 900})
@@ -749,12 +777,19 @@ def main():
                 pg.on("pageerror", lambda e: errs.append(str(e)))
                 pg.goto(slow_base + "/", wait_until="domcontentloaded",
                         timeout=30000)
-                hung = poll_js(pg, "window.__bookscene ? "
-                               "(document.querySelectorAll("
-                               "'#scene3d img.poster').length === 0"
-                               " ? 'scene' : 'pending') : false", 12000)
-                check("home3d/font-hang", hung == "scene" and not errs,
-                      "state=%s errs=%s" % (hung, errs[:2]))
+                # 窗口 20s:挂起分片让 rIC 与 race 顺延(DCL~1s + idle 至
+                # 迟~10s + import + race 3.5s + poster 淡出 0.7s),终态不变。
+                # 表达式必须纯布尔:poll_js 按真值返回,'pending' 之类的
+                # 中间态字符串是真值,会第一次求值到就短路提前返回
+                hung = poll_js(pg, "!!window.__bookscene"
+                               " && document.querySelectorAll("
+                               "'#scene3d img.poster').length === 0", 20000)
+                after = pg.evaluate(
+                    "({book: !!window.__bookscene, posters: "
+                    "document.querySelectorAll('#scene3d img.poster').length})")
+                check("home3d/font-hang", bool(hung) and not errs,
+                      "book=%s posters=%s errs=%s"
+                      % (after["book"], after["posters"], errs[:2]))
                 pg.close()
                 ctx.close()
             finally:

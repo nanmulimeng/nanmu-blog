@@ -257,8 +257,9 @@ def main():
             order = []
 
             def on_req(e):
-                try:  # 部分 Network 事件无 params(如 V2 变体),跳过
-                    order.append(e["params"]["request"]["url"])
+                try:  # 回调参数 e 即 CDP 事件 params 本身(同 C 段
+                    # e["response"] 口径);异常形态(如 V2 变体)跳过
+                    order.append(e["request"]["url"])
                 except (KeyError, TypeError):
                     pass
             cdp2.on("Network.requestWillBeSent", on_req)

@@ -55,7 +55,9 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     <img class="poster poster-light" src="/3d/poster-light.png"
       fetchpriority="high"
       alt="首页主视觉(静态图):一叠立着的稿纸,左缘朱砂线装订" />
-    <img class="poster poster-dark" src="/3d/poster-dark.png" alt="" />
+    {/* dark 版 lazy:昼上下文 display:none + lazy 不发起请求(首访单张);
+       夜主题/系统深色下它可见,IO 触发即载 */}
+    <img class="poster poster-dark" src="/3d/poster-dark.png" alt="" loading="lazy" />
     <div class="hero-title">
       <p class="v-kicker">NANMU · 手写博客</p>
       <h1 class="v-title">先把最小的东西做完</h1>
@@ -261,4 +263,6 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     </section>
   </div>
   <script is:inline src="/scripts/home.js" defer></script>
+  {/* 3D 场景加载器:poster 先行,idle 后才拉 3D 字节(触发顺序契约);失败终态=poster 常显 */}
+  <script is:inline type="module" src="/3d/boot6.js"></script>
 </Base>
