@@ -4,10 +4,15 @@
 前置:npm run build(验收 dist/);本机 playwright + chromium。
 覆盖:页面矩阵(昼/夜 × 全站真实页)、手机 390、无 JS、键盘、reduced-
 motion、直接访问与返回路径、文章页挂名、脚本入口数(应恰为 2:site.js
-+ 首帧内联)、字体分片实际命中。只断言浏览器实测状态。
++ 首帧内联)、字体分片实际命中(仅 2xx + 中文样本逐字重 fonts.check
+实测装载,含改名 NM Plex Mono)。只断言浏览器实测状态。
+浏览器:环境变量 NM_VERIFY_CHROME 指定 chrome 可执行文件;未设时扫描
+ms-playwright 已装版本(取最大 build 号),再退 Playwright 默认解析——
+不绑定固定用户名或 build 号。
 用法:python -I site/scripts/verify_browser.py [--port 8935]
 """
 import http.server
+import os
 import socketserver
 import sys
 import threading
@@ -17,8 +22,40 @@ from playwright.sync_api import sync_playwright
 
 PORT = 8935
 SITE = Path(__file__).resolve().parents[1]  # site/
-CHROME = (r"C:\Users\nanmu\AppData\Local\ms-playwright\chromium-1248"
-          r"\chrome-win64\chrome.exe")
+
+
+def find_chrome():
+    """chrome 可执行:NM_VERIFY_CHROME 显式优先;退 ms-playwright 已装
+    版本扫描(取最大 build 号);都没有则返回 None 交 Playwright 默认解析
+    (其报错信息自带安装指引)。不绑定固定用户名或 build 号。"""
+    explicit = os.environ.get("NM_VERIFY_CHROME")
+    if explicit:
+        return explicit
+    home = Path.home()
+    for base in (home / "AppData/Local/ms-playwright",
+                 home / ".cache/ms-playwright"):
+        if not base.is_dir():
+            continue
+        exes = []
+        for d in base.glob("chromium-*"):
+            for rel in (("chrome-win64", "chrome.exe"),
+                        ("chrome-win", "chrome.exe"),
+                        ("chrome-linux", "chrome"),
+                        ("chrome-mac", "Chromium.app/Contents/MacOS/Chromium")):
+                f = d.joinpath(*rel)
+                if f.exists():
+                    exes.append(f)
+        if exes:
+            def vkey(f):
+                try:
+                    return int(f.parent.parent.name.split("-")[-1])
+                except ValueError:
+                    return 0
+            return str(max(exes, key=vkey))
+    return None
+
+
+CHROME = find_chrome()
 
 RESULTS = []
 
@@ -68,7 +105,8 @@ def main():
     base = "http://127.0.0.1:%d" % PORT
     try:
         with sync_playwright() as p:
-            b = p.chromium.launch(executable_path=CHROME)
+            launch = ({"executable_path": CHROME} if CHROME else {})
+            b = p.chromium.launch(**launch)
 
             # ── A. 矩阵:昼(跟随系统浅色)/ 夜(localStorage dark) ──
             for theme in ("light", "dark"):
@@ -86,10 +124,22 @@ def main():
                           if r.url.endswith(".woff2") else None)
                     pg.goto(base + path, wait_until="domcontentloaded")
                     pg.wait_for_timeout(300)
-                    serif = pg.evaluate(
-                        "document.fonts ? document.fonts.ready.then("
-                        "() => document.fonts.check(\"17px 'Noto Serif SC'\")) "
-                        ": Promise.resolve(false)") if key == "post" else None
+                    fontck = pg.evaluate("""async () => {
+                      await document.fonts.ready;
+                      const out = {};
+                      const zh = '你好,世界——纸与印。';
+                      for (const w of ['400', '600', '900']) {
+                        try {
+                          await document.fonts.load(`${w} 17px 'Noto Serif SC'`, zh);
+                          out['w' + w] = document.fonts.check(`${w} 17px 'Noto Serif SC'`, zh);
+                        } catch (e) { out['w' + w] = 'err'; }
+                      }
+                      try {
+                        await document.fonts.load(`17px 'NM Plex Mono'`, 'nanmu 2026');
+                        out.mono = document.fonts.check(`17px 'NM Plex Mono'`, 'nanmu 2026');
+                      } catch (e) { out.mono = 'err'; }
+                      return out;
+                    }""") if key == "post" else None
                     st = pg.evaluate("""(cur) => ({
                       top: !!document.querySelector('header.top'),
                       navLinks: document.querySelectorAll('nav.main a').length,
@@ -111,13 +161,15 @@ def main():
                         ok = ok and st["dt"] == "dark" \
                             and st["bg"] != "rgb(240, 237, 229)"
                     if key == "post":
-                        # 分片实际命中:≥5 个且全部 2xx,且正文族已就位
+                        # 分片实际命中:≥5 个且全部 2xx;中文样本逐字重
+                        # (400/600/900)与改名 mono 经 load+check 实测装载
                         ok = ok and sum(font_hits) >= 5 and all(font_hits) \
-                            and serif is True
+                            and fontck is not None and all(
+                                v is True for v in fontck.values())
                     check("matrix/%s/%s" % (key, theme), ok,
-                          "nav=%d script=%d ox=%d fonts=%d/%d serif=%s cur=%s" %
+                          "nav=%d script=%d ox=%d fonts=%d/%d fontck=%s cur=%s" %
                           (st["navLinks"], st["scripts"], st["ox"],
-                           sum(font_hits), len(font_hits), serif, st["cur"]))
+                           sum(font_hits), len(font_hits), fontck, st["cur"]))
                     pg.close()
                 check("matrix/console/%s" % theme, not errs, str(errs[:3]))
                 ctx.close()
