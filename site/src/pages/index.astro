@@ -13,25 +13,57 @@ const allDigests = await getCollection('digest');
 assertDigestIds(allDigests);
 const digests = allDigests
   .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
+const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+const excerpt = (post) => {
+  const first = (post.body || '').split(/\n\n+/).find(Boolean) || '';
+  const text = first.replace(/^#+\s*/m, '').replace(/[*_`[\]]/g, '');
+  return text.length > 90 ? text.slice(0, 90) + '…' : text;
+};
+const rssUrl = new URL('rss.xml', Astro.site).toString();
+const digestUrl = new URL('digest.xml', Astro.site).toString();
 ---
 <Base>
-  <h1>最新文章</h1>
-  {posts.length === 0 && <p class="muted">尚未发布文章。</p>}
-  {posts.map((p) => (
-    <div class="card">
-      <a href={`/posts/${p.id}/`}><strong>{p.data.title}</strong></a>
-      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {p.data.tags.join(' / ')}</div>
+  <div class="frame">
+    <div class="list-head">
+      <h1>最近在写</h1>
+      <p class="sub">手写文章,新到旧。全部文章在「文章」栏目。</p>
     </div>
-  ))}
-  <h2 style="margin-top:2.5rem">AI 日报</h2>
-  {digests.length === 0 ? (
-    <p class="muted">日报尚未发布。本栏目由AI生成与筛选,每期标注生成模型与成本。</p>
-  ) : (
-    digests.slice(0, 3).map((d) => (
-      <div class="card">
-        <a href={`/digest/${d.id}/`}><strong>{d.data.date} 日报</strong></a>
-        <div class="muted">{d.data.entry_count} 条 · 由 {d.data.ai_model} 生成</div>
+
+    {posts.length === 0 ? (
+      <div class="blank-sheet">
+        <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="bs-state">还没有文章</p>
+        <p class="bs-desc">第一篇正在写。</p>
       </div>
-    ))
-  )}
+    ) : (
+      posts.map((p) => (
+        <a class="row-item" href={`/posts/${p.id}/`} data-reveal>
+          <h3>{p.data.title}</h3>
+          <div class="meta mono">{fmt(p.data.pubDate)} <span class="tags">{p.data.tags.join(' / ')}</span></div>
+          {excerpt(p) && <p>{excerpt(p)}</p>}
+        </a>
+      ))
+    )}
+
+    <h2 class="sect-bar" style="margin-top:48px">AI 日报<small>引擎自动生成,每期标注模型与成本</small></h2>
+    {digests.length === 0 ? (
+      <p style="color:var(--ink2); font-size:14.5px">暂无已发布日报;第一期发布后会按日期倒序列在这里。</p>
+    ) : (
+      digests.slice(0, 3).map((d) => (
+        <a class="row-item" href={`/digest/${d.id}/`} data-reveal>
+          <h3>{d.data.date} 日报</h3>
+          <div class="meta mono">{d.data.entry_count} 条 · {d.data.ai_model} · ¥{d.data.cost_cny}{d.data.cost_pending && <span class="pending"> 含未决预占,为保守上界</span>}</div>
+        </a>
+      ))
+    )}
+
+    <div class="subscribe" data-reveal>
+      <span class="s-title"><span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">阅</span> 订阅</span>
+      <span class="s-item"><code>{rssUrl}</code>
+        <button class="copy-link" type="button" data-copy={rssUrl}>复制文章 RSS</button></span>
+      <span class="s-item"><code>{digestUrl}</code>
+        <button class="copy-link" type="button" data-copy={digestUrl}>复制日报 RSS</button></span>
+      <p class="hint">RSS 无账号;两个频道分开,阅读器里按需订阅。</p>
+    </div>
+  </div>
 </Base>

@@ -34,8 +34,13 @@ def serve(root):
 
         def log_message(self, *a):
             pass
+    class TS(socketserver.ThreadingTCPServer):
+        daemon_threads = True
+
+        def handle_error(self, request, client_address):
+            pass  # 本地测量:连接中断噪声不值得打印
     socketserver.TCPServer.allow_reuse_address = True
-    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", PORT), H)
+    httpd = TS(("127.0.0.1", PORT), H)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd
 
