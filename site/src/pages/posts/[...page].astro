@@ -12,16 +12,55 @@ export async function getStaticPaths({ paginate }) {
   return paginate(posts, { pageSize: 10 });
 }
 const { page } = Astro.props;
+const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+// 列表摘要 = 正文首段纯文本,超长截断(内容派生,不另存摘要字段)
+const excerpt = (post) => {
+  const first = (post.body || '').split(/\n\n+/).find(Boolean) || '';
+  const text = first.replace(/^#+\s*/m, '').replace(/[*_`[\]]/g, '');
+  return text.length > 90 ? text.slice(0, 90) + '…' : text;
+};
+const rssUrl = new URL('rss.xml', Astro.site).toString();
 ---
 <Base title="文章">
-  <h1>文章</h1>
-  {page.data.length === 0 && <p class="muted">尚未发布文章。</p>}
-  {page.data.map((p) => (
-    <div class="card">
-      <a href={`/posts/${p.id}/`}><strong>{p.data.title}</strong></a>
-      <div class="muted">{p.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {p.data.tags.join(' / ')}</div>
+  <div class="frame">
+    <div class="list-head">
+      <div class="crumb"><span class="seal-w">文</span><a href="/">首页</a><span>/</span><span>文章</span></div>
+      <h1>文章</h1>
+      <p class="sub">手写,按时间倒序。目前 {page.total} 篇。</p>
     </div>
-  ))}
-  {page.url.prev && <a href={page.url.prev}>← 上一页</a>}
-  {page.url.next && <a href={page.url.next}>下一页 →</a>}
+
+    {page.data.length === 0 ? (
+      <div class="blank-sheet">
+        <div class="bs-lines"><i></i><i></i><i></i></div>
+        <p class="bs-state">还没有文章</p>
+        <p class="bs-desc">第一篇正在写。可以先订阅 RSS,写完即达。</p>
+      </div>
+    ) : (
+      <div>
+        {page.data.map((p) => (
+          <a class="row-item" href={`/posts/${p.id}/`} data-reveal>
+            <h3>{p.data.title}</h3>
+            <div class="meta mono">{fmt(p.data.pubDate)} <span class="tags">{p.data.tags.join(' / ')}</span></div>
+            {excerpt(p) && <p>{excerpt(p)}</p>}
+          </a>
+        ))}
+        <nav class="pager" aria-label="文章分页">
+          {page.url.prev
+            ? <a href={page.url.prev}>← 上一页</a>
+            : <span class="at-ends">← 上一页</span>}
+          <span class="mono">{page.lastPage > 1 ? `第 ${page.currentPage} / ${page.lastPage} 页` : '共 1 页'}</span>
+          {page.url.next
+            ? <a href={page.url.next}>下一页 →</a>
+            : <span class="at-ends">下一页 →</span>}
+        </nav>
+      </div>
+    )}
+
+    <div class="subscribe" data-reveal>
+      <span class="s-title"><span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">文</span> 文章 RSS</span>
+      <span class="s-item"><code>{rssUrl}</code>
+        <button class="copy-link" type="button" data-copy={rssUrl}>复制链接</button></span>
+      <p class="hint">手写文章更新不定,订阅后由阅读器收;无账号,不发邮件。</p>
+    </div>
+  </div>
 </Base>

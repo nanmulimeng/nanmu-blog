@@ -6,16 +6,64 @@ import { assertPostsIds } from '../../lib/content';
 export async function getStaticPaths() {
   const all = await getCollection('posts');
   assertPostsIds(all);
-  return all
+  const posts = all
     .filter(({ data }) => !data.draft)
-    .map((p) => ({ params: { id: p.id }, props: { post: p } }));
+    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
+  // 上一篇=更早方向,下一篇=更新方向(与原型文案「这是最早的一篇/还没有」一致)
+  return posts.map((p, i) => ({
+    params: { id: p.id },
+    props: { post: p, older: posts[i + 1] ?? null, newer: posts[i - 1] ?? null, no: posts.length - i },
+  }));
 }
-const { post } = Astro.props;
-const { Content } = await render(post);
+const { post, older, newer, no } = Astro.props;
+const { Content, headings } = await render(post);
+const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
 ---
 <Base title={post.data.title} description={post.data.title}>
-  <h1>{post.data.title}</h1>
-  <p class="muted">{post.data.pubDate.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })} · {post.data.tags.join(' / ')}</p>
-  <hr />
-  <article><Content /></article>
+  <div class="progress-bar" aria-hidden="true"></div>
+  <div class="frame">
+    <div class="article-wrap narrow">
+      <div class="crumb"><span class="seal-w">文</span><a href="/">首页</a><span>/</span><a href="/posts/">文章</a><span>/</span><span>正文</span></div>
+
+      <header class="paper-head">
+        <span class="ph-line" aria-hidden="true"></span>
+        <span class="ph-hole" aria-hidden="true"></span><span class="ph-hole" aria-hidden="true"></span>
+        <span class="ph-hole" aria-hidden="true"></span><span class="ph-hole" aria-hidden="true"></span>
+        <span class="ph-kicker">NANMU · 手写文章 · 第 {no} 篇</span>
+        <h1 class="title">{post.data.title}</h1>
+        <div class="meta-line mono">{fmt(post.data.pubDate)} · <span class="tags">{post.data.tags.join(' / ')}</span> · 手写</div>
+      </header>
+
+      {headings.length > 0 && (
+        <nav class="toc" aria-label="本页目录">
+          <b>目录</b>
+          <ol>{headings.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ol>
+        </nav>
+      )}
+
+      <article class="prose">
+        <Content />
+        <div class="colophon">
+          <span class="fin">完</span><span class="line"></span><span class="mono">{fmt(post.data.pubDate)}</span>
+        </div>
+      </article>
+
+      <nav class="prev-next" aria-label="上下文文章">
+        {older ? (
+          <a class="prev" href={`/posts/${older.id}/`}>
+            <span class="lab mono">上一篇</span><div class="t">{older.data.title}</div>
+          </a>
+        ) : (
+          <span class="none"><span class="lab mono">上一篇</span><div class="t">这是最早的一篇</div></span>
+        )}
+        {newer ? (
+          <a class="next" href={`/posts/${newer.id}/`}>
+            <span class="lab mono">下一篇</span><div class="t">{newer.data.title}</div>
+          </a>
+        ) : (
+          <span class="none next"><span class="lab mono">下一篇</span><div class="t">还没有</div></span>
+        )}
+      </nav>
+    </div>
+  </div>
 </Base>
