@@ -125,10 +125,10 @@
         <span class="count mono">三层 · 各管各的</span>
       </div>
       <div class="layers-wrap" data-reveal>
-        <div class="layers-fig" aria-hidden="true">
-          <span class="ly ly-posts on" data-layer="posts"><i>手写文章</i></span>
-          <span class="ly ly-digest" data-layer="digest"><i>AI 日报</i></span>
-          <span class="ly ly-search" data-layer="search"><i>个人检索</i></span>
+        <div class="layers-fig" role="group" aria-label="站点三层结构:选中一层,右侧展开对应说明">
+          <button class="ly ly-posts on" type="button" data-layer="posts" aria-pressed="true"><i>手写文章</i></button>
+          <button class="ly ly-digest" type="button" data-layer="digest" aria-pressed="false"><i>AI 日报</i></button>
+          <button class="ly ly-search" type="button" data-layer="search" aria-pressed="false"><i>个人检索</i></button>
           <span class="ly-note">任何一层挂掉,其他层照常</span>
         </div>
         <div class="layers-list">

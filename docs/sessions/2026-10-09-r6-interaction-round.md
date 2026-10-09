@@ -51,5 +51,45 @@
 ## 已知边界
 
 - 跨页 VT 的 morph 是封面卡(竖版)与页头(横版)之间的形变,首访即成立;若从面板「读全文」进入,封面卡在首屏外,VT 仍会以其屏幕外快照参与(视觉为卡从下方飞入),未视作缺陷。
-- 3D 页面上小字(27px 纹理)在日光下偏淡,与 R5 同水平,评审已接受该浓度。
+- 3D 页面上小字(27px 纹理)在日光下偏淡,与 R5 同水平,是否可接受留待评审。
 - 内页除 post-hello 外仍是 R4 样式原样复制(R6 范围聚焦首页与阅读过渡;全站套用按指令暂缓)。
+
+---
+
+# 定点修正轮(2026-10-09 下午,检查点 74dd36e 之后)
+
+四组修正全部落地并验证;验证针对 R6 实现本身(非 R5 几何复用)。以下「实测」均为桌面 Chromium + Playwright,对 no-store 服务器(8934)上的交付代码执行。
+
+## 修正 1:三处选择状态统一(scene6.js、boot6.js)
+
+- `select()` 在换页动画中不再拒绝新选择:存入 `pendingSelect`(后到覆盖先到),动画完成后执行;页签/面板点击即切换(即时反馈),3D 排队跟上,三方最终一致。
+- boot6 在场景就绪后把当前选中页签同步给场景(覆盖"场景加载期间已点过别的栏目")。
+
+实测:场景就绪前点「日报」→ 就绪后 scene/页签/面板三方 digest 一致;120ms 间隔连点 about→posts→digest → 终态三方 digest(最后一次点击);暂停动态下点页签 → 换页动画照常、三方一致。
+
+## 修正 2:手机横向滚动条(scene6.js resize)
+
+**越界节点:3D 画布**。`resize()` 用 `host.clientWidth`(四舍五入整数)——宿主实宽 374.67px 时读出 375,画布比容器宽 0.33px,整数 DOM 度量(scrollWidth/clientWidth/元素矩形)全部显示"无溢出",但经典滚动条系统(Windows 窄窗)仍渲染页面级横向滚动条。实锤路径:像素复检确认三张交付手机截图底部均有滚动条色带 → DOM 扫描无越界 → `window.scrollX` 出现 0.667 残值暴露亚像素溢出 → 逐段排除后锁定画布 375px > 宿主 374.67px → 画布压到 374px 后滚动条消失。
+
+修复:resize 改用 `getBoundingClientRect()` + 向下取整,画布永不超宿主(非全局裁切)。实测复测 360/390/430(昼/夜):画布分别 344/374/414,均比宿主窄 ≥0.67px,maxX=0,三张新截图(shots/r6-fix-m360-day / r6-fix-m390-day / r6-fix-m430-night.png)底部像素复检无滚动条色带;桌面 1440 同样 mx=0。
+
+## 修正 3:三层双向操作与键盘(index.html、site6.js、base6.css)
+
+- 分层图纸卡由 `<span aria-hidden>` 改为 `<button aria-pressed>`,点击/Enter/Space 展开对应说明,与手风琴双向同步(openLayer 统一维护 .on/aria-expanded/aria-pressed)。
+- `.ly.on` 去掉 `border-style:solid`——实线=在线、虚线=计划的语义不再被高亮覆盖;选中态只改颜色/位移/阴影/底色。
+- 首页 tabs 补齐 ARIA 键盘行为:方向键/Home/End 移动并选中,漫游 tabindex(选中页签 0,其余 -1)。
+
+实测:点图卡「个人检索」→ 手风琴 search 展开、正文可见、pressed=true;选中态 search 仍 dashed、posts 仍 solid;手风琴→图卡反向同步 digest 仍 dashed;图卡键盘 Enter 展开;tabs ArrowRight/End/Home 选中+聚焦+3D 同步,tabindex 分布正确。
+
+## 修正 4:reduced-motion 转场声明顺序 + 分入口挂名(base6.css、site6.js)
+
+- `@view-transition{navigation:auto}` 移到 reduced-motion 块**之前**(同优先级后者胜,原顺序 none 被 auto 覆盖、形同虚设)。
+- 封面卡不再 CSS 常驻 `view-transition-name`(常驻会让屏幕外封面在无关导航里飞入)。按入口分别定义:点击可见封面 → 点击时挂名 morph 进页头;「读全文」按钮 / 3D 入口 → 不挂名,仅根过渡;返回 → 页头常驻名 + 首页 pagereveal 检测到 VT 时补挂封面名。
+
+实测:加载后封面 computed name=none;点击封面挂名 latest-cover;样式表规则顺序 auto 在前、reduced-motion none 在后;「读全文」真实导航到文章页(页头名 latest-cover),返回时首页 pagereveal 补挂封面名(回程 VT 发生);emulate reduced-motion 下点击封面再返回,封面未补挂名(VT 整体禁用,navigation:none 生效)。
+
+## R6 三页换位几何(本轮新验,非 R5 复用)
+
+三页循环互换 posts→digest→about→posts,各取中帧与终态截图(shots/r6fix-swap-pd/da/ap-mid/final.png):中帧退出页弧出、两页分离无穿插,终态构图正常;排队链 about→posts(120ms)中帧(shots/r6fix-swap-chain-mid.png)三页分离,终态 scene=页签=posts。回归:暂停/恢复 aria 与状态双向正确;check_docs 0 错;git diff --check 干净。
+
+**源码推断(未逐项实测)**:posts/digest/about/search-m2/404 等 R4 复制内页未受本轮文件改动影响(改动仅 r6/index.html、base6.css、site6.js、scene6.js、boot6.js)。**未测环境**:真机触摸、iOS Safari、Firefox(VT 降级路径按设计为普通跳转)。

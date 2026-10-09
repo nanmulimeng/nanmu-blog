@@ -67,6 +67,12 @@
         document.addEventListener('nm-theme', function(ev){ scene.setTheme(!!(ev.detail && ev.detail.dark)); });
         window.__bookscene = scene;   // 验收脚本读取(沿用 R4 全局名)
 
+        /* 场景就绪前的页签选择在此同步(用户在 3D 加载期间已点过别的栏目) */
+        var curTab = document.querySelector('.ptab.on');
+        if (curTab && curTab.dataset.pid && curTab.dataset.pid !== scene.current()){
+          scene.select(curTab.dataset.pid);
+        }
+
         /* 落线:碑页装订线底部 → 正文朱砂线的可见转接(装饰,无它内容完整)。
            直角两段(竖落 + 沿 main.flow 顶横走),取线装走线的工艺语义;
            斜线会横穿 hero 按钮区,故不取。仅 hero 在视口内时随帧更新。 */

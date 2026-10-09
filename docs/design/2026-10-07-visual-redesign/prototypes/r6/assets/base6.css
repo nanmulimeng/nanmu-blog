@@ -310,6 +310,7 @@ details.fixture .inner{border-top:1px dashed var(--seal); padding:10px 14px}
 /* 分层图:三张错落的纸,在线层实线、计划层虚线;选中层移出受光 */
 .layers-fig{display:flex; flex-direction:column; gap:16px; padding:6px 0}
 .ly{display:block; width:86%; padding:15px 18px; font-style:normal;
+  font-family:var(--serif); color:var(--ink); text-align:left; cursor:pointer;
   background:var(--sheet); border:1.5px solid var(--line); border-radius:var(--radius);
   box-shadow:0 7px 0 -3px color-mix(in srgb, var(--ink) 8%, transparent);
   transition:transform var(--t-med) var(--ease-out), border-color var(--t-med),
@@ -318,7 +319,9 @@ details.fixture .inner{border-top:1px dashed var(--seal); padding:10px 14px}
 .ly-posts{margin-left:0}
 .ly-digest{margin-left:7%; border-style:dashed}
 .ly-search{margin-left:14%; border-style:dashed}
-.ly.on{border-color:var(--seal); border-style:solid; background:var(--seal-wash);
+.ly:hover{border-color:var(--seal)}
+/* 选中层只改颜色/位移/阴影/底色——border-style 承载语义(实线=在线、虚线=计划),高亮不得改动 */
+.ly.on{border-color:var(--seal); background:var(--seal-wash);
   transform:translateX(10px);
   box-shadow:0 7px 0 -3px color-mix(in srgb, var(--seal) 22%, transparent)}
 .ly.on i{color:var(--seal-text)}
@@ -358,10 +361,15 @@ details.fixture .inner{border-top:1px dashed var(--seal); padding:10px 14px}
   55%{transform:scale(.95) rotate(-2.4deg); opacity:1}
   100%{transform:scale(1) rotate(-1.5deg)}}
 
-/* ── 封面 → 正文:封面卡与文章页头共名,跨页过渡(渐进增强) ── */
-.cover-card{view-transition-name:latest-cover}
+/* ── 封面 → 正文:封面卡与文章页头共名,跨页过渡(渐进增强) ──
+   封面卡不由 CSS 常驻挂名——常驻会让屏幕外封面在无关导航(如面板「读全文」)里飞入。
+   挂名由 site6.js 按入口分别处理:点击可见封面时挂名(morph);读全文按钮/3D 入口不挂(仅根过渡);
+   回程由页头常驻名 + pagereveal 补挂封面名完成。 */
+@view-transition{navigation:auto}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.35s}
 ::view-transition-old(latest-cover),::view-transition-new(latest-cover){
   animation-duration:.45s; animation-timing-function:var(--ease-soft)}
+/* reduced-motion 的 navigation:none 必须位于 auto 之后才会生效(同优先级后者胜) */
 @media (prefers-reduced-motion:reduce){
   @view-transition{navigation:none}
   .tpanel.on,.li-body,.copy-link.stamped{animation:none}
@@ -384,9 +392,6 @@ details.fixture .inner{border-top:1px dashed var(--seal); padding:10px 14px}
   .li-head{padding:12px 10px; font-size:16.5px}
   .li-state{font-size:.66rem; padding:3px 7px}
 }
-
-@view-transition{navigation:auto}
-::view-transition-old(root),::view-transition-new(root){animation-duration:.35s}
 
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}

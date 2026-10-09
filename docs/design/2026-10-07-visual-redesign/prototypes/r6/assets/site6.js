@@ -69,6 +69,7 @@ function showPanel(pid){
     var on=t.dataset.pid===pid;
     t.classList.toggle('on',on);
     t.setAttribute('aria-selected',String(on));
+    t.tabIndex=on?0:-1;   /* 漫游 tabindex:Tab 只进当前页签,方向键在页签间移动 */
   });
   panels.forEach(function(p){
     var on=p.id==='panel-'+pid;
@@ -76,16 +77,46 @@ function showPanel(pid){
     if(on){p.removeAttribute('hidden');}else{p.setAttribute('hidden','');}
   });
 }
+function activateTab(t,focus){
+  var pid=t.dataset.pid;
+  showPanel(pid);
+  if(window.__bookscene&&window.__bookscene.select)window.__bookscene.select(pid);
+  if(focus)t.focus();
+}
 tabs.forEach(function(t){
-  t.addEventListener('click',function(){
-    var pid=t.dataset.pid;
-    showPanel(pid);
-    if(window.__bookscene&&window.__bookscene.select)window.__bookscene.select(pid);
-  });
+  t.tabIndex=t.classList.contains('on')?0:-1;
+  t.addEventListener('click',function(){activateTab(t);});
+});
+/* 键盘:方向键/Home/End 移动并选中(自动激活,与点击行为一致) */
+var tablist=document.querySelector('.page-tabs');
+if(tablist)tablist.addEventListener('keydown',function(ev){
+  var i=tabs.indexOf(document.activeElement);
+  if(i<0)return;
+  var j=-1;
+  if(ev.key==='ArrowRight'||ev.key==='ArrowDown')j=(i+1)%tabs.length;
+  else if(ev.key==='ArrowLeft'||ev.key==='ArrowUp')j=(i-1+tabs.length)%tabs.length;
+  else if(ev.key==='Home')j=0;
+  else if(ev.key==='End')j=tabs.length-1;
+  if(j>=0){ev.preventDefault();activateTab(tabs[j],true);}
 });
 document.addEventListener('nm-page',function(ev){
   if(ev.detail&&ev.detail.pid)showPanel(ev.detail.pid);
 });
+
+/* ── 4b. 封面→正文跨页过渡的挂名策略(渐进增强;reduced-motion 下 VT 整体禁用,以下为空操作) ──
+   CSS 不常驻封面名,按入口分别定义转场:
+   - 点击可见封面卡:点击时挂名,旧页快照在点击后采集,封面 morph 进文章页头;
+   - 「读全文」按钮 / 3D 前景页入口:不挂名,只走根过渡(屏幕外封面不无关飞入);
+   - 返回:文章页头常驻 latest-cover;本页 pagereveal 若处于 VT 中(即回程),补挂封面名接住 morph。 */
+var coverCard=document.querySelector('.cover-card');
+if(coverCard){
+  coverCard.addEventListener('click',function(){
+    coverCard.style.viewTransitionName='latest-cover';
+  });
+  addEventListener('pagereveal',function(ev){
+    if(ev.viewTransition)coverCard.style.viewTransitionName='latest-cover';
+  });
+}
 
 /* ── 5. 朱砂装订线:前景页装订线落入正文,随滚动延伸;节点对应各节 ──
    reduced-motion:线全显、节点全亮,不做滚动动画;节点定位两种模式都执行。 */
@@ -140,12 +171,20 @@ function openLayer(name){
     head.setAttribute('aria-expanded',String(on));
     if(on){body.removeAttribute('hidden');}else{body.setAttribute('hidden','');}
   });
-  layerFig.forEach(function(ly){ly.classList.toggle('on',ly.dataset.layer===name);});
+  layerFig.forEach(function(ly){
+    var on=ly.dataset.layer===name;
+    ly.classList.toggle('on',on);
+    ly.setAttribute('aria-pressed',String(on));
+  });
 }
 layerItems.forEach(function(it){
   it.querySelector('.li-head').addEventListener('click',function(){
     openLayer(it.dataset.layer);
   });
+});
+/* 双向:分层图纸卡本身是按钮,点击/键盘(原生 Enter/Space)同样展开对应说明 */
+layerFig.forEach(function(ly){
+  ly.addEventListener('click',function(){openLayer(ly.dataset.layer);});
 });
 
 /* ── 7. 复制链接(RSS):成功后盖「已录」小印,与版面语言一致 ── */

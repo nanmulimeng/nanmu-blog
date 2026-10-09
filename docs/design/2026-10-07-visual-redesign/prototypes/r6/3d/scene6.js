@@ -265,7 +265,11 @@ export async function createScene(host, opts = {}){
     camera.lookAt(tx, P.cam.ty, 0);
   }
   function resize(){
-    const w = host.clientWidth || 1, h = host.clientHeight || 1;
+    /* clientWidth 是四舍五入整数:宿主实宽 374.67 时会读出 375,画布比容器宽 0.33px,
+       经典滚动条系统(Windows 桌面窄窗)因此冒出页面级横向滚动条。
+       用 getBoundingClientRect 取小数宽并向下取整,保证画布永不超出宿主。 */
+    const rect = host.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width)), h = Math.max(1, Math.floor(rect.height));
     renderer.setSize(w, h); camera.aspect = w / h;
     /* 竖屏构图:横向视角不足时按比例拉远 */
     camera.userData.zoom = Math.min(P.cam.zoomMax, Math.max(1, 1.02 / Math.max(camera.aspect, 0.01)));
@@ -446,13 +450,15 @@ export async function createScene(host, opts = {}){
     if (entT > P.entrance + 0.4) finishEntrance();
   }
 
-  /* 换页:目标页弧出到前景,原前景页退到腾出的槽位 */
-  let swap = null;
+  /* 换页:目标页弧出到前景,原前景页退到腾出的槽位。
+     动画中再次 select 不丢弃——排队最后一次选择,swap 完成时执行;
+     否则页签面板(HTML 侧)已切换而 3D 未动,两侧状态分裂 */
+  let swap = null, pendingSelect = null;
   function frontPage(){ return pages.find(p => p.userData.slot === 0); }
   function select(pid){
     const target = pages.find(p => p.userData.pid === pid);
     if (!target || target.userData.slot === 0) return false;
-    if (swap) return false;               /* 动画中忽略,保持状态可预期 */
+    if (swap){ pendingSelect = pid; if (onSelect) onSelect(pid); return true; }
     const out = frontPage();
     const poseOut = slotPose(out.userData.slot), poseIn = slotPose(target.userData.slot);
     swap = {out, inn: target, k: 0,
@@ -489,7 +495,11 @@ export async function createScene(host, opts = {}){
       swap.fromIn.y + (swap.toIn.y - swap.fromIn.y) * e,
       swap.fromIn.z + (swap.toIn.z - swap.fromIn.z) * e);
     n.rotation.y = swap.fromIn.ry + (swap.toIn.ry - swap.fromIn.ry) * e;
-    if (swap.k >= 1) swap = null;
+    if (swap.k >= 1){
+      swap = null;
+      /* 执行排队的选择(快速连点只保留最后一次);select 内部会重新 start */
+      if (pendingSelect){ const pid2 = pendingSelect; pendingSelect = null; select(pid2); }
+    }
   }
 
   /* 交互:拖拽环顾(有限);点前景页进栏目,点后排页换页 */
