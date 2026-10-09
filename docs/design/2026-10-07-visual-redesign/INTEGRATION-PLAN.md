@@ -1,6 +1,6 @@
 # R6 正式接入方案(v2,2026-10-09 修订)
 
-- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;浏览器验收 34/34、verify 全绿、预算实测见 §5——**内页冷缓存实测超 §5 预算线,属预算条款修订事项,待用户裁决,未擅自放宽**;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
+- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化;浏览器验收 34/34、verify 全绿、**内页预算全部在线内**(§5,含勘误记录);下一批 = 批次 2 首页 3D;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
 - 对象:R6 全站统一原型(`prototypes/r6/`)→ 生产站 `site/`
 - 关联:[R3-REVIEW.md](R3-REVIEW.md) · [ADR-0010](../../decisions/0010-adr0002-client-js-exceptions.md)(已接受,客户端行为以其白名单为准) · [prototypes/site/map.html](prototypes/site/map.html)
 
@@ -29,7 +29,7 @@
 - `src/styles/tokens.css` ← tokens6.css(双主题 token;`--mono` 改为改名后的 `NM Plex Mono`,见下)
 - `src/styles/base.css` ← base6 与 pages6 的**并集去重**(基础排版/导航/页脚/印章/焦点/reduced-motion/VT 声明序 + 内页组件全套);夹具三件套(fixture-banner/details.fixture/page-tag)与首页专属段(场景宿主/页叠/HUD)不进;首页专属段批次 2 另立 `home.css`
 - 布局:`layouts/Base.astro` 承载全站骨架(frame/header/footer/首帧内联脚本/site.js 引用/字体 link);`Header.astro` 改 R6 导航(`aria-current`:首页=精确匹配 `/`,其余前缀匹配)
-- **字体进生产**:`site/public/fonts/`,由 `site/scripts/build-site-fonts.py` 从设计目录原型资产生成(可复现):**仅 Noto Serif SC 三字重 303 分片**(R6 不用 Noto Sans——tokens6 只有 serif/mono/kai,sans 三字重 303 分片不入库)+ 两份 OFL 许可证;**Plex 改名**:`fontTools` 改写 name 表为 `NM Plex Mono`(OFL RFN 义务,原文件名 `nm-plex-mono-400/500.woff2`);`public/fonts/fonts.css` 只含 serif 与改名 Plex 的 @font-face(约 305 条,未压缩约 300KB)
+- **字体进生产**:`site/public/fonts/`,由 `site/scripts/build-site-fonts.py` 从设计目录原型资产生成(可复现):**仅 Noto Serif SC 三字重 303 分片**(R6 不用 Noto Sans——tokens6 只有 serif/mono/kai,sans 三字重 303 分片不入库)+ 两份 OFL 许可证;**Plex 改名**:`fontTools` 改写 name 表为 `NM Plex Mono`(OFL RFN 义务,原文件名 `nm-plex-mono-400/500.woff2`;`recalcTimestamp=False` 钉死 head.modified,重跑字节级幂等);`public/fonts/fonts.css` 只含 serif 与改名 Plex 的 @font-face(305 条,未压缩 304185 B/行尾 LF;serif 段按分片×字重交错排列以利 gzip,见 §5)
 - **fonts.css 服务策略**:作为 public 静态文件由 `<link rel="stylesheet" href="/fonts/fonts.css">` 引入,**不走 Astro 打包**——606 分片的相对 url 交给浏览器按需取,构建零介入;代价是它本身是首个 CSS 请求,纳入 §5 预算
 - 3D 资产(`public/3d/`:boot6/scene6/three×2/poster×2)**批次 2 入库**——本批首页不接 3D,提前入库即生产目录里的死资产,违反"不搬运未用资产"原则
 
@@ -68,18 +68,20 @@
 ## 5. 字体与资源预算(测量方法与验收口径)
 
 - **计入预算的传输项**(冷缓存,禁 HTTP 缓存的全新 context):HTML + CSS(含 `fonts.css` 本体)+ JS + 实际命中的 woff2 分片。
-- **测量方法**:`site/scripts/measure_budget.py`(Playwright 网络监听,入库可复跑):①冷缓存访问 `/posts/hello-nanmu-blog/`,记全部请求分型汇总;②同 context 顺序访问 `/` → `/about/`,记**跨页面新增分片**数与字节(验证 unicode-range 命中缓存);③`fonts.css` 记原始字节与 gzip 字节(部署层压缩口径)。Lighthouse 移动档为批次 3 复核项。
+- **测量方法**:`site/scripts/measure_budget.py`(2026-10-09 审计后修正版):①冷缓存访问 `/posts/hello-nanmu-blog/`,仅计 2xx 分型汇总,**失败响应单列**;②同 context 顺序访问其余三页,记**跨页唯一资源增量**(唯一 URL 去重口径——回答"该页引入哪些新资源",不是缓存命中证据);③可缓存服务(Cache-Control: max-age=3600)下 CDP Network 实测**真实暖缓存传输**(零传输且 2xx=缓存命中;该 Chromium build 不置 fromDiskCache 标志,以实测行为为准);④`fonts.css` 原始与 gzip(固定 Python zlib level 6、mtime=0;不同 gzip 实现数字不混比)。Lighthouse 移动档为批次 3 复核项。
 - **验收预算(v2 修订;超标=停在该项回表,不默放)**:
-  - 内页:HTML+CSS+JS 冷缓存合计 ≤ 500KB(其中 JS gzip ≤ 8KB;fonts.css gzip 预期 ≤ 60KB——原始约 300KB,重复结构压缩率高,以实测为准);首访字体分片 ≤ 1.2MB,跨页新增分片以实测记录基线
+  - 内页:HTML+CSS+JS 冷缓存合计 ≤ 500KB(**不含另列的 woff2 字体分片**;其中 JS gzip ≤ 8KB;fonts.css gzip 预期 ≤ 60KB);首访字体分片 ≤ 1.2MB,跨页新增以实测记录基线
   - 首页(批次 2):poster ≤ 450KB 且先于任何 3D 字节到达;3D(three+scene,gzip)≤ 220KB 且 idle 动态 import;LCP 以文档/poster 为准
 - **poster/3D 真实加载策略(批次 2)**:poster 两张 PNG 以 `<img>` 首屏直载(它是 LCP 候选与 3D 失败的常驻回退,**不 lazy**;`fetchpriority="high"`,随主题切换显示对应张);boot6 探测 WebGL 后动态 `import('./scene6.js')`(module,defer 后执行),失败零请求零报错;场景就绪后 poster 淡出让位。reduced-motion:场景静态完成态。
 - **预算检查在批次内的位置**:批次 1 验收=内页预算实测;批次 2 验收=poster/3D 预算实测;批次 3=全站复核与真机。
-- **批次 1 实测记录(2026-10-09,measure_budget.py,本地无压缩服务)**:
-  - 冷缓存 `/posts/hello-nanmu-blog/`:HTML 3954 B + CSS 321608 B + JS 7344 B + woff2 819288 B = **1125.2KB 原始字节**;按生产 Caddy gzip 口径折算(woff2 不再压缩,css/js 按实测 gzip 比)约 **920KB**——**超「≤500KB」预算线,已停在该项待裁决**(500KB 线与 CJK webfont 物理现实矛盾:仅 fonts.css gzip 92.7KB + 22 个命中分片 819KB 已超线;该线沿用无字体时代口径,修订建议=非字体资源(HTML+CSS+JS,生产 gzip)≤120KB + 字体单列沿用「首访 ≤1.2MB」)
-  - fonts.css:原始 304490 B,gzip 92707 B——**超「预期 ≤60KB」**(预估 20% 压缩率,实测 30%)
-  - 字体首访(四页累计新增分片):819288 + 42520 + 89784 + 74440 ≈ **1006KB ≤ 1.2MB** ✓(贴线,减字重为备选)
-  - 跨页新增分片:/posts/ +1(42.5KB)、/digest/ +2(89.8KB)、/about/ +2(74.4KB)——unicode-range 按需命中,同片跨页复用成立
+- **批次 1 实测记录(2026-10-09 审计收口后,measure_budget.py 修正版 + 交错 fonts.css,本地无压缩服务)**:
+  - 冷缓存 `/posts/hello-nanmu-blog/`(仅 2xx,原始字节):HTML 3954 B + CSS 321303 B(含 fonts.css 304185 B)+ JS 7344 B = **332601 B(324.8 KiB)≤ 500KB ✓**;woff2 另列 819232 B(800.2 KiB)
+  - fonts.css:原始 304185 B(行尾统一 LF 后),gzip-6 **34013 B(33.2 KiB)≤ 60KB ✓**——serif 段按「分片号 × 字重(400/600/900)」交错排列(1f25d9a)后由 92969 B 降至此;等价验证:305 条声明多重集合一致、每族每字重内部顺序一致、303 个分片 sha256 前后全等、文章页+about × 昼/夜 4 组整页截图逐像素零差异
+  - 字体首访(四页累计新增分片):819232 + 42520 + 89784 + 74440 = **1025976 B(1002.0 KiB)≤ 1.2MB** ✓(贴线,减字重为备选,当前不需要)
+  - 跨页唯一资源增量(唯一 URL 去重,非缓存证据):/posts/ +html 2624 B +1 分片 42520 B;/digest/ +html 2503 B +2 分片 89784 B;/about/ +html 9448 B +2 分片 74440 B
+  - 真实暖缓存传输(CDP 实测,max-age=3600):重访文章页 26 请求全部零传输命中、网络 0 B;暖访 /posts/、/digest/、/about/ 仅传新增资源(45608/92991/84592 B,含响应头,零传输命中 25-28/27-31)——跨页复用有了网络层证据;冷访另有 favicon.ico 404(浏览器自动请求,站点无该文件,观察项)
   - JS:7344 B 原始(gzip 约 3KB)≤ 8KB ✓
+  - **勘误(2026-10-09 用户审计裁决)**:本节早前版本把 woff2 并入 HTML+CSS+JS 后折算「约 920KB gzip」判超 500KB 线,并断言「500KB 线与 CJK webfont 物理现实矛盾」——属比较口径错误:该线自方案起即为「HTML+CSS+JS,首访字体分片另列 ≤1.2MB」,错误结论撤回;早前「fonts.css 超 60KB 预期」经交错排列优化后回到线内(非放宽条款)。历史错误结论保留在批次 0–1 session 作为记录,不伪装未发生
   - 附:批次 0 资产曾有一处缺陷(分片 url 前缀未剥 `fonts/`,全站 404 静默回退系统字体),由加严后的验收断言(仅计 2xx + `document.fonts.check` 实测)抓出,已在 0562ae9 修复——首次「34/34」中字体断言为假阳性的教训记录在案
 
 ## 6. 内容契约保留(逐项核对,模板层不碰数据流)
@@ -100,7 +102,7 @@
 | 批 | 内容 | 验收 | 回退 |
 |---|---|---|---|
 | 0 资产入库 ✅ 5aa996e(+0562ae9 url 修复) | fonts(serif+改名 Plex+fonts.css,经 build-site-fonts.py)+ tokens.css/base.css(未被引用) | `npm run verify` 绿(页面仍旧版式);脚本重跑幂等 | revert 单提交,零影响 |
-| 1 公共布局与内页 ✅ c743993..e91d7c5 | Base/Header/site.js(W1-W4,W9-W12)/smoke 白名单/posts+post/digest 列表+详情/about/404/index 静态适配 | verify + `verify_browser.py`(昼/夜/手机 390/无 JS/键盘/直接访问与返回/reduced)+ 夹具构建浏览器抽验 + 预算实测(34/34;预算偏差见 §5,待裁决) | 见下方回退依赖 |
+| 1 公共布局与内页 ✅ c743993..e91d7c5 | Base/Header/site.js(W1-W4,W9-W12)/smoke 白名单/posts+post/digest 列表+详情/about/404/index 静态适配 | verify + `verify_browser.py`(昼/夜/手机 390/无 JS/键盘/直接访问与返回/reduced)+ 夹具构建浏览器抽验 + 预算实测(34/34;预算全过,§5 实测+勘误) | 见下方回退依赖 |
 | 2 首页 3D | home.css + public/3d 入库 + boot/scene + W5-W8 + 封面卡 | 同矩阵 + WebGL 降级 + r6 回归移植 | 3D 段独立 revert,静态首页保留 |
 | 3 测量收尾 | Lighthouse 复核、真机补测、预算回填 | 实测值回表 | 文档修正 |
 
@@ -110,6 +112,6 @@
 
 - VT 跨页在旧浏览器退化为普通导航(无破坏);Safari/Firefox 未测(Chromium-only 验收,已标)。
 - three 720KB 未压缩(备选:移动端仅 poster,批次 2 实测后裁决)。
-- 字体首访 ~1MB(备选:减字重);fonts.css 原始 ~300KB 依赖部署层压缩(gzip 口径见 §5 实测)。
-- **批次 1 实测暴露**:§5「内页冷缓存 ≤500KB」与「fonts.css gzip ≤60KB」两条均被实测打破(920KB / 92.7KB,见 §5 实测记录)——预算条款与 CJK webfont 方案内在矛盾,修订待用户裁决,本批不擅自放宽也不删减字重(那会改变 R6 版式)。
+- 字体首访 ~1MB 贴 1.2MB 线(备选:减字重,当前不需要);fonts.css gzip-6 34013 B(交错排列后),生产 Caddy 实压缩口径待批次 3 复核。
+- 预算条款状态(2026-10-09 勘误后):内页 500KB 线(不含 woff2)实测 332601 B 在线内;fonts.css gzip 经交错排列回到 60KB 线内。早前「两条超线、方案内在矛盾」的结论系把 woff2 并入比较的口径错误,已撤回(§5 勘误段;历史记录见批次 0–1 session)。
 - 移动端 390 布局与真机触摸未实测(模拟器证据 only)。
