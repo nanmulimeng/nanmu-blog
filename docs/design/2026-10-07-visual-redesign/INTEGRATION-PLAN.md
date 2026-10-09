@@ -35,7 +35,7 @@
 
 ## 3. 客户端行为白名单(= ADR-0010 清单;生产入口逐项)
 
-全站仅两个脚本入口:`<head>` 内联首帧主题脚本(内容签名进 smoke 断言)+ `public/scripts/site.js`(`<script src defer>`)。smoke.mjs 由"拒绝一切 `<script>`"改为**白名单断言**:允许且仅允许这两个入口,其余任何脚本(含内联)构建失败。
+全站脚本入口(批次 2 起):`<head>` 内联首帧主题脚本(内容签名进 smoke 断言)+ `public/scripts/site.js`(`<script src defer>`,W2-W4、W9-W12,全站);**首页额外两个**——`public/scripts/home.js`(`<script src defer>`,仅 `index.astro` 引用,W5-W8 页面侧)+ `public/3d/boot6.js`(`<script type="module">`,场景加载器)。smoke.mjs 为**白名单断言**:全站页仅允许前两者;`index.html` 额外允许 home.js 与 boot6.js 两个入口且**限定页面范围**(其余任何页出现即构建失败)。
 
 | # | 行为 | 段 | 进入批次 | 无 JS / 失败时 |
 |---|---|---|---|---|
@@ -43,10 +43,10 @@
 | W2 | 主题三态切换 + `nm-theme` 事件 | site.js §1 | 1 | 不执行→跟随系统;按钮为静态 HTML,点击无效果但内容零损 |
 | W3 | 移动菜单开合(Esc 收起) | site.js §2 | 1 | html.js 门控:导航平铺可点 |
 | W4 | reveal 进场遮蔽 | site.js §3 | 1 | reveal-ready 门控:内容直接可见 |
-| W5 | 页签目录↔3D 页叠双向联动 + 键盘漫游 | site.js §4 | 2 | 首页无 3D 时不渲染页签;HTML 面板直接可读 |
-| W6 | 封面↔页头 `latest-cover` 挂名生命周期(转场配对) | site.js §4b | 2(页头侧常驻,批次 1 起存在但无配对源=无 morph) | 不挂名→普通 cross-fade |
-| W7 | 朱砂装订线滚动延伸 | site.js §5 | 2 | 首页专属;不渲染即无 |
-| W8 | 「这个站」三层展开 | site.js §6 | 2 | 手风琴全部展开、无隐藏内容 |
+| W5 | 页签目录↔3D 页叠双向联动 + 键盘漫游 | home.js §4(页面侧)/ boot6+scene6(场景侧) | 2 | 页签为静态 HTML,文章面板默认展开、链接可用 |
+| W6 | 封面↔页头 `latest-cover` 挂名生命周期(转场配对) | home.js §4b | 2(页头侧常驻,批次 1 起存在但无配对源=无 morph) | 不挂名→普通 cross-fade |
+| W7 | 朱砂装订线滚动延伸 + 落线转接(场景侧 boot6 注入) | home.js §5 | 2 | 首页专属;不渲染即无 |
+| W8 | 「这个站」三层展开 | home.js §6 | 2 | 手风琴全部展开、无隐藏内容 |
 | W9 | 复制 RSS 链接盖印 | site.js §7 | 1 | 链接以 `<code>` 明文展示,可手复制 |
 | W10 | 阅读进度条 + 目录书签 scrollspy | site.js §8 | 1 | 目录为构建期静态锚链接 |
 | W11 | 代码块复制按钮 | site.js §9 | 1 | 按钮不生成;代码可手选 |
@@ -72,7 +72,13 @@
 - **验收预算(v2 修订;超标=停在该项回表,不默放)**:
   - 内页:HTML+CSS+JS 冷缓存合计 ≤ 500KB(**不含另列的 woff2 字体分片**;其中 JS gzip ≤ 8KB;fonts.css gzip 预期 ≤ 60KB);首访字体分片 ≤ 1.2MB,跨页新增以实测记录基线
   - 首页(批次 2):poster ≤ 450KB 且先于任何 3D 字节到达;3D(three+scene,gzip)≤ 220KB 且 idle 动态 import;LCP 以文档/poster 为准
-- **poster/3D 真实加载策略(批次 2)**:poster 两张 PNG 以 `<img>` 首屏直载(它是 LCP 候选与 3D 失败的常驻回退,**不 lazy**;`fetchpriority="high"`,随主题切换显示对应张);boot6 探测 WebGL 后动态 `import('./scene6.js')`(module,defer 后执行),失败零请求零报错;场景就绪后 poster 淡出让位。reduced-motion:场景静态完成态。
+- **poster/3D 真实加载策略(批次 2 实施细则,2026-10-09 授权后定稿)**:
+  - **触发顺序(实现后以请求时间线断言验证,不靠 defer 语义自证)**:①poster `<img>` 在 HTML 内(解析即请求,`fetchpriority="high"`,不 lazy,按当前主题显示对应张、另一张不请求)→ ②`site.js`(defer,全站)与 `home.js`(defer,仅首页,承载 W5-W8 页面侧)执行 → ③`boot6.js`(type=module)执行,先 WebGL 探测(失败=加 `.no-webgl` 类结束,3D 零请求)→ ④探测通过后 `requestIdleCallback`(无则 2s 超时兜底)再动态 `import` scene6——此时才发出 three.module/three.core/scene6 请求 → ⑤`texReady`(字体就绪纹理,3.5s 超时)后场景淡入、poster 淡出移除、HUD 注入。验收时间线断言:poster 请求的发起序号先于任何 3D 资源请求。
+  - **失败结束状态(各有明确终态,无空白/遮罩/永久加载)**:WebGL 不可用或模块加载/初始化失败 → `.no-webgl`,poster 常显、无 HUD,页签仍切换 HTML 面板;字体挂起 → 3.5s 超时后素纸场景接替 poster(纹理无字,console 告警);poster 自身加载失败 → alt 文本与 hero 竖排标题/页签/正文照常(视觉层之外的内容零依赖)。
+  - **poster 定位=装饰性主视觉**:固定图像内容(一叠稿纸),**不承载「最新文章」身份**,alt 不提具体文章标题;最新文章由 HTML 数据(data-* JSON)与 3D 文字纹理实时承载,新文章发布即自动更新,poster 无需同步机制。
+  - **暂停/离屏/恢复**(沿用原型规则):`setAmbient` 暂停动态后,用户主动操作(拖拽/复位/换页)与 resize 仍即时 `renderOnce`;IntersectionObserver 离屏停、回视口续;`visibilitychange` 同理;reduced-motion=静态完成态+立即换页。
+  - **预算口径**:poster 按两张资产合计 ≤450KB(实测 428676 B=418.6 KiB;首访仅传输当前主题单张);3D 合计=three.module+three.core+scene6+boot6 四件,gzip-6 ≤220KB;home.js 计入全站脚本 gzip ≤8KB 线的**首页专属口径**(内页不含 home.js,site.js 字节不增)。
+  - **内容同源**:首页构建时把最新文章(标题/日期/分类/摘录/篇数/字数/URL)、日报状态、站点层说明以 `data-*` JSON 挂在 `#scene3d` 宿主;scene6 排印只读该数据,JS 内零内容副本。长标题按 measureText 换行(至多 3 行,超长截「…」);特殊字符原样排印;空摘要不排正文段、不虚构占位;无公开文章时模板层渲染空态、3D 文章页排「暂无文章」;草稿经 getCollection 过滤永不入数据。
 - **预算检查在批次内的位置**:批次 1 验收=内页预算实测;批次 2 验收=poster/3D 预算实测;批次 3=全站复核与真机。
 - **批次 1 实测记录(2026-10-09 审计收口后,measure_budget.py 修正版 + 交错 fonts.css,本地无压缩服务)**:
   - 冷缓存 `/posts/hello-nanmu-blog/`(仅 2xx,原始字节):HTML 3954 B + CSS 321303 B(含 fonts.css 304185 B)+ JS 7344 B = **332601 B(324.8 KiB)≤ 500KB ✓**;woff2 另列 819232 B(800.2 KiB)
