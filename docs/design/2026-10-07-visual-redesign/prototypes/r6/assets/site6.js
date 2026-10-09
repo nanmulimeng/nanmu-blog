@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════
-   R6「字场 · 换页碑」首页脚本
+   R6「字场 · 换页碑」全站脚本(首页与内页共用)
    全部为增强:无 JS 时内容、导航、链接完整可用。
-   与 site5 差异:页签目录与 3D 页叠双向联动(nm-page 事件);
-   「这个站」三层可展开说明;复制 RSS 盖印反馈。
+   1-7 为首页与通用段(首页专属逻辑有元素守卫,内页自然跳过);
+   8-10 为内页阅读增强(承 R4 site4.js,反馈语言统一为 R6 盖印)。
    ═══════════════════════════════════════════════════════════ */
 (function(){
 "use strict";
@@ -227,6 +227,79 @@ document.querySelectorAll('[data-copy]').forEach(function(btn){
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(v).then(ok,fail);
     }else{fail();}
+  });
+});
+
+/* ── 8. 阅读进度条 + 目录书签(文章页;承 R4,行为不变) ──
+   进度条随正文滚动;目录以 aria-current 标记当前节(无 JS 时仍是普通锚链) */
+var bar=document.querySelector('.progress-bar');
+var article=document.querySelector('.prose');
+if(bar&&article){
+  var onRead=function(){
+    var r=article.getBoundingClientRect();
+    var total=r.height-innerHeight;
+    var done=Math.min(Math.max(-r.top,0),Math.max(total,1));
+    bar.style.width=(total>0?(done/total*100):0)+'%';
+  };
+  addEventListener('scroll',onRead,{passive:true}); onRead();
+}
+var tocLinks=[].slice.call(document.querySelectorAll('.toc a[href^="#"]'));
+if(tocLinks.length&&'IntersectionObserver' in window){
+  var heads=tocLinks.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));});
+  var cur=null;
+  function markToc(id){
+    if(id===cur)return; cur=id;
+    tocLinks.forEach(function(a){
+      if(a.getAttribute('href')==='#'+id)a.setAttribute('aria-current','true');
+      else a.removeAttribute('aria-current');
+    });
+  }
+  var tio=new IntersectionObserver(function(es){
+    es.forEach(function(en){ if(en.isIntersecting) markToc(en.target.id); });
+  },{rootMargin:'-15% 0px -70% 0px'});
+  heads.forEach(function(h){h&&tio.observe(h);});
+}
+
+/* ── 9. 代码块复制(文章页 pre;承 R4,反馈色统一朱砂) ── */
+document.querySelectorAll('.prose pre').forEach(function(pre){
+  var btn=document.createElement('button');
+  btn.className='copy-btn'; btn.type='button'; btn.textContent='复制';
+  btn.addEventListener('click',function(){
+    var text=pre.querySelector('code')?pre.querySelector('code').textContent:pre.textContent;
+    function ok(){btn.textContent='已复制'; btn.classList.add('done');
+      setTimeout(function(){btn.textContent='复制'; btn.classList.remove('done');},1600);}
+    function fail(){btn.textContent='复制失败,请手动选择';
+      setTimeout(function(){btn.textContent='复制';},2000);}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(ok,fail);
+    }else{fail();}
+  });
+  pre.appendChild(btn);
+});
+
+/* ── 10. 图片展开:原生 <dialog>.showModal()(承 R4) ──
+   showModal 自带背景 inert 与焦点约束、Esc 关闭;close 后焦点归还触发按钮。
+   无 JS 时不生成按钮,图片保持原样可读。 */
+document.querySelectorAll('[data-zoom]').forEach(function(img){
+  var btn=document.createElement('button');
+  btn.className='img-expand'; btn.type='button';
+  btn.setAttribute('aria-label','展开图片: '+(img.alt||''));
+  img.parentNode.insertBefore(btn,img); btn.appendChild(img);
+  btn.addEventListener('click',function(){
+    var dlg=document.createElement('dialog');
+    dlg.className='lightbox';
+    var big=new Image(); big.src=img.src; big.alt=img.alt||'';
+    dlg.appendChild(big);
+    if(img.dataset.cap){var c=document.createElement('div'); c.className='lb-cap';
+      c.textContent=img.dataset.cap; dlg.appendChild(c);}
+    var x=document.createElement('button');
+    x.className='lb-close'; x.type='button'; x.textContent='关闭 ✕';
+    x.addEventListener('click',function(){dlg.close();});
+    dlg.appendChild(x);
+    dlg.addEventListener('click',function(e){ if(e.target===dlg){dlg.close();} });
+    dlg.addEventListener('close',function(){ btn.focus(); });
+    document.body.appendChild(dlg);
+    dlg.showModal();
   });
 });
 

@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>关于 · nanmu(R4 纸筑)</title>
+<title>关于 · nanmu(R6 字场 · 换页碑)</title>
 <!-- 全站原型 · 关于页:只用已知事实;缺失信息以「待填」明示,不编造 -->
 <link rel="stylesheet" href="../fonts.css">
-<link rel="stylesheet" href="../r4/assets/tokens4.css">
-<link rel="stylesheet" href="../r4/assets/base4.css">
+<link rel="stylesheet" href="assets/tokens6.css">
+<link rel="stylesheet" href="assets/pages6.css">
 <style>
 .about-grid{display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr);
   gap:clamp(24px,4vw,56px); padding:clamp(28px,5vw,56px) 0 0; align-items:start}
@@ -20,7 +20,6 @@
 .vignette svg{width:100%; height:auto; display:block}
 .vignette figcaption{margin-top:8px; padding-left:0; border-left:none; text-align:center}
 .facts{margin-top:40px}
-.facts h2{font-size:19px; font-weight:900; margin:0 0 12px; padding-left:12px; border-left:4px solid var(--seal)}
 .fact-row{display:flex; gap:18px; padding:12px 4px; border-bottom:1px solid var(--line)}
 .fact-row .when{font-family:var(--mono); font-size:.78rem; color:var(--ink2); flex:none; width:88px}
 .fact-row .what{font-size:15px}
@@ -96,11 +95,20 @@
   </div>
 
   <div class="facts">
-    <h2>这个站的时间线</h2>
+    <h2 class="sect-bar">这个站的时间线</h2>
     <div class="fact-row"><span class="when">2026 上半年</span><span class="what">第一个博客项目:功能铺得太大,十二周半后烂尾,成为这次的反面教材。</span></div>
     <div class="fact-row"><span class="when">2026-08-31</span><span class="what">topic-digest 小爬取试点上线:定时采集 + 静态页面,验证最小闭环。</span></div>
     <div class="fact-row"><span class="when">2026-10-02</span><span class="what">本站上线的第一篇文章:《你好,nanmu-blog》。</span></div>
     <div class="fact-row"><span class="when">进行中</span><span class="what">AI 引擎:日报在前,检索在后。做好了会出现在「机」印章的栏目里。</span></div>
+  </div>
+
+  <div class="subscribe" data-reveal>
+    <span class="s-title"><span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">阅</span> 订阅</span>
+    <span class="s-item"><code>https://nanmu.xyz/rss.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/rss.xml">复制文章 RSS</button></span>
+    <span class="s-item"><code>https://nanmu.xyz/digest.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/digest.xml">复制日报 RSS</button></span>
+    <p class="hint">RSS 无账号;两个频道分开,阅读器里按需订阅。</p>
   </div>
 
   <footer class="site">
@@ -108,6 +116,6 @@
     <span><a href="index.html#subscribe">订阅 RSS</a> · <a href="../site/map.html">原型总览</a></span>
   </footer>
 </div>
-<script src="../r4/assets/site4.js"></script>
+<script src="assets/site6.js"></script>
 </body>
 </html>

@@ -3,18 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI 日报 · nanmu(R4 纸筑)</title>
-<!-- 全站原型 · 日报列表:真实状态=暂无已发布日报;条目为标注夹具 -->
+<title>AI 日报 · nanmu(R6 字场 · 换页碑)</title>
+<!-- 全站原型 · 日报列表:真实状态=暂无已发布日报;条目为标注夹具。
+     空态与首页 digest-empty 同语言:一页没写的稿纸,零期是真实状态不是缺陷 -->
 <link rel="stylesheet" href="../fonts.css">
-<link rel="stylesheet" href="../r4/assets/tokens4.css">
-<link rel="stylesheet" href="../r4/assets/base4.css">
-<style>
-.list-head{margin:clamp(28px,5vw,48px) 0 0}
-.list-head h1{font-size:clamp(26px,3.4vw,34px); font-weight:900; margin:0}
-.list-head .sub{color:var(--ink2); font-size:14px; margin-top:6px; max-width:44em}
-.empty-note{border:1px dashed var(--draw); padding:22px 24px; margin-top:26px; max-width:44em}
-.empty-note p{margin:.2em 0; color:var(--ink2); font-size:15px}
-</style>
+<link rel="stylesheet" href="assets/tokens6.css">
+<link rel="stylesheet" href="assets/pages6.css">
 </head>
 <body>
 <div class="frame">
@@ -37,9 +31,10 @@
   </div>
 
   <!-- 真实状态:空列表,中性表述,不从 0 期推导任何故障或建设进度 -->
-  <div class="empty-note">
-    <p><b>暂无已发布日报。</b></p>
-    <p>第一期发布后,这里会按日期倒序列出各期,含模型、条目数与成本标注。</p>
+  <div class="blank-sheet" data-reveal>
+    <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+    <p class="bs-state">暂无已发布日报</p>
+    <p class="bs-desc">这一页还空着。第一期发布后,这里会按日期倒序列出各期,含模型、条目数与成本标注——全部内容为 AI 生成,与手写文章分开。</p>
   </div>
 
   <details class="fixture" style="margin-top:32px">
@@ -65,11 +60,18 @@
     </div>
   </details>
 
+  <div class="subscribe" data-reveal>
+    <span class="s-title"><span class="seal-m" style="width:18px;height:18px;font-size:10px;vertical-align:-3px">机</span> 日报 RSS</span>
+    <span class="s-item"><code>https://nanmu.xyz/digest.xml</code>
+      <button class="copy-link" type="button" data-copy="https://nanmu.xyz/digest.xml">复制链接</button></span>
+    <p class="hint">AI 生成栏目,计划每日一期;第一期到了会送到你的阅读器。</p>
+  </div>
+
   <footer class="site">
     <span>© 2026 nanmu</span>
     <span><a href="index.html#subscribe">订阅 RSS</a> · <a href="../site/map.html">原型总览</a></span>
   </footer>
 </div>
-<script src="../r4/assets/site4.js"></script>
+<script src="assets/site6.js"></script>
 </body>
 </html>

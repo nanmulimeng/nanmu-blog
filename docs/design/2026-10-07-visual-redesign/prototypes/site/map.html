@@ -48,6 +48,8 @@ table.matrix td:first-child,table.matrix th:first-child{text-align:left}
     入口 <a href="../r5/index.html">r5/index.html</a>,与 R4 的同视口对照见 shots/r4-vs-r5-hero-*.png。
     <strong>R6「字场 · 换页碑」是交互创意深化</strong>(2026-10-09,独立原型,尚未正式接入):碑变为一叠三张可换的内容页,
     页签目录双向联动、封面→正文跨页过渡、「这个站」三层展开,入口 <a href="../r6/index.html">r6/index.html</a>。
+    同日第二轮完成<strong>全站风格统一</strong>:内页全部迁入 R6 基座(tokens6 + 新增 pages6.css + site6.js 全站化),
+    每页按自身用途设计(文章页阅读中心 / 日报页扫描与溯源中心),截图 shots/r6uni-*。
     R3→R4 同页面同视口对照图见 shots/cmp-index-day.png / cmp-index-night.png。
     标记含义:
     <span class="tag real">真实</span>内容取自仓库实际状态(文章 1 篇、日报 0 期);
@@ -56,18 +58,39 @@ table.matrix td:first-child,table.matrix th:first-child{text-align:left}
     所有页面均可无脚本浏览;脚本只做渐进增强。正式接入、提交推送与发布不在本轮范围。
   </div>
 
-  <h2 class="sect-bar">R6 首页<small>r6/ · 字场 · 换页碑,交互创意深化(2026-10-09);独立原型,尚未正式接入</small></h2>
+  <h2 class="sect-bar">R6 全站<small>r6/ · 字场 · 换页碑,交互深化 + 全站统一(2026-10-09);独立原型,尚未正式接入</small></h2>
   <table class="map">
     <tr><th style="width:21em">页面</th><th>标记</th><th>呈现的状态与看点</th></tr>
     <tr><td><a href="../r6/index.html">首页 r6/index</a></td>
       <td><span class="tag real">真实</span></td>
       <td class="d">一页碑 → 一叠三张内容页(文章/日报/这个站):页签目录与 3D 页叠双向联动换页(弧出补间,线装随前景移交);封面卡→文章页头跨页 View Transition;「这个站」三层展开(分层图+手风琴);复制 RSS 盖印反馈;落线/节点/夜览透光承 R5 修正轮。访客全流程录屏 shots/rec/r6-visitor-flow.webm;与 R5 同视口对照 shots/r6-vs-r5-*.png。报告见 <a href="../../../../sessions/2026-10-09-r6-interaction-round.md">r6-interaction-round</a></td></tr>
+    <tr><td><a href="../r6/posts.html">文章列表 r6/posts</a></td>
+      <td><span class="tag real">真实</span>+<span class="tag fix">夹具</span></td>
+      <td class="d">扫描为中心:行式列表(朱砂点+标题位移)+ 分页器 + 文章 RSS 订阅条;下半为多页节奏夹具</td></tr>
     <tr><td><a href="../r6/post-hello.html">文章详情 r6/post-hello</a></td>
       <td><span class="tag real">真实</span></td>
-      <td class="d">稿纸页头(与首页封面卡同构,VT 共名 latest-cover)+ 目录阅读书签(scrollspy 标记当前节);直接访问 URL 正常</td></tr>
+      <td class="d">阅读为中心:稿纸页头(与首页封面卡同构,VT 共名 latest-cover)+ 34em 正文 + 目录阅读书签(scrollspy)+ 进度条 + 代码复制 + 图片展开 + 落款印「完」;直接访问 URL 正常</td></tr>
+    <tr><td><a href="../r6/digest.html">日报列表 r6/digest</a></td>
+      <td><span class="tag real">真实</span>+<span class="tag fix">夹具</span></td>
+      <td class="d">空态与首页同语言(一页没写的稿纸);有期以后的列表夹具含长模型名与费用两态;日报 RSS 订阅条</td></tr>
+    <tr><td><a href="../r6/digest-2026-10-05.html">日报详情 r6/digest-2026-10-05</a></td>
+      <td><span class="tag fix">夹具</span></td>
+      <td class="d">溯源为中心:图签(模型/条目数/成本含未决预占两态)+ 正文 1:1 对齐 assemble.py 结构 + 来源链接;变体夹具演示空板块省略</td></tr>
+    <tr><td><a href="../r6/about.html">关于 r6/about</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">窄栏短文 + 纸筑图解线稿 + 时间线;缺失信息以「待填」明示;双 RSS 订阅条</td></tr>
+    <tr><td><a href="../r6/404.html">404 r6/404</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">缺页意象(翻开的书缺一页,虚线轮廓)+ 掀页短动画一次后静止;不存在与撤回同语义,不泄露条目信息</td></tr>
+    <tr><td><a href="../r6/search-m2.html">检索预案 r6/search-m2</a></td>
+      <td><span class="tag concept">概念</span></td>
+      <td class="d">M2 概念稿:八态夹具演示(未认证/检索中/有据答案/证据不足/降级/不可用/预算停用);本轮不实现、不接 API、不进正式导航;基座与全站一致</td></tr>
     <tr><td class="mono"><a href="../r6/3d/ASSETS.md">r6/3d/ASSETS.md</a></td>
       <td><span class="tag real">资产</span></td>
       <td class="d">三页槽位系统/换页补间/线装移交/字体样本门控/poster 复现流程/缺测项</td></tr>
+    <tr><td class="mono">r6/assets/(tokens6 · base6 · pages6 · site6.js)</td>
+      <td><span class="tag real">资产</span></td>
+      <td class="d">全站统一资产:tokens6 双主题 token(补 --paper2);base6 首页版式;pages6 内页共用版式(本轮新增);site6.js 全站脚本(并入阅读进度/目录书签/代码复制/图片展开)。全站统一验证 35/35、R6 修正轮回归 8+8+6 全 PASS,证据 shots/r6uni-*</td></tr>
   </table>
 
   <h2 class="sect-bar">R5 首页<small>r5/ · 字场 · 碑页,首页专项;内页复用 R4(引用 ../r4/assets);R6 的比较基线</small></h2>
