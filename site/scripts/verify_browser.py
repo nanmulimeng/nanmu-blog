@@ -11,6 +11,9 @@ site.js+首帧内联;首页 4:另加 home.js 与 boot6 模块)、字体分片实
 暂停组合)、WebGL 不可用零 3D 请求、模块失败终态、字体挂起超时接替、
 封面挂名回程不残留。修正轮增:挂起期主题切换、排队变向。批次 3 收尾
 增(P 段):手机交接区单格高度、createScene 失败后半成品 host 清理。
+批次 3 性能增(Q 段):手机首帧 nav 不闪——.js 类移入 head 内联脚本
+(Lighthouse 移动档 CLS 0.288 的归因修复:site.js 在 body 尾,首帧渲染
+无 .js 的展开目录再塌成按钮,main 上移 261px)。
 日报零期/一期/更新三态构建验收在 scripts/verify_digest_states.py。
 只断言浏览器实测状态。
 浏览器:环境变量 NM_VERIFY_CHROME 指定 chrome 可执行文件;未设时扫描
@@ -970,6 +973,72 @@ def main():
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("home3d/fail-cleanup", False, str(exc)[:80])
+
+            # ── Q. 手机首帧 nav 不闪(批次 3:.js 类提前到 head 内联)──
+            # 归因:nav.main 的移动端折叠(base.css html.js 规则)原先由
+            # site.js(body 尾 defer)加 .js 生效——首帧渲染的是无 .js 的
+            # 展开目录(header ~335px),site.js 执行后塌成「目录」按钮,
+            # main 上移 261px(实测 shift 在 classList.add('js') 后 2ms,
+            # score 0.2881 = Lighthouse 移动档 CLS 0.288 的全部来源)。
+            # Q1:abort site.js(defer 脚本在 DCL 前执行,挂起法测不到
+            #     「脚本缺席」时刻)——html 已带 js、nav 未展开、main 顶
+            #     仍在 header 下,证明 .js 来自 head 内联而非 body 尾脚本;
+            # Q2:无 JS + 手机 390:nav 展开、main 被压下(渐进增强
+            #     回归保护,D 段桌面版的手机宽补充)。
+            try:
+                ctx = b.new_context(viewport={"width": 390, "height": 844},
+                                    has_touch=True, is_mobile=True)
+                pg = ctx.new_page()
+                pg.route("**/scripts/site.js", lambda r: r.abort())
+                pg.goto(base + "/posts/hello-nanmu-blog/",
+                        wait_until="domcontentloaded")
+                pg.wait_for_timeout(400)
+                st = pg.evaluate("""(() => {
+                  const nav = document.querySelector('nav.main');
+                  const hdr = document.querySelector('header.top');
+                  const main = document.querySelector('main');
+                  return {js: document.documentElement.classList
+                              .contains('js'),
+                          nav: nav ? getComputedStyle(nav).display
+                                   : 'missing',
+                          hdrH: hdr ? hdr.offsetHeight : -1,
+                          mainTop: main ? Math.round(
+                              main.getBoundingClientRect().top) : -1};})()""")
+                check("mobile/first-frame-nav",
+                      st["js"] and st["nav"] == "none"
+                      and 0 <= st["hdrH"] <= 100
+                      and 0 <= st["mainTop"] <= 110,
+                      "js=%s nav=%s hdrH=%s mainTop=%s"
+                      % (st["js"], st["nav"], st["hdrH"], st["mainTop"]))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("mobile/first-frame-nav", False, str(exc)[:80])
+            try:
+                ctx = b.new_context(java_script_enabled=False,
+                                    viewport={"width": 390, "height": 844},
+                                    has_touch=True, is_mobile=True)
+                pg = ctx.new_page()
+                pg.goto(base + "/posts/hello-nanmu-blog/",
+                        wait_until="domcontentloaded")
+                st = pg.evaluate("""(() => {
+                  const nav = document.querySelector('nav.main');
+                  const main = document.querySelector('main');
+                  return {js: document.documentElement.classList
+                              .contains('js'),
+                          nav: nav ? getComputedStyle(nav).display
+                                   : 'missing',
+                          mainTop: main ? Math.round(
+                              main.getBoundingClientRect().top) : -1};})()""")
+                check("mobile/nojs-nav",
+                      not st["js"] and st["nav"] != "none"
+                      and st["mainTop"] > 200,
+                      "js=%s nav=%s mainTop=%s"
+                      % (st["js"], st["nav"], st["mainTop"]))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("mobile/nojs-nav", False, str(exc)[:80])
             b.close()
     finally:
         httpd.shutdown()
