@@ -56,7 +56,7 @@
 
 ## 4. 博客本体(site,M0)
 
-- **Astro 5**,零客户端 JS,明暗主题跟随系统(topic-digest 同款审美)
+- **Astro 5**,明暗主题跟随系统(topic-digest 同款审美);客户端脚本 2026-10-09 起按 [ADR-0010](../../decisions/0010-adr0002-client-js-exceptions.md) 有限例外(白名单+预算,smoke 强制),此前口径为零客户端 JS
 - 内容模型(content collections):
   - `posts/`——个人文章,手写,frontmatter: title/pubDate/tags/draft
   - `digest/`——AI 日报,程序生成,frontmatter 额外带 `generated: true`、`ai_model`、`cost_cny`、`cost_pending` 等溯源字段

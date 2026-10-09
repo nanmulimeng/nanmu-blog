@@ -15,7 +15,7 @@
 
 ## site/(TypeScript + Astro,M0)
 
-- **零客户端 JS 是铁律**:`.astro` 组件禁止 `<script>` 标签;需要交互 = 不做(ADR-0002)
+- **客户端脚本按 ADR-0010 白名单**(2026-10-09 起生效):允许且仅允许 `public/scripts/site.js`(defer)与 `<head>` 首帧内联主题脚本(内容签名由 smoke.mjs 断言);`.astro` 组件内其余 `<script>` 仍禁止,新增脚本先修订 ADR-0010
 - 运行时依赖白名单:`astro`、`@astrojs/rss`。新增依赖必须有充分理由(写进 commit message)
 - 样式:全局用 `src/styles/global.css` 的 CSS 变量;组件内可用 scoped `<style>`;禁止引入 CSS 框架
 - 组件:展示组件放 `src/components/`,只接收 props 不做数据获取;数据获取只在页面 `frontmatter`(`getCollection`/`getStaticPaths`)
