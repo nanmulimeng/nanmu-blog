@@ -16,8 +16,11 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
     <link rel="stylesheet" href="/fonts/fonts.css" />
-    <!-- W1 首帧主题(ADR-0010):防夜览闪白;内容签名由 smoke.mjs 断言 -->
-    <script is:inline>try{var m=localStorage.getItem('nm-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m}catch(e){}</script>
+    <!-- W1 首帧主题(ADR-0010):防夜览闪白;js 类同帧加——base.css 的
+         html.js 移动端 nav 折叠原先等 body 尾 site.js 才生效,首帧渲染
+         展开目录再塌成按钮,main 上移 261px(批次 3 CLS 0.288 归因)。
+         内容签名由 smoke.mjs 断言 -->
+    <script is:inline>try{var m=localStorage.getItem('nm-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m}catch(e){}document.documentElement.classList.add('js')</script>
   </head>
   <body>
     <Header />
