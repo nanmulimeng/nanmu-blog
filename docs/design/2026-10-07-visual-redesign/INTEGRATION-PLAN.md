@@ -1,6 +1,6 @@
 # R6 正式接入方案(v2,2026-10-09 修订)
 
-- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化;浏览器验收 34/34、verify 全绿、**内页预算全部在线内**(§5,含勘误记录);下一批 = 批次 2 首页 3D;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
+- 状态:执行中(批次 0–1 已完成并本地验收:批次 0 = 5aa996e,批次 1 = c743993..0562ae9 共 6 个提交;2026-10-09 审计收口 = 2c52c34..1f25d9a——预算口径勘误、测量工具修正、fonts.css 交错优化,内页预算全部在线内;**批次 2 首页 3D 已完成并本地验收(2026-10-09)= 72a4c42 验收工具 + a498f05 静态首页 + ffffd6e 3D 接入**:浏览器验收 73/73、E1/E2 预算全过、手机三宽视检,两提交可独立回退;下一批 = 批次 3 测量收尾;v1 为 2026-10-09 上午提案,v2 按复议指令定点修订:白名单补全、生产数据来源、预算测量、批次回退依赖)
 - 对象:R6 全站统一原型(`prototypes/r6/`)→ 生产站 `site/`
 - 关联:[R3-REVIEW.md](R3-REVIEW.md) · [ADR-0010](../../decisions/0010-adr0002-client-js-exceptions.md)(已接受,客户端行为以其白名单为准) · [prototypes/site/map.html](prototypes/site/map.html)
 
@@ -89,6 +89,14 @@
   - JS:7344 B 原始(gzip 约 3KB)≤ 8KB ✓
   - **勘误(2026-10-09 用户审计裁决)**:本节早前版本把 woff2 并入 HTML+CSS+JS 后折算「约 920KB gzip」判超 500KB 线,并断言「500KB 线与 CJK webfont 物理现实矛盾」——属比较口径错误:该线自方案起即为「HTML+CSS+JS,首访字体分片另列 ≤1.2MB」,错误结论撤回;早前「fonts.css 超 60KB 预期」经交错排列优化后回到线内(非放宽条款)。历史错误结论保留在批次 0–1 session 作为记录,不伪装未发生
   - 附:批次 0 资产曾有一处缺陷(分片 url 前缀未剥 `fonts/`,全站 404 静默回退系统字体),由加严后的验收断言(仅计 2xx + `document.fonts.check` 实测)抓出,已在 0562ae9 修复——首次「34/34」中字体断言为假阳性的教训记录在案
+- **批次 2 实测记录(2026-10-09,ffffd6e 后,measure_budget.py E 段 + verify_browser.py)**:
+  - E1 触发顺序(CDP requestWillBeSent 发起序,昼上下文):poster-light **#4** → boot6 #6 → scene6/three×2 **#30–32**——poster 先于任何 3D 字节,且**仅当前主题单张**;poster-dark 加 `loading="lazy"`(display:none+lazy 不发起请求),夜首访双张下载为既存行为无退化(夜上下文实测 dark 显示正常)
+  - E2 预算:3D 四件 gzip-6(zlib-6,mtime=0)合计 **196506 B(191.9 KiB)≤ 220KB ✓**(three.module 79012 + three.core 100875 + scene6 13358 + boot6 3261);poster 两张合计 428676 B(418.6 KiB)≤ 450KiB ✓
+  - 字体挂起路径(hang 前 2 个 woff2 各 9s):素纸场景接替 poster 终态 ~7s 达成(独立复现时间线:t=5.8s 场景就绪、t=6.8s poster 退场),`__bookscene` 可用、rAF 正常
+  - 手机 360/390/430(has_touch):3D 场景就绪、56dvh(844 高实测 473px)、canvas `touch-action: pan-y`(水平拖转场景/垂直滚动页面)、零横向溢出;390 视检:纸面为真实文章内容(标题+摘要,内容同源生效)
+  - 交互验收(verify_browser 73/73):boot 终态/页签↔场景双向联动/快速连选只保留末次/选回正在进入前景的页/暂停组合(暂停→选择→拖拽→resize→复位→恢复)/WebGL 不可用零场景请求(仅 boot6 探测入口)/scene6 abort 终态 poster 常显/字体挂起接替/封面挂名两条回程不残留;**3D 页面点击进文章(第三入口)录屏实测**:文章页头挂名 `latest-cover` 正确,回程后首页封面卡挂名已摘除
+  - 全站脚本入口复核:首页 4(site.js+内联主题+home.js+boot6)、内页 2——smoke 白名单断言限定页面范围
+  - 测试侧两处自坑修复(记录在案):verify N 段 poll 表达式三态 'pending' 字符串真值短路(poll_js 真值语义),measure E1 requestWillBeSent 回调取参 `e["params"]` 恒 KeyError 被吞(playwright 回调参数即 params 本身)——均为断言侧缺陷,功能时间线由独立复现证明
 
 ## 6. 内容契约保留(逐项核对,模板层不碰数据流)
 
@@ -109,7 +117,7 @@
 |---|---|---|---|
 | 0 资产入库 ✅ 5aa996e(+0562ae9 url 修复) | fonts(serif+改名 Plex+fonts.css,经 build-site-fonts.py)+ tokens.css/base.css(未被引用) | `npm run verify` 绿(页面仍旧版式);脚本重跑幂等 | revert 单提交,零影响 |
 | 1 公共布局与内页 ✅ c743993..e91d7c5 | Base/Header/site.js(W1-W4,W9-W12)/smoke 白名单/posts+post/digest 列表+详情/about/404/index 静态适配 | verify + `verify_browser.py`(昼/夜/手机 390/无 JS/键盘/直接访问与返回/reduced)+ 夹具构建浏览器抽验 + 预算实测(34/34;预算全过,§5 实测+勘误) | 见下方回退依赖 |
-| 2 首页 3D | home.css + public/3d 入库 + boot/scene + W5-W8 + 封面卡 | 同矩阵 + WebGL 降级 + r6 回归移植 | 3D 段独立 revert,静态首页保留 |
+| 2 首页 3D ✅ 72a4c42 + a498f05 + ffffd6e | 验收工具先行(RED 34/73)→ 静态首页(home.css/真实内容接线/W5-W8)→ 3D(public/3d 四件/boot6 idle/scene6 内容同源/poster 单张先行) | verify_browser **73/73** + measure E1/E2 + 手机三宽视检 + 3D 入口挂名录屏(§5 实测) | 3D 段独立 revert(ffffd6e),静态首页保留(a498f05 不依赖 3D 可读可用) |
 | 3 测量收尾 | Lighthouse 复核、真机补测、预算回填 | 实测值回表 | 文档修正 |
 
 **回退依赖(提交序)**:批次 1 内按 C2 布局(Base/Header/site.js/smoke,global.css 暂与新样式并存兜住未迁移页)→ C3 posts 两页 → C4 digest 两页 → C5 about+404+index 适配并移除 global.css。每提交点 `npm run verify` 绿、站点完整可用;**revert C2 必须先 revert C3–C5**(页面模板依赖新布局类);C3/C4/C5 可单页 revert。验收脚本(verify_browser.py/measure_budget.py)独立提交于 C1,先于实现入库(RED 证据在 session 记录)。
@@ -117,7 +125,7 @@
 ## 8. 已知风险与待裁决
 
 - VT 跨页在旧浏览器退化为普通导航(无破坏);Safari/Firefox 未测(Chromium-only 验收,已标)。
-- three 720KB 未压缩(备选:移动端仅 poster,批次 2 实测后裁决)。
+- three 720KB 未压缩——**批次 2 实测后裁决(2026-10-09):移动端保留 3D**。依据:四件 gzip-6 191.9 KiB ≤ 220KB 线内;手机三宽场景就绪、56dvh、touch-action pan-y、零溢出、构图视检正常;poster 先行保证无 3D 时可用。「移动端仅 poster」备选保留在案(若真机/低端机实测帧率不达标再启用)。
 - 字体首访 ~1MB 贴 1.2MB 线(备选:减字重,当前不需要);fonts.css gzip-6 34013 B(交错排列后),生产 Caddy 实压缩口径待批次 3 复核。
 - 预算条款状态(2026-10-09 勘误后):内页 500KB 线(不含 woff2)实测 332601 B 在线内;fonts.css gzip 经交错排列回到 60KB 线内。早前「两条超线、方案内在矛盾」的结论系把 woff2 并入比较的口径错误,已撤回(§5 勘误段;历史记录见批次 0–1 session)。
-- 移动端 390 布局与真机触摸未实测(模拟器证据 only)。
+- 移动端真机触摸未实测(模拟器证据 only;批次 2 手机 360/390/430 布局+3D 视检已过)。
