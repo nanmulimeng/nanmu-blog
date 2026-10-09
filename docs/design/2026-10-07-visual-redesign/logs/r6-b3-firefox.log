@@ -1,0 +1,42 @@
+# verify_browser_firefox.py 首轮+修正轮(2026-10-10)
+# 提交 424f22a + 脚本本地未提交版;firefox 146.0.1(playwright)
+# 首轮 13/14:fx/index FAIL——选择器误写 .tpanel-tabs(实为 .page-tabs),修正后 14/14
+# 首轮完整输出在下方 ==== 首轮 ====
+
+==== 首轮(13/14,选择器修正前)====
+﻿firefox 146.0.1
+[fx/posts] rows=1 h3=你好,nanmu-blog => PASS
+[fx/post] {'head': True, 'paras': 3, 'bar': True} => PASS
+[fx/digest] state=暂无已发布日报 => PASS
+[fx/about] {'grid': True, 'facts': 4} => PASS
+[fx/index] {'hero': True, 'posters': 2, 'cover': True, 'tabs': 0} => FAIL
+[fx/404] h1=这一页还没有写出来 links=3 => PASS
+[fx/console] [] => PASS
+[fx/nav] links=4 cur=文章 => PASS
+[fx/theme] seq=['light', 'dark'] ls=dark keep=dark bg=rgb(9, 12, 18) => PASS
+[fx3d/boot] boot=True tris=4351 => PASS
+[fx3d/tab-link] current=digest => PASS
+[fx3d/pause-combo] cur=about amb=True tris=4351 errs=[] => PASS
+[fx3d/no-webgl] no-webgl=True posters=2 hud=False tab=True 3d=0 errs=[] => PASS
+[fx/reduced] scroll=auto dur=0.00001s anim=none => PASS
+
+== 13/14 PASS ==
+
+==== 修正轮(14/14)====
+firefox 146.0.1
+[fx/posts] rows=1 h3=你好,nanmu-blog => PASS
+[fx/post] {'head': True, 'paras': 3, 'bar': True} => PASS
+[fx/digest] state=暂无已发布日报 => PASS
+[fx/about] {'grid': True, 'facts': 4} => PASS
+[fx/index] {'hero': True, 'posters': 2, 'cover': True, 'tabs': 3} => PASS
+[fx/404] h1=这一页还没有写出来 links=3 => PASS
+[fx/console] [] => PASS
+[fx/nav] links=4 cur=文章 => PASS
+[fx/theme] seq=['light', 'dark'] ls=dark keep=dark bg=rgb(9, 12, 18) => PASS
+[fx3d/boot] boot=True tris=4351 => PASS
+[fx3d/tab-link] current=digest => PASS
+[fx3d/pause-combo] cur=about amb=True tris=4351 errs=[] => PASS
+[fx3d/no-webgl] no-webgl=True posters=2 hud=False tab=True 3d=0 errs=[] => PASS
+[fx/reduced] scroll=auto dur=0.00001s anim=none => PASS
+
+== 14/14 PASS ==

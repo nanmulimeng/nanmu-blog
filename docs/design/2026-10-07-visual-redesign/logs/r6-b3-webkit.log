@@ -1,0 +1,22 @@
+# verify_browser_webkit.py(2026-10-10)
+# 提交 424f22a + 脚本本地未提交版;Playwright WebKit 26.0(webkit-2248,本轮 playwright install webkit 安装)
+# 口径:Playwright WebKit,非真机 Safari;WebGL 降级路径不在本文件(WebKit 无等价禁用通道,Chromium/Firefox 双覆盖)
+
+==== 首跑前因缺运行时报错(Executable doesn't exist),install 后重跑 ====
+==== 正式轮(13/13)====
+webkit 26.0
+[wk/posts] rows=1 h3=你好,nanmu-blog => PASS
+[wk/post] {'head': True, 'paras': 3, 'bar': True} => PASS
+[wk/digest] state=暂无已发布日报 => PASS
+[wk/about] {'grid': True, 'facts': 4} => PASS
+[wk/index] {'hero': True, 'posters': 2, 'cover': True, 'tabs': 3} => PASS
+[wk/404] h1=这一页还没有写出来 links=3 => PASS
+[wk/console] [] => PASS
+[wk/nav] links=4 cur=文章 => PASS
+[wk/theme] seq=['light', 'dark'] ls=dark keep=dark bg=rgb(9, 12, 18) => PASS
+[wk3d/boot] boot=True tris=4351 => PASS
+[wk3d/tab-link] current=digest => PASS
+[wk3d/pause-combo] cur=about amb=True tris=4351 errs=[] => PASS
+[wk/reduced] scroll=auto dur=0.00001s anim=none => PASS
+
+== 13/13 PASS ==

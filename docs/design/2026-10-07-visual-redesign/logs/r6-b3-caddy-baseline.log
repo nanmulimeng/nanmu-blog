@@ -1,0 +1,85 @@
+# 生产 Caddy 现网只读基线(2026-10-10 本地 00:18,curl Windows 8.x)
+# 用户授权范围:只读检查,无任何写操作;对象=https://nanmu.xyz 现网旧版(M0 上线版,R6 未部署)
+# 记录目的:Caddy 压缩/缓存/协商头口径,作为候选 R6 部署后传输对比基线(部署另需授权)
+# 现象备注:①经系统代理时多一跳 CONNECT 200,响应头不变;②HEAD+Accept-Encoding: gzip 时 Caddy 回 Content-Length: 20(空压缩流占位),
+#   与 GET 实际 gzip 长度不符——长度口径以 GET 为准;③无 Accept-Encoding 时 HEAD/GET 长度一致且多出 Accept-Ranges: bytes
+
+== GET / (压缩) ==
+HTTP/1.1 200 OK
+Alt-Svc: h3=":443"; ma=2592000
+Content-Encoding: gzip
+Content-Type: text/html; charset=utf-8
+Etag: "tmjc8b1tv"
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT
+Server: Caddy
+Vary: Accept-Encoding
+Date: Fri, 09 Oct 2026 16:19:10 GMT
+Content-Length: 1183
+
+
+== GET /posts/hello-nanmu-blog/ (压缩,chunked) ==
+HTTP/1.1 200 OK
+Alt-Svc: h3=":443"; ma=2592000
+Content-Encoding: gzip
+Content-Type: text/html; charset=utf-8
+Etag: "tmjc8b2sr"
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT
+Server: Caddy
+Vary: Accept-Encoding
+Date: Fri, 09 Oct 2026 16:19:10 GMT
+Transfer-Encoding: chunked
+
+
+== GET / (不压缩,原始长度) ==
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 2371
+Content-Type: text/html; charset=utf-8
+Etag: "tmjc8b1tv"
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT
+Server: Caddy
+Date: Fri, 09 Oct 2026 16:19:10 GMT
+
+
+== GET /posts/hello-nanmu-blog/ (不压缩) ==
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 3627
+Content-Type: text/html; charset=utf-8
+Etag: "tmjc8b2sr"
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT
+Server: Caddy
+Date: Fri, 09 Oct 2026 16:19:11 GMT
+
+
+== HEAD / (压缩,见备注②) ==
+HTTP/1.1 200 OK
+Alt-Svc: h3=":443"; ma=2592000
+Content-Encoding: gzip
+Content-Type: text/html; charset=utf-8
+Etag: "tmjc8b1tv"
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT
+Server: Caddy
+Vary: Accept-Encoding
+Date: Fri, 09 Oct 2026 16:19:11 GMT
+Content-Length: 20
+
+
+== HEAD / (不压缩) ==
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Alt-Svc: h3=":443"; ma=2592000
+Content-Length: 2371
+Content-Type: text/html; charset=utf-8
+Etag: "tmjc8b1tv"
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT
+Server: Caddy
+Date: Fri, 09 Oct 2026 16:19:11 GMT
+
+
+== 页面资产引用核查 ==
+旧版为单文件 HTML:CSS 全内联 <style>,零外部 CSS/JS/字体请求(grep link/script/woff2 无命中)
+首页 gzip 1183B / 原始 2371B;文章页原始 3627B(gzip 后 chunked 无 Content-Length)
+Last-Modified: Wed, 07 Oct 2026 11:36:11 GMT(旧版最后部署时间);Etag 强校验;Vary: Accept-Encoding;Alt-Svc h3;Server: Caddy
