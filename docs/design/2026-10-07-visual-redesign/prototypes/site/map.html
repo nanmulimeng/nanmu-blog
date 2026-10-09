@@ -46,6 +46,8 @@ table.matrix td:first-child,table.matrix th:first-child{text-align:left}
     入口 <a href="../r4/index.html">r4/index.html</a>;R3 保留为交互骨架与对照基线。
     <strong>R5「字场 · 碑页」是首页专项深化</strong>(2026-10-08,仅首页,内页沿用 R4):一页印着真实文章的稿纸立成碑,
     入口 <a href="../r5/index.html">r5/index.html</a>,与 R4 的同视口对照见 shots/r4-vs-r5-hero-*.png。
+    <strong>R6「字场 · 换页碑」是交互创意深化</strong>(2026-10-09,独立原型,尚未正式接入):碑变为一叠三张可换的内容页,
+    页签目录双向联动、封面→正文跨页过渡、「这个站」三层展开,入口 <a href="../r6/index.html">r6/index.html</a>。
     R3→R4 同页面同视口对照图见 shots/cmp-index-day.png / cmp-index-night.png。
     标记含义:
     <span class="tag real">真实</span>内容取自仓库实际状态(文章 1 篇、日报 0 期);
@@ -54,7 +56,21 @@ table.matrix td:first-child,table.matrix th:first-child{text-align:left}
     所有页面均可无脚本浏览;脚本只做渐进增强。正式接入、提交推送与发布不在本轮范围。
   </div>
 
-  <h2 class="sect-bar">R5 首页<small>r5/ · 字场 · 碑页,首页专项;内页复用 R4(引用 ../r4/assets)</small></h2>
+  <h2 class="sect-bar">R6 首页<small>r6/ · 字场 · 换页碑,交互创意深化(2026-10-09);独立原型,尚未正式接入</small></h2>
+  <table class="map">
+    <tr><th style="width:21em">页面</th><th>标记</th><th>呈现的状态与看点</th></tr>
+    <tr><td><a href="../r6/index.html">首页 r6/index</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">一页碑 → 一叠三张内容页(文章/日报/这个站):页签目录与 3D 页叠双向联动换页(弧出补间,线装随前景移交);封面卡→文章页头跨页 View Transition;「这个站」三层展开(分层图+手风琴);复制 RSS 盖印反馈;落线/节点/夜览透光承 R5 修正轮。访客全流程录屏 shots/rec/r6-visitor-flow.webm;与 R5 同视口对照 shots/r6-vs-r5-*.png。报告见 <a href="../../../../sessions/2026-10-09-r6-interaction-round.md">r6-interaction-round</a></td></tr>
+    <tr><td><a href="../r6/post-hello.html">文章详情 r6/post-hello</a></td>
+      <td><span class="tag real">真实</span></td>
+      <td class="d">稿纸页头(与首页封面卡同构,VT 共名 latest-cover)+ 目录阅读书签(scrollspy 标记当前节);直接访问 URL 正常</td></tr>
+    <tr><td class="mono"><a href="../r6/3d/ASSETS.md">r6/3d/ASSETS.md</a></td>
+      <td><span class="tag real">资产</span></td>
+      <td class="d">三页槽位系统/换页补间/线装移交/字体样本门控/poster 复现流程/缺测项</td></tr>
+  </table>
+
+  <h2 class="sect-bar">R5 首页<small>r5/ · 字场 · 碑页,首页专项;内页复用 R4(引用 ../r4/assets);R6 的比较基线</small></h2>
   <table class="map">
     <tr><th style="width:21em">页面</th><th>标记</th><th>呈现的状态与看点</th></tr>
     <tr><td><a href="../r5/index.html">首页 r5/index</a></td>

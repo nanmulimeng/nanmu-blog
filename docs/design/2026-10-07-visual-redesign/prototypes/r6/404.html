@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 · 这一页还没有写出来 — nanmu(R4 纸筑)</title>
+<!-- R4 全站原型 · 404:缺页意象 + 短动画;不存在与撤回内容共用同一语义,不泄露任何条目信息 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="../r4/assets/tokens4.css">
+<link rel="stylesheet" href="../r4/assets/base4.css">
+<style>
+.gate-wrap{max-width:640px; margin:0 auto; padding:clamp(36px,7vw,80px) 0 20px; text-align:center}
+.gate-wrap h1{font-size:clamp(24px,3.4vw,32px); font-weight:900; margin:26px 0 8px}
+.gate-wrap .code{font-family:var(--mono); color:var(--seal-text); letter-spacing:.3em; font-size:13px}
+.gate-wrap p{color:var(--ink2); max-width:26em; margin:0 auto 26px}
+.gate-links{display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+.gate-links a{border:1px solid var(--line); padding:10px 22px; text-decoration:none;
+  transition:border-color var(--t-fast),background var(--t-fast)}
+.gate-links a:hover{border-color:var(--seal); background:var(--seal-wash)}
+/* 缺页小动画:相邻一页轻轻掀起又落下,各一次后静止 */
+.gate{width:min(320px,80vw); height:auto; margin:0 auto}
+.gate .lift{transform-origin:150px 190px; animation:pageLift 1.8s var(--ease-soft) .4s both}
+.gate .bookmark{transform-origin:196px 66px; animation:bookmarkSwing 2.4s var(--ease-soft) 1.4s both}
+@keyframes pageLift{0%{transform:rotate(0)}45%{transform:rotate(-9deg)}100%{transform:rotate(0)}}
+@keyframes bookmarkSwing{0%{transform:rotate(0)}35%{transform:rotate(6deg)}70%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
+@media (prefers-reduced-motion:reduce){ .gate *{animation:none !important} }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="gate-wrap">
+    <svg class="gate" viewBox="0 0 300 220" role="img" aria-label="一本翻开的书,中间缺了一页,只剩虚线轮廓">
+      <!-- 书脊与地面 -->
+      <line x1="20" y1="190" x2="280" y2="190" stroke="var(--draw)" stroke-width="2"/>
+      <ellipse cx="150" cy="190" rx="95" ry="5" fill="var(--line)" fill-opacity=".5" stroke="none"/>
+      <!-- 左页组 -->
+      <polygon points="150,190 78,178 86,66 152,80" fill="var(--paper2)" stroke="var(--draw)" stroke-width="1.5"/>
+      <g class="lift">
+        <polygon points="150,190 112,182 118,72 152,79" fill="var(--paper)" stroke="var(--draw)" stroke-width="1.5"/>
+        <g stroke="var(--line)" stroke-width="1.5">
+          <line x1="124" y1="98" x2="146" y2="94"/>
+          <line x1="123" y1="112" x2="147" y2="108"/>
+          <line x1="122" y1="126" x2="146" y2="122"/>
+        </g>
+      </g>
+      <!-- 缺页:虚线轮廓,没有纸 -->
+      <g stroke="var(--draw)" fill="none" stroke-width="1.2" stroke-dasharray="5 4">
+        <polygon points="150,190 186,182 182,74 148,79"/>
+      </g>
+      <!-- 右页组 -->
+      <polygon points="150,190 218,180 210,68 148,80" fill="var(--paper)" stroke="var(--draw)" stroke-width="1.5"/>
+      <g stroke="var(--line)" stroke-width="1.5">
+        <line x1="158" y1="96" x2="200" y2="90"/>
+        <line x1="157" y1="110" x2="202" y2="104"/>
+        <line x1="156" y1="124" x2="201" y2="118"/>
+        <line x1="155" y1="138" x2="198" y2="132"/>
+      </g>
+      <!-- 朱砂书签带 -->
+      <polygon class="bookmark" points="190,72 200,70 203,34 193,36" fill="var(--seal)" stroke="none"/>
+      <!-- 缺页标注 -->
+      <text x="150" y="210" text-anchor="middle" font-size="9" fill="var(--ink2)" font-family="var(--mono)">missing page</text>
+    </svg>
+    <div class="code">HTTP 404</div>
+    <h1>这一页还没有写出来</h1>
+    <p>你要找的页面不存在,或者从来没有存在过。撤回的内容也是同一个缺页——这里不会透露它曾经是什么。</p>
+    <div class="gate-links">
+      <a href="index.html">回首页</a>
+      <a href="posts.html">看文章目录</a>
+      <a href="digest.html">看日报栏目</a>
+    </div>
+  </div>
+
+  <footer class="site" style="margin-top:80px">
+    <span>© 2026 nanmu</span>
+    <span><a href="../site/map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="../r4/assets/site4.js"></script>
+</body>
+</html>

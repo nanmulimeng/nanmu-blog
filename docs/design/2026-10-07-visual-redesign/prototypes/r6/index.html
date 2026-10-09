@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nanmu — 首页(R6 字场 · 换页碑)</title>
+<!-- R6 首页原型:三页可换的碑(文章/日报/这个站)+ 页签目录 + 落线 + 封面→正文过渡。
+     真实状态:文章 1 篇,日报 0 期,检索未开工;夹具已标注 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="assets/tokens6.css">
+<link rel="stylesheet" href="assets/base6.css">
+</head>
+<body>
+<div class="frame">
+  <header class="top on-hero">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html" aria-current="page">首页</a>
+      <a href="posts.html">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+</div>
+
+<!-- 首屏:三页场景(右)与竖排标题+页签目录(左)对望;无 JS/WebGL 失败时 poster 静态图同样成立 -->
+<section class="hero-full" id="scene3d" data-link-post="post-hello.html" data-link-digest="digest.html" data-link-about="about.html">
+  <img class="poster poster-light" src="3d/poster-light.png" alt="首页主视觉(静态图):一叠立着的稿纸,最前一页印着最新文章《你好,nanmu-blog》,左缘朱砂线装订">
+  <img class="poster poster-dark" src="3d/poster-dark.png" alt="">
+  <div class="hero-title">
+    <p class="v-kicker">NANMU · 手写博客</p>
+    <h1 class="v-title">先把最小的东西做完</h1>
+    <p class="v-sub">上线,能用——手写为体,日报与检索在计划中</p>
+  </div>
+
+  <!-- 页签目录:与 3D 页叠双向联动;无 JS 时面板默认展开文章、链接可用。
+       定位在 hero 左下(承 R5 hero-actions 位),不遮前景页文字 -->
+  <div class="toc-block">
+      <div class="page-tabs" role="tablist" aria-label="栏目选择">
+        <button class="ptab on" type="button" role="tab" aria-selected="true" data-pid="posts" id="tab-posts" aria-controls="panel-posts"><i class="pt-seal">文</i>文章</button>
+        <button class="ptab" type="button" role="tab" aria-selected="false" data-pid="digest" id="tab-digest" aria-controls="panel-digest"><i class="pt-seal">机</i>日报</button>
+        <button class="ptab" type="button" role="tab" aria-selected="false" data-pid="about" id="tab-about" aria-controls="panel-about"><i class="pt-seal">站</i>这个站</button>
+      </div>
+      <div class="tab-panels">
+        <div class="tpanel on" role="tabpanel" id="panel-posts" aria-labelledby="tab-posts">
+          <p class="tp-name">你好,nanmu-blog <span class="tp-meta">2026-10-02 · 随笔/建站</span></p>
+          <p class="tp-desc">唯一的一篇,也是第一篇:上一个博客烂尾的教训,与这次重开的最小闭环。</p>
+          <a class="btn primary" href="post-hello.html">读全文<span class="vt-key" aria-hidden="true"></span></a>
+        </div>
+        <div class="tpanel" role="tabpanel" id="panel-digest" aria-labelledby="tab-digest" hidden>
+          <p class="tp-name">AI 日报 <span class="tp-meta">暂无已发布日报</span></p>
+          <p class="tp-desc">引擎已通过设计评审,正在做上线前核验。第一期到达时会出现在这个栏目,并注明 AI 生成。</p>
+          <a class="btn" href="digest.html">看日报栏目</a>
+        </div>
+        <div class="tpanel" role="tabpanel" id="panel-about" aria-labelledby="tab-about" hidden>
+          <p class="tp-name">这个站 <span class="tp-meta">三层,各管各的</span></p>
+          <p class="tp-desc">手写文章是在线本体;AI 日报与个人检索是计划中的两层,任何一层挂掉,博客照常在线。</p>
+          <a class="btn" href="about.html">站点来历</a>
+        </div>
+      </div>
+    </div>
+  <span class="scroll-hint">向下读</span>
+</section>
+
+<main class="flow">
+  <!-- 朱砂装订线:前景页装订线落入正文,随滚动延伸;节点对应各节(JS 增强,无 JS 不影响内容) -->
+  <div class="thread" aria-hidden="true">
+    <span class="line"></span>
+    <span class="knot" data-for="#posts"></span>
+    <span class="knot" data-for="#digest"></span>
+    <span class="knot" data-for="#about"></span>
+    <span class="knot" data-for="#subscribe"></span>
+  </div>
+
+  <div class="frame">
+    <!-- 精选文章:前景页上那篇,落到纸上 -->
+    <section class="featured" id="posts">
+      <div class="f-text" data-reveal>
+        <div class="sect-head">
+          <span class="seal-w">文</span><h2>文章</h2>
+          <span class="count mono">1 篇 · 手写</span>
+        </div>
+        <p class="f-label">目前唯一的一篇 · 也是第一篇</p>
+        <h3>你好,nanmu-blog</h3>
+        <div class="meta mono">2026-10-02 <span class="tags">随笔 / 建站</span></div>
+        <p class="excerpt">今年上半年,我做过一个功能很多的博客,十二周半之后写不动,烂尾收场。它留下的教训很具体:先把最小的东西做完、上线、能用,再谈别的。这次重开博客,就从那段历史里长出来。</p>
+        <p class="excerpt">这个站放着三样东西,各管各的:手写文章是本体;AI 日报与个人检索还在计划里,现在并不能用。</p>
+        <div class="f-actions">
+          <a class="btn primary" href="post-hello.html">读全文</a>
+          <span class="f-note">约 600 字 · 两分钟</span>
+        </div>
+      </div>
+      <a class="cover-card" href="post-hello.html" data-reveal aria-label="读文章:你好,nanmu-blog">
+        <span class="cb-line" aria-hidden="true"></span>
+        <span class="cb-hole" aria-hidden="true"></span><span class="cb-hole" aria-hidden="true"></span>
+        <span class="cb-hole" aria-hidden="true"></span><span class="cb-hole" aria-hidden="true"></span>
+        <span class="cb-seal" aria-hidden="true">文</span>
+        <span class="cb-kicker">NANMU · 手写文章</span>
+        <h4 class="cb-title">你好,<br>nanmu-blog</h4>
+        <span class="cb-meta">2026-10-02 · 第 1 篇</span>
+        <span class="cb-rows" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      </a>
+    </section>
+
+    <!-- 日报:与整体美术一致的栏目空态(零期是真实状态,不是缺陷) -->
+    <section class="digest-empty" id="digest">
+      <div class="sect-head" data-reveal>
+        <span class="seal-m">机</span><h2>AI 日报</h2>
+        <span class="count mono">AI 生成栏目</span>
+      </div>
+      <div class="blank-sheet" data-reveal>
+        <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="bs-state">暂无已发布日报</p>
+        <p class="bs-desc">这一页还空着。日报将由一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。引擎已通过设计评审,还在做上线前最后的核验。</p>
+        <p class="bs-act"><a href="digest.html">查看日报栏目与样张 →</a></p>
+      </div>
+    </section>
+
+    <!-- 这个站:三层结构图 + 可展开说明(只用已知事实;独立性用层间分离表达) -->
+    <section class="about-layers" id="about">
+      <div class="sect-head" data-reveal>
+        <span class="seal-w" style="border-style:dashed">站</span><h2>这个站</h2>
+        <span class="count mono">三层 · 各管各的</span>
+      </div>
+      <div class="layers-wrap" data-reveal>
+        <div class="layers-fig" aria-hidden="true">
+          <span class="ly ly-posts on" data-layer="posts"><i>手写文章</i></span>
+          <span class="ly ly-digest" data-layer="digest"><i>AI 日报</i></span>
+          <span class="ly ly-search" data-layer="search"><i>个人检索</i></span>
+          <span class="ly-note">任何一层挂掉,其他层照常</span>
+        </div>
+        <div class="layers-list">
+          <div class="layer-item on" data-layer="posts">
+            <button class="li-head" type="button" aria-expanded="true">
+              <span class="li-dot"></span><b>手写文章</b><span class="li-state ok">在线 · 博客本体</span>
+            </button>
+            <div class="li-body">
+              <p>博客本身已经在 nanmu.xyz 上线:我手写 Markdown,推送后服务器自动构建、原子切换。这是这个站唯一"必须活着"的部分,目前一切正常。</p>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="digest">
+            <button class="li-head" type="button" aria-expanded="false">
+              <span class="li-dot"></span><b>AI 日报</b><span class="li-state plan">计划 · 引擎评审通过</span>
+            </button>
+            <div class="li-body" hidden>
+              <p>一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。设计已通过评审,正在做上线前核验。它挂掉,博客不受影响。</p>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="search">
+            <button class="li-head" type="button" aria-expanded="false">
+              <span class="li-dot"></span><b>个人检索</b><span class="li-state plan">计划 · 尚未开工</span>
+            </button>
+            <div class="li-body" hidden>
+              <p>把我的文章和精选内容做成可问答的知识库,先自用。排在日报之后开工;它挂掉,博客和日报都不受影响。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="about-more" data-reveal>此前一个功能很多的博客烂尾在第十二周半;这一个是按它的教训重开的。<a class="more" href="about.html">完整的站点来历 →</a></p>
+    </section>
+
+    <!-- 订阅:书签卡收尾;复制成功盖「已录」小印 -->
+    <section class="subscribe-zone" id="subscribe">
+      <div class="sect-head" data-reveal>
+        <span class="seal-w" style="border-style:double">阅</span><h2>订阅</h2>
+        <span class="count mono">RSS · 无账号</span>
+      </div>
+      <div class="sub-cards" data-reveal>
+        <div class="sub-card">
+          <span class="sc-type">手写文章 · 更新不定</span>
+          <h3><span class="seal-w" style="width:20px;height:20px;font-size:11px">文</span>文章 RSS</h3>
+          <div class="sc-addr">https://nanmu.xyz/rss.xml</div>
+          <div class="sc-row">
+            <button class="copy-link" type="button" data-copy="https://nanmu.xyz/rss.xml">复制链接</button>
+            <p class="hint">粘进你的阅读器即可</p>
+          </div>
+        </div>
+        <div class="sub-card">
+          <span class="sc-type">AI 日报 · 计划每日一期</span>
+          <h3><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>日报 RSS</h3>
+          <div class="sc-addr">https://nanmu.xyz/digest.xml</div>
+          <div class="sc-row">
+            <button class="copy-link" type="button" data-copy="https://nanmu.xyz/digest.xml">复制链接</button>
+            <p class="hint">第一期到了会送到</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site">
+      <span>© 2026 nanmu · 手工搭建,缓慢施工</span>
+      <span><a href="about.html">关于</a> · <a href="../site/map.html">原型总览</a></span>
+    </footer>
+  </div>
+</main>
+<script src="assets/site6.js"></script>
+<script type="module" src="3d/boot6.js"></script>
+</body>
+</html>

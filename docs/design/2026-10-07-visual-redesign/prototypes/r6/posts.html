@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文章 · nanmu(R4 纸筑)</title>
+<!-- 全站原型 · 文章列表:上半为真实内容,下半为明确标注的分页夹具 -->
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="../r4/assets/tokens4.css">
+<link rel="stylesheet" href="../r4/assets/base4.css">
+<style>
+.list-head{margin:clamp(28px,5vw,48px) 0 0}
+.list-head h1{font-size:clamp(26px,3.4vw,34px); font-weight:900; margin:0}
+.list-head .sub{color:var(--ink2); font-size:14px; margin-top:6px}
+.page-tag{font-family:var(--mono); font-size:.75rem; color:var(--ink2); letter-spacing:.1em;
+  margin:2.4em 0 .4em}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="top">
+    <a class="brand" href="index.html"><span class="mark">n</span><b>nanmu</b></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">目录</button>
+    <nav class="main" id="main-nav">
+      <a href="index.html">首页</a>
+      <a href="posts.html" aria-current="page">文章</a>
+      <a href="digest.html">日报</a>
+      <a href="about.html">关于</a>
+      <button id="theme-btn" type="button" title="切换:跟随系统 → 昼 → 夜">跟随系统</button>
+    </nav>
+  </header>
+
+  <div class="list-head">
+    <div class="crumb"><span class="seal-w">文</span><a href="index.html">首页</a><span>/</span><span>文章</span></div>
+    <h1>文章</h1>
+    <p class="sub">手写,按时间倒序。目前 1 篇。</p>
+  </div>
+
+  <a class="row-item" href="post-hello.html" data-reveal>
+    <h3>你好,nanmu-blog</h3>
+    <div class="meta mono">2026-10-02 <span class="tags">随笔 / 建站</span></div>
+    <p>前身烂尾的教训,与这次最小闭环的来历。</p>
+  </a>
+  <div class="pager">
+    <span class="at-ends">← 上一页</span>
+    <span class="mono">共 1 页</span>
+    <span class="at-ends">下一页 →</span>
+  </div>
+
+  <details class="fixture" style="margin-top:40px" open>
+    <summary>设计夹具 · 多页时的目录节奏(虚构样张,演示第 2/4 页)</summary>
+    <div class="inner">
+      <div class="page-tag">夹具 · 第 2 / 4 页</div>
+      <a class="row-item" href="post-hello.html"><h3>夹具:发布链路压到一条命令之后</h3>
+        <div class="meta mono">2026-09-18 <span class="tags">工程 / 运维</span></div>
+        <p>虚构内容:push 即发布之后的十二秒里发生了什么。</p></a>
+      <a class="row-item" href="post-hello.html"><h3>夹具:一个足够长的中文标题用来检验列表在两行折行时朱砂点与元信息行的对齐是否仍然稳定可读</h3>
+        <div class="meta mono">2026-09-02 <span class="tags">随笔</span></div>
+        <p>虚构内容,仅用于排版评审。</p></a>
+      <a class="row-item" href="post-hello.html"><h3>夹具:中英混排与 code 片段在标题里的样子</h3>
+        <div class="meta mono">2026-08-21 <span class="tags">工具</span></div>
+        <p>虚构内容:git push server main 之后,服务器自动构建。</p></a>
+      <a class="row-item" href="post-hello.html"><h3>夹具:没有摘要时列表只显示标题与日期</h3>
+        <div class="meta mono">2026-08-02 <span class="tags">随笔</span></div></a>
+      <div class="pager">
+        <a href="posts.html">← 上一页</a>
+        <span class="mono">第 2 / 4 页</span>
+        <a href="posts.html">下一页 →</a>
+      </div>
+      <div class="page-tag">夹具 · 末页(第 4/4 页)的分页器</div>
+      <div class="pager">
+        <a href="posts.html">← 上一页</a>
+        <span class="mono">第 4 / 4 页</span>
+        <span class="at-ends">下一页 →</span>
+      </div>
+    </div>
+  </details>
+
+  <footer class="site">
+    <span>© 2026 nanmu</span>
+    <span><a href="index.html#subscribe">订阅 RSS</a> · <a href="../site/map.html">原型总览</a></span>
+  </footer>
+</div>
+<script src="../r4/assets/site4.js"></script>
+</body>
+</html>
