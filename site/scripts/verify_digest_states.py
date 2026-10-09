@@ -76,6 +76,23 @@ def remove_junction(link):
     return not link.exists()
 
 
+def clear_persistent_store():
+    """Astro 持久 data-store 经 node_modules junction 落在真实 site
+    (node_modules/.astro),不清会残留夹具条目,之后空源(零期)的裸
+    构建报「源文件数(0)与加载条目数不一致」。边界同
+    clean-astro-cache.mjs:解析后不在本 site 内拒绝删除。"""
+    target = SITE / "node_modules" / ".astro"
+    if not target.exists():
+        return True
+    real = os.path.realpath(str(target))
+    site_real = os.path.realpath(str(SITE))
+    if real == site_real or not real.startswith(site_real + os.sep):
+        print("[dstates] data-store 解析后不在本 site 内,拒绝删除:%s" % real)
+        return False
+    shutil.rmtree(real, ignore_errors=True)
+    return not target.exists()
+
+
 def build_with_digest(date, count, tmp):
     """临时副本 + junction node_modules + 注入指定日期/条数的夹具,真实构建。"""
     if tmp.exists():
@@ -98,10 +115,14 @@ def build_with_digest(date, count, tmp):
     raw = raw.replace("entry_count: 2", "entry_count: %d" % count)
     # 成本行内的引用与 frontmatter 无关,保留;文件名与 date 同步(id 惯例)
     (dig / ("%s.md" % date)).write_text(raw, encoding="utf-8")
-    r = subprocess.run(
-        ["node", "node_modules/astro/astro.js", "build"],
-        cwd=str(tmp), capture_output=True, encoding="utf-8",
-        errors="replace", shell=False)
+    try:
+        r = subprocess.run(
+            ["node", "node_modules/astro/astro.js", "build"],
+            cwd=str(tmp), capture_output=True, encoding="utf-8",
+            errors="replace", shell=False)
+    finally:
+        # 无论成败都清 junction 落盘的持久 store,防残留污染真实构建
+        clear_persistent_store()
     if r.returncode != 0:
         print(r.stdout[-800:], r.stderr[-800:])
         return False
@@ -198,9 +219,12 @@ def main():
     finally:
         if httpd:
             httpd.shutdown()
-        # 清理:先摘 junction 再删目录(顺序不可反)
+        # 清理:先摘 junction 再删目录(顺序不可反);兜底再清一次经
+        # junction 落盘的持久 store(build_with_digest 已按态清理,这里
+        # 覆盖构建中途异常的路径)
         remove_junction(tmp / "node_modules")
         shutil.rmtree(tmp, ignore_errors=True)
+        clear_persistent_store()
 
     fails = [l for l, ok in RESULTS if not ok]
     print("\n== %d/%d PASS ==" % (len(RESULTS) - len(fails), len(RESULTS)))
