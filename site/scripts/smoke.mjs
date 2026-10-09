@@ -17,33 +17,37 @@ for (const f of ['rss.xml', 'digest.xml']) {
   if (xml.includes('drafts-example')) problems.push(`草稿泄漏到 ${f}`);
 }
 if (existsSync(new URL('posts/drafts-example/index.html', dist))) problems.push('草稿详情泄漏');
-// 客户端脚本白名单(ADR-0010):允许且仅允许 /scripts/site.js 与
-// Base.astro 的首帧内联主题脚本(内容逐字比对,防白名单内夹带)
+// 客户端脚本白名单(ADR-0010):全站页允许且仅允许 /scripts/site.js 与
+// Base.astro 的首帧内联主题脚本(内容逐字比对,防白名单内夹带);
+// 首页(dist 根 index.html)额外允许 /scripts/home.js(W5-W8 页面侧,
+// 批次 2)——其余任何页出现即失败(页面范围限定)
 const INLINE_THEME = "try{var m=localStorage.getItem('nm-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m}catch(e){}";
-function checkScripts(html, pathname) {
+function checkScripts(html, pathname, extraSrcs = []) {
+  const allowed = new Set(['/scripts/site.js', ...extraSrcs]);
   const tags = html.match(/<script\b[\s\S]*?<\/script>/gi) || [];
   for (const tag of tags) {
     const src = (tag.match(/\ssrc=["']([^"']+)["']/) || [])[1];
     if (src !== undefined) {
-      if (src !== '/scripts/site.js') problems.push(`非白名单脚本 src=${src}: ${pathname}`);
+      if (!allowed.has(src)) problems.push(`非白名单脚本 src=${src}: ${pathname}`);
       continue;
     }
     const body = tag.replace(/^<script\b[^>]*>/i, '').replace(/<\/script>\s*$/i, '').trim();
     if (body !== INLINE_THEME) problems.push(`非白名单内联脚本: ${pathname}`);
   }
 }
-function checkHtml(dir) {
+function checkHtml(dir, atDistRoot) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
-    if (entry.isDirectory()) checkHtml(url);
+    if (entry.isDirectory()) checkHtml(url, false);
     else if (entry.name.endsWith('.html')) {
       const html = readFileSync(url, 'utf8');
       if (html.includes('drafts-example')) problems.push(`草稿链接泄漏: ${url.pathname}`);
-      checkScripts(html, url.pathname);
+      const isIndex = atDistRoot && entry.name === 'index.html';
+      checkScripts(html, url.pathname, isIndex ? ['/scripts/home.js'] : []);
     }
   }
 }
-if (existsSync(dist)) checkHtml(dist);
+if (existsSync(dist)) checkHtml(dist, true);
 
 // 夹具泄漏检查(审计 P1-8):tests/fixtures 中的同名 .md 出现在生产源
 // 目录 = 正常构建会把夹具公开为正式日报页+RSS;夹具只允许经

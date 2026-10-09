@@ -4,8 +4,8 @@ import { SITE_TITLE, SITE_DESC } from '../consts';
 import '../styles/tokens.css';
 import '../styles/base.css';
 
-interface Props { title?: string; description?: string; }
-const { title, description = SITE_DESC } = Astro.props;
+interface Props { title?: string; description?: string; mainClass?: string; }
+const { title, description = SITE_DESC, mainClass = '' } = Astro.props;
 const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
 ---
 <!doctype html>
@@ -21,7 +21,7 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
   </head>
   <body>
     <Header />
-    <main><slot /></main>
+    <main class={mainClass}><slot /></main>
     <footer class="site frame">
       <span>© {new Date().getFullYear()} nanmu</span>
       <span><a href="/rss.xml">文章 RSS</a> · <a href="/digest.xml">日报 RSS</a></span>

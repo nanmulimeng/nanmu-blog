@@ -2,68 +2,263 @@
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import { assertPostsIds, assertDigestIds } from '../lib/content';
+import '../styles/home.css';
 
 const allPosts = await getCollection('posts');
 assertPostsIds(allPosts);
 const posts = allPosts
   .filter(({ data }) => !data.draft)
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id))
-  .slice(0, 5);
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || a.id.localeCompare(b.id));
 const allDigests = await getCollection('digest');
 assertDigestIds(allDigests);
 const digests = allDigests
   .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
+
+const latest = posts[0];
 const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
 const excerpt = (post) => {
   const first = (post.body || '').split(/\n\n+/).find(Boolean) || '';
   const text = first.replace(/^#+\s*/m, '').replace(/[*_`[\]]/g, '');
   return text.length > 90 ? text.slice(0, 90) + '…' : text;
 };
+const wordsOf = (post) => (post.body || '').replace(/\s+/g, '').length;
+
+/* #scene3d 宿主数据(内容同源契约,INTEGRATION-PLAN §5):页面侧封面卡/
+   页签面板与场景侧 scene6 均以此为准,JS 内零内容副本;无公开文章时
+   data-article 为空串,场景排「暂无文章」空态 */
+const article = latest
+  ? {
+      title: latest.data.title,
+      date: fmt(latest.data.pubDate),
+      tags: latest.data.tags.join(' / '),
+      excerpt: excerpt(latest),
+      url: `/posts/${latest.id}/`,
+      no: posts.length,
+      words: wordsOf(latest),
+    }
+  : null;
+
 const rssUrl = new URL('rss.xml', Astro.site).toString();
 const digestUrl = new URL('digest.xml', Astro.site).toString();
+const readMins = article ? Math.max(1, Math.ceil(article.words / 300)) : 1;
+const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' : `最新一篇 · 共 ${posts.length} 篇`;
 ---
-<Base>
-  <div class="frame">
-    <div class="list-head">
-      <h1>最近在写</h1>
-      <p class="sub">手写文章,新到旧。全部文章在「文章」栏目。</p>
+
+<Base mainClass="flow">
+  {/* 首屏:三页场景(右)与竖排标题+页签目录(左)对望;无 JS/WebGL 失败时 poster 静态图同样成立。
+      poster=装饰性主视觉(固定图像,不承载「最新文章」身份;alt 不提文章标题) */}
+  <section class="hero-full" id="scene3d"
+    data-link-post={latest ? `/posts/${latest.id}/` : '/posts/'}
+    data-link-digest="/digest/"
+    data-link-about="/about/"
+    data-article={article ? JSON.stringify(article) : ''}>
+    <img class="poster poster-light" src="/3d/poster-light.png"
+      fetchpriority="high"
+      alt="首页主视觉(静态图):一叠立着的稿纸,左缘朱砂线装订" />
+    <img class="poster poster-dark" src="/3d/poster-dark.png" alt="" />
+    <div class="hero-title">
+      <p class="v-kicker">NANMU · 手写博客</p>
+      <h1 class="v-title">先把最小的东西做完</h1>
+      <p class="v-sub">上线,能用——手写为体,日报与检索在计划中</p>
     </div>
 
-    {posts.length === 0 ? (
-      <div class="blank-sheet">
-        <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
-        <p class="bs-state">还没有文章</p>
-        <p class="bs-desc">第一篇正在写。</p>
+    {/* 页签目录:与 3D 页叠双向联动;无 JS 时文章面板默认展开、链接可用 */}
+    <div class="toc-block">
+      <div class="page-tabs" role="tablist" aria-label="栏目选择">
+        <button class="ptab on" type="button" role="tab" aria-selected="true" data-pid="posts" id="tab-posts" aria-controls="panel-posts"><i class="pt-seal">文</i>文章</button>
+        <button class="ptab" type="button" role="tab" aria-selected="false" data-pid="digest" id="tab-digest" aria-controls="panel-digest"><i class="pt-seal">机</i>日报</button>
+        <button class="ptab" type="button" role="tab" aria-selected="false" data-pid="about" id="tab-about" aria-controls="panel-about"><i class="pt-seal">站</i>这个站</button>
       </div>
-    ) : (
-      posts.map((p) => (
-        <a class="row-item" href={`/posts/${p.id}/`} data-reveal>
-          <h3>{p.data.title}</h3>
-          <div class="meta mono">{fmt(p.data.pubDate)} <span class="tags">{p.data.tags.join(' / ')}</span></div>
-          {excerpt(p) && <p>{excerpt(p)}</p>}
-        </a>
-      ))
-    )}
-
-    <h2 class="sect-bar" style="margin-top:48px">AI 日报<small>引擎自动生成,每期标注模型与成本</small></h2>
-    {digests.length === 0 ? (
-      <p style="color:var(--ink2); font-size:14.5px">暂无已发布日报;第一期发布后会按日期倒序列在这里。</p>
-    ) : (
-      digests.slice(0, 3).map((d) => (
-        <a class="row-item" href={`/digest/${d.id}/`} data-reveal>
-          <h3>{d.data.date} 日报</h3>
-          <div class="meta mono">{d.data.entry_count} 条 · {d.data.ai_model} · ¥{d.data.cost_cny}{d.data.cost_pending && <span class="pending"> 含未决预占,为保守上界</span>}</div>
-        </a>
-      ))
-    )}
-
-    <div class="subscribe" data-reveal>
-      <span class="s-title"><span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">阅</span> 订阅</span>
-      <span class="s-item"><code>{rssUrl}</code>
-        <button class="copy-link" type="button" data-copy={rssUrl}>复制文章 RSS</button></span>
-      <span class="s-item"><code>{digestUrl}</code>
-        <button class="copy-link" type="button" data-copy={digestUrl}>复制日报 RSS</button></span>
-      <p class="hint">RSS 无账号;两个频道分开,阅读器里按需订阅。</p>
+      <div class="tab-panels">
+        <div class="tpanel on" role="tabpanel" id="panel-posts" aria-labelledby="tab-posts">
+          {article ? (
+            <>
+              <p class="tp-name">{article.title} <span class="tp-meta">{article.date} · {article.tags}</span></p>
+              <p class="tp-desc">{article.excerpt || '点开读全文。'}</p>
+              <a class="btn primary" href={article.url}>读全文<span class="vt-key" aria-hidden="true"></span></a>
+            </>
+          ) : (
+            <>
+              <p class="tp-name">文章 <span class="tp-meta">还没有文章</span></p>
+              <p class="tp-desc">第一篇正在写。</p>
+            </>
+          )}
+        </div>
+        <div class="tpanel" role="tabpanel" id="panel-digest" aria-labelledby="tab-digest" hidden>
+          {digests[0] ? (
+            <>
+              <p class="tp-name">{digests[0].data.date} 日报 <span class="tp-meta">{digests[0].data.entry_count} 条 · AI 生成</span></p>
+              <p class="tp-desc">引擎每日一期,自动挑题与摘要,注明模型与成本。</p>
+              <a class="btn" href="/digest/">看日报栏目</a>
+            </>
+          ) : (
+            <>
+              <p class="tp-name">AI 日报 <span class="tp-meta">暂无已发布日报</span></p>
+              <p class="tp-desc">引擎已通过设计评审,正在做上线前核验。第一期到达时会出现在这个栏目,并注明 AI 生成。</p>
+              <a class="btn" href="/digest/">看日报栏目</a>
+            </>
+          )}
+        </div>
+        <div class="tpanel" role="tabpanel" id="panel-about" aria-labelledby="tab-about" hidden>
+          <p class="tp-name">这个站 <span class="tp-meta">三层,各管各的</span></p>
+          <p class="tp-desc">手写文章是在线本体;AI 日报与个人检索是计划中的两层,任何一层挂掉,博客照常在线。</p>
+          <a class="btn" href="/about/">站点来历</a>
+        </div>
+      </div>
     </div>
+    <span class="scroll-hint">向下读</span>
+  </section>
+
+  {/* 朱砂装订线:前景页装订线落入正文,随滚动延伸;节点对应各节(JS 增强,无 JS 不影响内容) */}
+  <div class="thread" aria-hidden="true">
+    <span class="line"></span>
+    <span class="knot" data-for="#posts"></span>
+    <span class="knot" data-for="#digest"></span>
+    <span class="knot" data-for="#about"></span>
+    <span class="knot" data-for="#subscribe"></span>
   </div>
+
+  <div class="frame">
+    {/* 精选文章:前景页上那篇,落到纸上 */}
+    <section class="featured" id="posts">
+      {article ? (
+        <>
+          <div class="f-text" data-reveal>
+            <div class="sect-head">
+              <span class="seal-w">文</span><h2>文章</h2>
+              <span class="count mono">{posts.length} 篇 · 手写</span>
+            </div>
+            <p class="f-label">{fLabel}</p>
+            <h3>{article.title}</h3>
+            <div class="meta mono">{article.date} <span class="tags">{article.tags}</span></div>
+            {article.excerpt && <p class="excerpt">{article.excerpt}</p>}
+            <div class="f-actions">
+              <a class="btn primary" href={article.url}>读全文</a>
+              <span class="f-note">约 {article.words} 字 · {readMins} 分钟</span>
+            </div>
+          </div>
+          <a class="cover-card" href={article.url} data-reveal aria-label={`读文章:${article.title}`}>
+            <span class="cb-line" aria-hidden="true"></span>
+            <span class="cb-hole" aria-hidden="true"></span><span class="cb-hole" aria-hidden="true"></span>
+            <span class="cb-hole" aria-hidden="true"></span><span class="cb-hole" aria-hidden="true"></span>
+            <span class="cb-seal" aria-hidden="true">文</span>
+            <span class="cb-kicker">NANMU · 手写文章</span>
+            <h4 class="cb-title">{article.title}</h4>
+            <span class="cb-meta">{article.date} · 第 {article.no} 篇</span>
+            <span class="cb-rows" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          </a>
+        </>
+      ) : (
+        <div class="f-text" data-reveal>
+          <div class="sect-head">
+            <span class="seal-w">文</span><h2>文章</h2>
+            <span class="count mono">0 篇 · 手写</span>
+          </div>
+          <div class="blank-sheet">
+            <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+            <p class="bs-state">还没有文章</p>
+            <p class="bs-desc">第一篇正在写。</p>
+          </div>
+        </div>
+      )}
+    </section>
+
+    {/* 日报:零期=真实状态的栏目空态;有期则列最新三期 */}
+    <section class="digest-empty" id="digest">
+      <div class="sect-head" data-reveal>
+        <span class="seal-m">机</span><h2>AI 日报</h2>
+        <span class="count mono">{digests.length > 0 ? `${digests.length} 期 · AI 生成` : 'AI 生成栏目'}</span>
+      </div>
+      {digests.length === 0 ? (
+        <div class="blank-sheet" data-reveal>
+          <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+          <p class="bs-state">暂无已发布日报</p>
+          <p class="bs-desc">这一页还空着。日报将由一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。引擎已通过设计评审,还在做上线前最后的核验。</p>
+          <p class="bs-act"><a href="/digest/">查看日报栏目与样张 →</a></p>
+        </div>
+      ) : (
+        <div data-reveal>
+          {digests.slice(0, 3).map((d) => (
+            <a class="row-item" href={`/digest/${d.id}/`}>
+              <h3>{d.data.date} 日报</h3>
+              <div class="meta mono">{d.data.entry_count} 条 · {d.data.ai_model} · ¥{d.data.cost_cny}{d.data.cost_pending && <span class="pending"> 含未决预占,为保守上界</span>}</div>
+            </a>
+          ))}
+          <p class="bs-act"><a href="/digest/">查看全部日报 →</a></p>
+        </div>
+      )}
+    </section>
+
+    {/* 这个站:三层结构图 + 可展开说明(只用已知事实;无 JS 全展开) */}
+    <section class="about-layers" id="about">
+      <div class="sect-head" data-reveal>
+        <span class="seal-w" style="border-style:dashed">站</span><h2>这个站</h2>
+        <span class="count mono">三层 · 各管各的</span>
+      </div>
+      <div class="layers-wrap" data-reveal>
+        <div class="layers-fig" role="group" aria-label="站点三层结构:选中一层,右侧展开对应说明">
+          <button class="ly ly-posts on" type="button" data-layer="posts" aria-pressed="true"><i>手写文章</i></button>
+          <button class="ly ly-digest" type="button" data-layer="digest" aria-pressed="false"><i>AI 日报</i></button>
+          <button class="ly ly-search" type="button" data-layer="search" aria-pressed="false"><i>个人检索</i></button>
+          <span class="ly-note">任何一层挂掉,其他层照常</span>
+        </div>
+        <div class="layers-list">
+          <div class="layer-item on" data-layer="posts">
+            <button class="li-head" type="button" aria-expanded="true">
+              <span class="li-dot"></span><b>手写文章</b><span class="li-state ok">在线 · 博客本体</span>
+            </button>
+            <div class="li-body">
+              <p>博客本身已经在 nanmu.xyz 上线:我手写 Markdown,推送后服务器自动构建、原子切换。这是这个站唯一"必须活着"的部分,目前一切正常。</p>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="digest">
+            <button class="li-head" type="button" aria-expanded="false">
+              <span class="li-dot"></span><b>AI 日报</b><span class="li-state plan">计划 · 引擎评审通过</span>
+            </button>
+            <div class="li-body">
+              <p>一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。设计已通过评审,正在做上线前核验。它挂掉,博客不受影响。</p>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="search">
+            <button class="li-head" type="button" aria-expanded="false">
+              <span class="li-dot"></span><b>个人检索</b><span class="li-state plan">计划 · 尚未开工</span>
+            </button>
+            <div class="li-body">
+              <p>把我的文章和精选内容做成可问答的知识库,先自用。排在日报之后开工;它挂掉,博客和日报都不受影响。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="about-more" data-reveal>此前一个功能很多的博客烂尾在第十二周半;这一个是按它的教训重开的。<a class="more" href="/about/">完整的站点来历 →</a></p>
+    </section>
+
+    {/* 订阅:书签卡收尾;复制成功盖「已录」小印 */}
+    <section class="subscribe-zone" id="subscribe">
+      <div class="sect-head" data-reveal>
+        <span class="seal-w" style="border-style:double">阅</span><h2>订阅</h2>
+        <span class="count mono">RSS · 无账号</span>
+      </div>
+      <div class="sub-cards" data-reveal>
+        <div class="sub-card">
+          <span class="sc-type">手写文章 · 更新不定</span>
+          <h3><span class="seal-w" style="width:20px;height:20px;font-size:11px">文</span>文章 RSS</h3>
+          <div class="sc-addr">{rssUrl}</div>
+          <div class="sc-row">
+            <button class="copy-link" type="button" data-copy={rssUrl}>复制链接</button>
+            <p class="hint">粘进你的阅读器即可</p>
+          </div>
+        </div>
+        <div class="sub-card">
+          <span class="sc-type">AI 日报 · 计划每日一期</span>
+          <h3><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>日报 RSS</h3>
+          <div class="sc-addr">{digestUrl}</div>
+          <div class="sc-row">
+            <button class="copy-link" type="button" data-copy={digestUrl}>复制链接</button>
+            <p class="hint">第一期到了会送到</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script is:inline src="/scripts/home.js" defer></script>
 </Base>

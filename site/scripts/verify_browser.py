@@ -773,12 +773,16 @@ def main():
                     pg.goto(base + "/", wait_until="domcontentloaded")
                     pg.wait_for_selector(sel, timeout=8000)
                     pg.click(sel)
-                    pg.wait_for_url("**/posts/*", timeout=8000)
+                    # glob 的 * 不跨 "/",pathname 断言更直接
+                    pg.wait_for_function(
+                        "location.pathname.startsWith('/posts/')",
+                        timeout=8000)
                     head = pg.evaluate(
-                        "(document.querySelector('.paper-head')"
-                        "||{style:{}}).style.viewTransitionName")
+                        "getComputedStyle(document.querySelector('.paper-head')"
+                        " || document.body).viewTransitionName")
                     pg.evaluate("history.back()")
-                    pg.wait_for_url(base + "/", timeout=8000)
+                    pg.wait_for_function("location.pathname === '/'",
+                                         timeout=8000)
                     pg.wait_for_timeout(1200)  # VT finished 后摘除
                     vt = pg.evaluate(
                         "(document.querySelector('.cover-card')"
