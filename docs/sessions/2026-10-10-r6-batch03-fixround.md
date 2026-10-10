@@ -19,7 +19,9 @@
 - **S 段验收**:按计算样式实取颜色算 WCAG 比率,昼/夜 × 常态/hover 四态断言。RED **82/83**(dark 态 FAIL)→ GREEN **83/83**(light norm 4.70/hover 5.94 不变,dark norm/hover 均 5.01)。夜间常态+hover 截图归档 shots/r6-b3-btn-contrast-dark-*。
 - **验收时序**:采样前 poll `document.styleSheets.length >= 2`(DCL 不等样式表);goto 后等 900ms(reveal 进场)再取态,hover 后等 400ms(≥--t-fast .18s)。
 
-## tbt_compare 同节流 3D/静态对照(5fee3eb)
+## tbt_compare 同节流 3D/静态对照(5fee3eb)〔2026-10-10 勘误〕
+
+> **勘误(2026-10-10 用户审计)**:本节探针 v1 的 rAF 口径自 click 处理函数起测,输入排队延迟不可见,且 pg.click 的 actionability 等待掩盖阻塞——「操作响应两组无差异/无一次点击落入长任务/操作可用性无影响」**结论撤回**,工具细节与数据保留为痕迹。同日 v2 重写重测(Event Timing+归档配置对齐+async 并发派发,仪器自检 6/6):场景构建长任务窗口内点击排队 163–409ms,窗口外中位 2–5ms,静态组无长任务无排队。见 [重测 session](2026-10-10-r6-batch03-tbt-remeasure.md) 与 INTEGRATION-PLAN §5 P2-v2。
 
 - **工具**:`site/scripts/tbt_probe.py` 入库(一次性对照补证,无 PASS/FAIL 判定)。CDP 真节流 `setCPUThrottlingRate 4` + `emulateNetworkConditions`(latency 150ms/download 1.6Mbps/upload 93750bps)——与批次 3 Lighthouse 移动档同条件;390×844 is_mobile has_touch;full 组=正常首页,static 组=route abort `**/3d/scene6*`+`**/3d/three*`(boot6 保留,探测后走失败清理 poster 常显);PROBE_JS 注入 PerformanceObserver(longtask/lcp buffered/fcp)+capture click listener(rAF 记输入→下一帧 dt,.btn.primary preventDefault);ROUNDS_AT=(7,9,11,13) 墙钟秒每轮点 menu-toggle 开/关、#tab-digest→#tab-posts、.btn.primary。
 - **结果**(logs/r6-b3-tbt-compare-{full,static}.json + .log 全文):

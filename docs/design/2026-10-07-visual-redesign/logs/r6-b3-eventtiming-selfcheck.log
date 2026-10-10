@@ -1,0 +1,17 @@
+chromium 156.0.8078.4
+events=33 longtasks=1 raf=3 marks=3
+marks: [('baseline', 131), ('block', 749), ('target', 872)]
+  baseline: start=130.9 pStart=132.5 pEnd=132.7 dur=64.0 inputDelay=1.6 processing=0.2 iid=8148
+  block: start=749.0 pStart=749.4 pEnd=1249.4 dur=504.0 inputDelay=0.4 processing=500.0 iid=8155
+  target: start=872.2 pStart=1249.8 pEnd=1249.8 dur=376.0 inputDelay=377.6 processing=0.0 iid=8162
+  longtask start=749 dur=500 unknown
+  raf(v1口径) id=baseline dt=48ms
+  raf(v1口径) id=block dt=501ms
+  raf(v1口径) id=target dt=0ms
+PASS baseline inputDelay<=50ms — 1.6ms
+PASS block processing>=400ms — 500.0ms
+PASS longtask dur>=400ms captured — 500ms
+PASS target inputDelay>=300ms & processing<=100ms — inputDelay=377.6ms processing=0.0ms
+PASS target overlaps a longtask window — 1 window(s)
+PASS v1-style rAF dt blind to queue (dt<=50ms) — 0ms
+SELF-CHECK PASS (6/6)
