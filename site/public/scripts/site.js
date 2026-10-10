@@ -11,6 +11,10 @@
    ═══════════════════════════════════════════════════════════ */
 (function(){
 "use strict";
+/* 兜底:初始化任何一段抛错都摘除 .js 回退无 JS 平铺导航
+   (html.js 门控 menu-toggle/nav 折叠;请求失败路径由 Base.astro
+   script onerror 摘除,此处覆盖初始化失败路径;批次 3 修正轮) */
+try{
 document.documentElement.classList.add('js');
 
 /* ── W2. 三态主题:跟随系统 / 昼 / 夜 ── */
@@ -154,4 +158,8 @@ document.querySelectorAll('.prose img').forEach(function(img){
   });
 });
 
+}catch(e){
+  document.documentElement.classList.remove('js');
+  try{ console.warn('site.js 初始化失败,已回退无增强形态', e); }catch(e2){}
+}
 })();

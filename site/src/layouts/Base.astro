@@ -29,6 +29,8 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
       <span>© {new Date().getFullYear()} nanmu</span>
       <span><a href="/rss.xml">文章 RSS</a> · <a href="/digest.xml">日报 RSS</a></span>
     </footer>
-    <script is:inline src="/scripts/site.js" defer></script>
+    <!-- onerror:site.js 请求失败时摘除 .js 回退无 JS 平铺导航
+         (初始化失败由 site.js 自身兜底 catch 摘除;批次 3 修正轮) -->
+    <script is:inline src="/scripts/site.js" defer onerror="document.documentElement.classList.remove('js')"></script>
   </body>
 </html>

@@ -974,22 +974,33 @@ def main():
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("home3d/fail-cleanup", False, str(exc)[:80])
 
-            # ── Q. 手机首帧 nav 不闪(批次 3:.js 类提前到 head 内联)──
+            # ── Q. 手机首帧 nav 不闪(批次 3:.js 类提前到 head 内联;
+            #     修正轮起 Q1 改正常路径归因,失败回退移交 R 段)──
             # 归因:nav.main 的移动端折叠(base.css html.js 规则)原先由
             # site.js(body 尾 defer)加 .js 生效——首帧渲染的是无 .js 的
             # 展开目录(header ~335px),site.js 执行后塌成「目录」按钮,
             # main 上移 261px(实测 shift 在 classList.add('js') 后 2ms,
             # score 0.2881 = Lighthouse 移动档 CLS 0.288 的全部来源)。
-            # Q1:abort site.js(defer 脚本在 DCL 前执行,挂起法测不到
-            #     「脚本缺席」时刻)——html 已带 js、nav 未展开、main 顶
-            #     仍在 header 下,证明 .js 来自 head 内联而非 body 尾脚本;
+            # Q1(正常路径):MutationObserver 记录 html 加 js 类的时刻,
+            #     断言早于 first-paint——js 在首帧渲染前生效、nav 首帧
+            #     即折叠,不依赖 site.js 执行时序。原先的「abort site.js
+            #     后 js 仍在」快照断言随回退修复(onerror 会摘 js)过时:
+            #     失败路径的检验由 R 段接管(摘除+平铺+实际可点击);
             # Q2:无 JS + 手机 390:nav 展开、main 被压下(渐进增强
             #     回归保护,D 段桌面版的手机宽补充)。
             try:
                 ctx = b.new_context(viewport={"width": 390, "height": 844},
                                     has_touch=True, is_mobile=True)
                 pg = ctx.new_page()
-                pg.route("**/scripts/site.js", lambda r: r.abort())
+                pg.add_init_script("""(() => {
+                  window.__jsAdd = [];
+                  new MutationObserver(() => {
+                    if (document.documentElement.classList.contains('js'))
+                      window.__jsAdd.push(performance.now());
+                  }).observe(document,
+                             {attributes: true, subtree: true,
+                              attributeFilter: ['class']});
+                })();""")
                 pg.goto(base + "/posts/hello-nanmu-blog/",
                         wait_until="domcontentloaded")
                 pg.wait_for_timeout(400)
@@ -997,19 +1008,26 @@ def main():
                   const nav = document.querySelector('nav.main');
                   const hdr = document.querySelector('header.top');
                   const main = document.querySelector('main');
-                  return {js: document.documentElement.classList
-                              .contains('js'),
+                  const fp = (performance.getEntriesByType('paint')
+                              .find(e => e.name === 'first-paint')
+                              || {startTime: -1}).startTime;
+                  return {tAdd: window.__jsAdd.length
+                              ? window.__jsAdd[0] : -1,
+                          fp: fp,
                           nav: nav ? getComputedStyle(nav).display
                                    : 'missing',
                           hdrH: hdr ? hdr.offsetHeight : -1,
                           mainTop: main ? Math.round(
                               main.getBoundingClientRect().top) : -1};})()""")
                 check("mobile/first-frame-nav",
-                      st["js"] and st["nav"] == "none"
+                      st["tAdd"] >= 0 and st["fp"] >= 0
+                      and st["tAdd"] < st["fp"]
+                      and st["nav"] == "none"
                       and 0 <= st["hdrH"] <= 100
                       and 0 <= st["mainTop"] <= 110,
-                      "js=%s nav=%s hdrH=%s mainTop=%s"
-                      % (st["js"], st["nav"], st["hdrH"], st["mainTop"]))
+                      "tAdd=%.0fms fp=%.0fms nav=%s hdrH=%s mainTop=%s"
+                      % (st["tAdd"], st["fp"], st["nav"], st["hdrH"],
+                         st["mainTop"]))
                 pg.close()
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
@@ -1021,6 +1039,9 @@ def main():
                 pg = ctx.new_page()
                 pg.goto(base + "/posts/hello-nanmu-blog/",
                         wait_until="domcontentloaded")
+                # DCL 不等样式表:无等待采样会碰上 UA 默认形态竞速
+                # (nav=block/mainTop=54,本轮实测一次)——先等 CSS 就绪。
+                poll_js(pg, "document.styleSheets.length >= 2", 4000)
                 st = pg.evaluate("""(() => {
                   const nav = document.querySelector('nav.main');
                   const main = document.querySelector('main');
@@ -1039,6 +1060,72 @@ def main():
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("mobile/nojs-nav", False, str(exc)[:80])
+
+            # ── R. site.js 失败回退(批次 3 修正轮:.js 提前后,请求
+            #     失败或初始化失败都必须回到无 JS 平铺导航且可点击)──
+            # 修正目标三条中的失败两条:R1/R2=请求失败(abort site.js,
+            #     script onerror 摘 js),首页/内页各实际点击一枚导航
+            #     链接完成跳转;R3=初始化失败(fetch 原 site.js 体、在
+            #     add('js') 行后注入 throw——落在产品兜底 try 块内),
+            #     site.js 自身 catch 摘 js,nav 平铺同样可点。
+            # 正常首帧稳定由 Q1(正常路径)保障,无 JS 回归由 Q2 保障。
+            for label, url, href in (
+                    ("mobile/js-fail-nav-home", "/", "/posts/"),
+                    ("mobile/js-fail-nav-post", "/posts/hello-nanmu-blog/",
+                     "/about/")):
+                try:
+                    ctx = b.new_context(viewport={"width": 390,
+                                                  "height": 844},
+                                        has_touch=True, is_mobile=True)
+                    pg = ctx.new_page()
+                    pg.route("**/scripts/site.js", lambda r: r.abort())
+                    pg.goto(base + url, wait_until="domcontentloaded")
+                    gone = poll_js(pg, "!document.documentElement.classList"
+                                         ".contains('js')", 4000)
+                    nav = pg.evaluate(
+                        "getComputedStyle(document.querySelector"
+                        "('nav.main')).display")
+                    pg.click("nav.main a[href='%s']" % href, timeout=3000)
+                    pg.wait_for_function("location.pathname === '%s'" % href,
+                                         timeout=8000)
+                    check(label, gone and nav != "none",
+                          "jsRemoved=%s nav=%s click→%s"
+                          % (gone, nav, href))
+                    pg.close()
+                    ctx.close()
+                except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                    check(label, False, str(exc)[:80])
+            try:
+                def inject_throw(route):
+                    resp = route.fetch()
+                    marker = ("document.documentElement.classList"
+                              ".add('js');")
+                    body = resp.text().replace(
+                        marker, marker + "\nthrow new Error("
+                        "'b3-init-fail-probe');", 1)
+                    route.fulfill(status=200,
+                                  content_type="text/javascript",
+                                  body=body)
+
+                ctx = b.new_context(viewport={"width": 390, "height": 844},
+                                    has_touch=True, is_mobile=True)
+                pg = ctx.new_page()
+                pg.route("**/scripts/site.js", inject_throw)
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                gone = poll_js(pg, "!document.documentElement.classList"
+                                     ".contains('js')", 4000)
+                nav = pg.evaluate(
+                    "getComputedStyle(document.querySelector"
+                    "('nav.main')).display")
+                pg.click("nav.main a[href='/posts/']", timeout=3000)
+                pg.wait_for_function("location.pathname === '/posts/'",
+                                     timeout=8000)
+                check("mobile/js-throw-nav", gone and nav != "none",
+                      "jsRemoved=%s nav=%s click→/posts/" % (gone, nav))
+                pg.close()
+                ctx.close()
+            except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                check("mobile/js-throw-nav", False, str(exc)[:80])
             b.close()
     finally:
         httpd.shutdown()
