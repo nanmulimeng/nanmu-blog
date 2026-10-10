@@ -23,6 +23,7 @@ ms-playwright 已装版本(取最大 build 号),再退 Playwright 默认解析�
 """
 import http.server
 import os
+import re
 import socketserver
 import sys
 import threading
@@ -1126,6 +1127,72 @@ def main():
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("mobile/js-throw-nav", False, str(exc)[:80])
+
+            # ── S. 主按钮文字对比度(WCAG AA 1.4.3,批次 3 修正轮)──
+            # 首页 hero「读全文」.btn.primary:文字色对底色,昼/夜 ×
+            # 常态/hover 四组 ≥ 4.5:1(15.5px/400 非大字号,普通文字
+            # 线)。审计 P2:夜间常态 #F7F4EB on --seal #D4604C =
+            # 3.42:1、hover on --seal-text #E08A72 = 2.37:1 双不
+            # 达标;昼间两组合规。断言按计算样式实取颜色算比率,
+            # 不硬编码产品色。
+            def _lum_of(rgbstr):
+                m = re.match(r"rgba?\((\d+),\s*(\d+),\s*(\d+)", rgbstr)
+                if not m:
+                    return None
+                cs = [int(x) for x in m.groups()]
+
+                def lin(v):
+                    v /= 255.0
+                    return (v / 12.92 if v <= 0.04045
+                            else ((v + 0.055) / 1.055) ** 2.4)
+
+                return (0.2126 * lin(cs[0]) + 0.7152 * lin(cs[1])
+                        + 0.0722 * lin(cs[2]))
+
+            def _contrast_pair(sty):
+                la = _lum_of(sty["fg"])
+                lb = _lum_of(sty["bg"])
+                if la is None or lb is None:
+                    return -1.0
+                hi, lo = max(la, lb), min(la, lb)
+                return (hi + 0.05) / (lo + 0.05)
+
+            for theme in ("light", "dark"):
+                try:
+                    ctx = b.new_context(viewport={"width": 390,
+                                                  "height": 844},
+                                        has_touch=True, is_mobile=True,
+                                        color_scheme=theme)
+                    pg = ctx.new_page()
+                    pg.add_init_script(
+                        "try{localStorage.setItem('nm-theme','%s');}"
+                        "catch(e){}" % theme)
+                    pg.goto(base + "/", wait_until="domcontentloaded")
+                    poll_js(pg, "document.styleSheets.length >= 2", 4000)
+                    # 等 reveal 进场(~.6s)结束再取常态/hover——立即
+                    # hover 会撞上位移动画,:hover 匹配窗口不足(诊断
+                    # 实测 light 取到常态值、dark 取到过渡中间值)。
+                    pg.wait_for_timeout(900)
+
+                    def _grab(page):
+                        return page.evaluate("""(() => {
+                          const s = getComputedStyle(
+                              document.querySelector('.btn.primary'));
+                          return {fg: s.color, bg: s.backgroundColor};})()""")
+
+                    norm = _grab(pg)
+                    pg.hover(".btn.primary")
+                    pg.wait_for_timeout(400)     # transition --t-fast .18s 完成后取
+                    hov = _grab(pg)
+                    rn, rh = _contrast_pair(norm), _contrast_pair(hov)
+                    check("btn-contrast/%s" % theme,
+                          rn >= 4.5 and rh >= 4.5,
+                          "norm=%.2f hover=%.2f fg=%s bg=%s→%s"
+                          % (rn, rh, norm["fg"], norm["bg"], hov["bg"]))
+                    pg.close()
+                    ctx.close()
+                except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
+                    check("btn-contrast/%s" % theme, False, str(exc)[:80])
             b.close()
     finally:
         httpd.shutdown()

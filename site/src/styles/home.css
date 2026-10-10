@@ -41,7 +41,17 @@ img.poster-dark{display:none}
   transition:background-color var(--t-fast),color var(--t-fast),border-color var(--t-fast)}
 .btn:hover{border-color:var(--seal); color:var(--seal-text)}
 .btn.primary{background:var(--seal); border-color:var(--seal); color:#F7F4EB}
-.btn.primary:hover{background:var(--seal-text); color:#F7F4EB}
+.btn.primary:hover{background:var(--seal-deep); border-color:var(--seal-deep); color:#F7F4EB}
+/* 夜间主按钮底色降一档:--seal #D4604C 上 #F7F4EB 仅 3.42:1(WCAG AA
+   普通文字 4.5:1 不达标);换 --seal-deep 深朱砂 5.01:1(保色相仅降
+   亮度)。hover 底色同值保持对比,反馈改亮边 --seal-text。昼间两规则
+   的值不变(--seal-deep 昼=#A83622=原 hover 值)。 */
+:root[data-theme="dark"] .btn.primary{background:var(--seal-deep); border-color:var(--seal-deep)}
+:root[data-theme="dark"] .btn.primary:hover{border-color:var(--seal-text)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .btn.primary{background:var(--seal-deep); border-color:var(--seal-deep)}
+  :root:not([data-theme="light"]) .btn.primary:hover{border-color:var(--seal-text)}
+}
 
 .hero-full .scene-hud{position:absolute; z-index:3; right:12px; bottom:10px; display:flex;
   gap:6px; font-family:var(--mono); font-size:11px}

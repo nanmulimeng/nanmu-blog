@@ -15,6 +15,7 @@
   --draw:#2A2E35;
   --seal:#C2402A;
   --seal-text:#A83622;
+  --seal-deep:#A83622;   /* 朱砂深阶:按钮 hover 底(昼=seal-text 同值) */
   --seal-wash:rgba(194,64,42,.06);
   --lamp:#E8B96A;
   --rim:#6E9BFF;
@@ -38,6 +39,8 @@
   --draw:#CFC9B8;
   --seal:#D4604C;
   --seal-text:#E08A72;
+  --seal-deep:#B5432F;   /* 深朱砂:#F7F4EB 文字 5.01:1(夜间按钮底;
+                            保 #D4604C 色相/饱和度仅降亮度 L56.5→44.7) */
   --seal-wash:rgba(212,96,76,.08);
   --lamp:#E8B96A;
   --rim:#6E9BFF;
@@ -51,7 +54,8 @@
   :root:not([data-theme="light"]){
     --paper:#090C12; --sky:#090C12;
     --ink:#E8E4D8; --ink2:#8A94A8; --line:#242B38; --draw:#CFC9B8;
-    --seal:#D4604C; --seal-text:#E08A72; --seal-wash:rgba(212,96,76,.08);
+    --seal:#D4604C; --seal-text:#E08A72; --seal-deep:#B5432F;
+    --seal-wash:rgba(212,96,76,.08);
     --code-bg:#171C26; --focus:#E08A72;
     --sheet:#10151F; --sheet-line:#232B3A; --paper2:#10141C;
   }
