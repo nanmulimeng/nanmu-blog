@@ -1,0 +1,121 @@
+{
+ "ops": [
+  {
+   "t": 7089,
+   "dt": 10,
+   "what": "menu"
+  },
+  {
+   "t": 7462,
+   "dt": 3,
+   "what": "menu"
+  },
+  {
+   "t": 7494,
+   "dt": 17,
+   "what": "tab"
+  },
+  {
+   "t": 8058,
+   "dt": 10,
+   "what": "tab"
+  },
+  {
+   "t": 9048,
+   "dt": 1,
+   "what": "read"
+  },
+  {
+   "t": 10452,
+   "dt": 4,
+   "what": "menu"
+  },
+  {
+   "t": 10799,
+   "dt": 4,
+   "what": "menu"
+  },
+  {
+   "t": 10833,
+   "dt": 8,
+   "what": "tab"
+  },
+  {
+   "t": 11380,
+   "dt": 6,
+   "what": "tab"
+  },
+  {
+   "t": 11755,
+   "dt": 1,
+   "what": "read"
+  },
+  {
+   "t": 11790,
+   "dt": 4,
+   "what": "menu"
+  },
+  {
+   "t": 12128,
+   "dt": 3,
+   "what": "menu"
+  },
+  {
+   "t": 12159,
+   "dt": 8,
+   "what": "tab"
+  },
+  {
+   "t": 12720,
+   "dt": 8,
+   "what": "tab"
+  },
+  {
+   "t": 13104,
+   "dt": 1,
+   "what": "read"
+  },
+  {
+   "t": 13143,
+   "dt": 4,
+   "what": "menu"
+  },
+  {
+   "t": 13480,
+   "dt": 4,
+   "what": "menu"
+  },
+  {
+   "t": 13513,
+   "dt": 7,
+   "what": "tab"
+  },
+  {
+   "t": 14061,
+   "dt": 7,
+   "what": "tab"
+  },
+  {
+   "t": 14449,
+   "dt": 1,
+   "what": "read"
+  }
+ ],
+ "longtasks": [],
+ "lcp": [
+  {
+   "start": 3848,
+   "size": 184470,
+   "url": "http://127.0.0.1:8944/3d/poster-light.png",
+   "tag": "IMG"
+  }
+ ],
+ "fcp": 3848,
+ "sceneReady": false,
+ "posterGone": false,
+ "tRun": 16.5,
+ "threeReqs": [
+  "http://127.0.0.1:8944/3d/boot6.js",
+  "http://127.0.0.1:8944/3d/scene6.js"
+ ]
+}

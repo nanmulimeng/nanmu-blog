@@ -1,0 +1,139 @@
+{
+ "ops": [
+  {
+   "t": 7037,
+   "dt": 10,
+   "what": "menu"
+  },
+  {
+   "t": 7412,
+   "dt": 3,
+   "what": "menu"
+  },
+  {
+   "t": 7450,
+   "dt": 19,
+   "what": "tab"
+  },
+  {
+   "t": 8015,
+   "dt": 10,
+   "what": "tab"
+  },
+  {
+   "t": 8427,
+   "dt": 1,
+   "what": "read"
+  },
+  {
+   "t": 8982,
+   "dt": 6,
+   "what": "menu"
+  },
+  {
+   "t": 9319,
+   "dt": 5,
+   "what": "menu"
+  },
+  {
+   "t": 9351,
+   "dt": 7,
+   "what": "tab"
+  },
+  {
+   "t": 9901,
+   "dt": 7,
+   "what": "tab"
+  },
+  {
+   "t": 10251,
+   "dt": 1,
+   "what": "read"
+  },
+  {
+   "t": 10972,
+   "dt": 5,
+   "what": "menu"
+  },
+  {
+   "t": 11322,
+   "dt": 3,
+   "what": "menu"
+  },
+  {
+   "t": 11356,
+   "dt": 7,
+   "what": "tab"
+  },
+  {
+   "t": 11904,
+   "dt": 8,
+   "what": "tab"
+  },
+  {
+   "t": 12237,
+   "dt": 1,
+   "what": "read"
+  },
+  {
+   "t": 12999,
+   "dt": 5,
+   "what": "menu"
+  },
+  {
+   "t": 13368,
+   "dt": 5,
+   "what": "menu"
+  },
+  {
+   "t": 13438,
+   "dt": 11,
+   "what": "tab"
+  },
+  {
+   "t": 14090,
+   "dt": 9,
+   "what": "tab"
+  },
+  {
+   "t": 15035,
+   "dt": 3,
+   "what": "read"
+  }
+ ],
+ "longtasks": [
+  {
+   "start": 12508,
+   "dur": 377,
+   "name": "unknown"
+  },
+  {
+   "start": 15980,
+   "dur": 371,
+   "name": "unknown"
+  },
+  {
+   "start": 16351,
+   "dur": 201,
+   "name": "unknown"
+  }
+ ],
+ "lcp": [
+  {
+   "start": 3984,
+   "size": 184470,
+   "url": "http://127.0.0.1:8944/3d/poster-light.png",
+   "tag": "IMG"
+  }
+ ],
+ "fcp": 3984,
+ "sceneReady": true,
+ "posterGone": false,
+ "tRun": 17.1,
+ "threeReqs": [
+  "http://127.0.0.1:8944/3d/boot6.js",
+  "http://127.0.0.1:8944/3d/scene6.js",
+  "http://127.0.0.1:8944/3d/three.core.min.js",
+  "http://127.0.0.1:8944/3d/three.module.min.js"
+ ]
+}

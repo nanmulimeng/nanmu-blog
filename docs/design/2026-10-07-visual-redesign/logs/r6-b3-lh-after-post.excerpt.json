@@ -1,0 +1,94 @@
+{
+ "source": "C:/tmp/b3-lh/post-mobile-gz-after.report.json (未入库,完整版)",
+ "fetchTime": "2026-10-09T15:53:04.865Z",
+ "lighthouseVersion": "13.4.1",
+ "finalUrl": "http://127.0.0.1:8982/posts/hello-nanmu-blog/",
+ "environment": {
+  "networkUserAgent": "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36",
+  "hostUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+  "benchmarkIndex": 3138,
+  "credits": {
+   "axe-core": "4.14.0"
+  }
+ },
+ "config": {
+  "formFactor": "mobile",
+  "throttlingMethod": "devtools",
+  "screenEmulation": {
+   "mobile": true,
+   "width": 412,
+   "height": 823,
+   "deviceScaleFactor": 1.75
+  },
+  "throttling": {
+   "rttMs": 150,
+   "throughputKbps": 1638.4,
+   "requestLatencyMs": 562.5,
+   "downloadThroughputKbps": 1474.5600000000002,
+   "uploadThroughputKbps": 675,
+   "cpuSlowdownMultiplier": 4
+  }
+ },
+ "performanceScore": 0.98,
+ "keyAudits": [
+  {
+   "id": "server-response-time",
+   "numericValue": 1,
+   "displayValue": "Root document took 0 ms",
+   "score": 1
+  },
+  {
+   "id": "first-contentful-paint",
+   "numericValue": 1941.153,
+   "displayValue": "1.9 s",
+   "score": 0.86
+  },
+  {
+   "id": "largest-contentful-paint",
+   "numericValue": 1941.153,
+   "displayValue": "1.9 s",
+   "score": 0.97
+  },
+  {
+   "id": "total-byte-weight",
+   "numericValue": 871006,
+   "displayValue": "Total size was 851 KiB",
+   "score": 1
+  },
+  {
+   "id": "total-blocking-time",
+   "numericValue": 0,
+   "displayValue": "0 ms",
+   "score": 1
+  },
+  {
+   "id": "cumulative-layout-shift",
+   "numericValue": 0.004609308333001385,
+   "displayValue": "0.005",
+   "score": 1
+  },
+  {
+   "id": "speed-index",
+   "numericValue": 2067,
+   "displayValue": "2.1 s",
+   "score": 0.99
+  },
+  {
+   "id": "interactive",
+   "numericValue": 1947.622,
+   "displayValue": "1.9 s",
+   "score": 0.99
+  }
+ ],
+ "longTasks": {
+  "numericValue": null,
+  "displayValue": "1 long task found",
+  "items": [
+   {
+    "startTime": 1434.21,
+    "duration": 470.549,
+    "url": "http://127.0.0.1:8982/posts/hello-nanmu-blog/"
+   }
+  ]
+ }
+}

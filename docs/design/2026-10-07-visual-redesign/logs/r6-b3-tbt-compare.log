@@ -1,0 +1,22 @@
+﻿chromium 156.0.8078.4
+[full] run=17.1s scene=True posterGone=False fcp=3984ms lcp=3984ms(IMG)
+[full] longtasks=3 Σdur=949ms
+[full]   longtask start=12508ms dur=377ms unknown
+[full]   longtask start=15980ms dur=371ms unknown
+[full]   longtask start=16351ms dur=201ms unknown
+[full] ops/menu n=8 min=3 med=5 max=10 ms
+[full]   dts=[10, 3, 6, 5, 5, 3, 5, 5]
+[full] ops/tab n=8 min=7 med=8 max=19 ms
+[full]   dts=[19, 10, 7, 7, 7, 8, 11, 9]
+[full] ops/read n=4 min=1 med=1 max=3 ms
+[full]   dts=[1, 1, 1, 3]
+[full] saved D:\software\item\nanmu-blog\docs\design\2026-10-07-visual-redesign\logs\r6-b3-tbt-compare-full.json
+[static] run=16.5s scene=False posterGone=False fcp=3848ms lcp=3848ms(IMG)
+[static] longtasks=0 Σdur=0ms
+[static] ops/menu n=8 min=3 med=4 max=10 ms
+[static]   dts=[10, 3, 4, 4, 4, 3, 4, 4]
+[static] ops/tab n=8 min=6 med=8 max=17 ms
+[static]   dts=[17, 10, 8, 6, 8, 8, 7, 7]
+[static] ops/read n=4 min=1 med=1 max=1 ms
+[static]   dts=[1, 1, 1, 1]
+[static] saved D:\software\item\nanmu-blog\docs\design\2026-10-07-visual-redesign\logs\r6-b3-tbt-compare-static.json
