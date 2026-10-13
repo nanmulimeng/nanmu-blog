@@ -1,0 +1,6179 @@
+{
+ "events": [
+  {
+   "name": "pointerover",
+   "start": 6222,
+   "pStart": 6222.79999999702,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6222,
+   "pStart": 6223,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6222,
+   "pStart": 6223,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6222,
+   "pStart": 6223,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6222,
+   "pStart": 6223,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6222,
+   "pStart": 6223,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 6222,
+   "pStart": 6223,
+   "pEnd": 6223,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 6222.20000000298,
+   "pStart": 6224.5999999940395,
+   "pEnd": 6225,
+   "dur": 16,
+   "iid": 1367
+  },
+  {
+   "name": "mousedown",
+   "start": 6222.20000000298,
+   "pStart": 6225,
+   "pEnd": 6225.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 6222.20000000298,
+   "pStart": 6226.5,
+   "pEnd": 6226.70000000298,
+   "dur": 16,
+   "iid": 1367
+  },
+  {
+   "name": "mouseup",
+   "start": 6222.20000000298,
+   "pStart": 6226.70000000298,
+   "pEnd": 6226.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 6222.20000000298,
+   "pStart": 6226.9000000059605,
+   "pEnd": 6227.4000000059605,
+   "dur": 16,
+   "iid": 1367
+  },
+  {
+   "name": "pointerout",
+   "start": 6572.70000000298,
+   "pStart": 6574.79999999702,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 6572.70000000298,
+   "pStart": 6574.9000000059605,
+   "pEnd": 6574.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 6572.79999999702,
+   "pStart": 6575.5,
+   "pEnd": 6575.5999999940395,
+   "dur": 32,
+   "iid": 1381
+  },
+  {
+   "name": "mousedown",
+   "start": 6572.79999999702,
+   "pStart": 6575.5999999940395,
+   "pEnd": 6575.5999999940395,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 6572.79999999702,
+   "pStart": 6577.4000000059605,
+   "pEnd": 6577.5999999940395,
+   "dur": 32,
+   "iid": 1381
+  },
+  {
+   "name": "mouseup",
+   "start": 6572.79999999702,
+   "pStart": 6577.5999999940395,
+   "pEnd": 6577.5999999940395,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 6572.79999999702,
+   "pStart": 6577.5999999940395,
+   "pEnd": 6581,
+   "dur": 32,
+   "iid": 1381
+  },
+  {
+   "name": "pointerout",
+   "start": 6824.9000000059605,
+   "pStart": 6827.79999999702,
+   "pEnd": 6827.79999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 6824.9000000059605,
+   "pStart": 6827.9000000059605,
+   "pEnd": 6827.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 6824.9000000059605,
+   "pStart": 6827.9000000059605,
+   "pEnd": 6827.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 6824.9000000059605,
+   "pStart": 6827.9000000059605,
+   "pEnd": 6827.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 6824.9000000059605,
+   "pStart": 6827.9000000059605,
+   "pEnd": 6827.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 6824.9000000059605,
+   "pStart": 6827.9000000059605,
+   "pEnd": 6827.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 6825.0999999940395,
+   "pStart": 6828.9000000059605,
+   "pEnd": 6828.9000000059605,
+   "dur": 32,
+   "iid": 1388
+  },
+  {
+   "name": "mousedown",
+   "start": 6825.0999999940395,
+   "pStart": 6828.9000000059605,
+   "pEnd": 6828.9000000059605,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 6825.0999999940395,
+   "pStart": 6831.5,
+   "pEnd": 6831.70000000298,
+   "dur": 32,
+   "iid": 1388
+  },
+  {
+   "name": "mouseup",
+   "start": 6825.0999999940395,
+   "pStart": 6831.70000000298,
+   "pEnd": 6831.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 6825.0999999940395,
+   "pStart": 6831.70000000298,
+   "pEnd": 6834.5999999940395,
+   "dur": 32,
+   "iid": 1388
+  },
+  {
+   "name": "pointerout",
+   "start": 7139,
+   "pStart": 7140.9000000059605,
+   "pEnd": 7140.9000000059605,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 7139,
+   "pStart": 7140.9000000059605,
+   "pEnd": 7141.0999999940395,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7139,
+   "pStart": 7141.0999999940395,
+   "pEnd": 7141.0999999940395,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 7139,
+   "pStart": 7141.0999999940395,
+   "pEnd": 7141.0999999940395,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 7139,
+   "pStart": 7141.20000000298,
+   "pEnd": 7141.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 7139.0999999940395,
+   "pStart": 7142.0999999940395,
+   "pEnd": 7142.4000000059605,
+   "dur": 16,
+   "iid": 1395
+  },
+  {
+   "name": "mousedown",
+   "start": 7139.0999999940395,
+   "pStart": 7142.4000000059605,
+   "pEnd": 7142.4000000059605,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 7139.20000000298,
+   "pStart": 7145.9000000059605,
+   "pEnd": 7146.0999999940395,
+   "dur": 16,
+   "iid": 1395
+  },
+  {
+   "name": "mouseup",
+   "start": 7139.20000000298,
+   "pStart": 7146.0999999940395,
+   "pEnd": 7146.0999999940395,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 7139.20000000298,
+   "pStart": 7146.0999999940395,
+   "pEnd": 7146.29999999702,
+   "dur": 16,
+   "iid": 1395
+  },
+  {
+   "name": "pointerout",
+   "start": 7349.0999999940395,
+   "pStart": 7349.79999999702,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 7349.0999999940395,
+   "pStart": 7350,
+   "pEnd": 7350,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 7349.0999999940395,
+   "pStart": 7350.5999999940395,
+   "pEnd": 7350.79999999702,
+   "dur": 24,
+   "iid": 1402
+  },
+  {
+   "name": "mousedown",
+   "start": 7349.0999999940395,
+   "pStart": 7350.79999999702,
+   "pEnd": 7350.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 7349.20000000298,
+   "pStart": 7352.5999999940395,
+   "pEnd": 7352.79999999702,
+   "dur": 24,
+   "iid": 1402
+  },
+  {
+   "name": "mouseup",
+   "start": 7349.20000000298,
+   "pStart": 7352.79999999702,
+   "pEnd": 7352.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 7349.20000000298,
+   "pStart": 7352.79999999702,
+   "pEnd": 7353.5,
+   "dur": 24,
+   "iid": 1402
+  },
+  {
+   "name": "pointerdown",
+   "start": 7511.0999999940395,
+   "pStart": 7512.0999999940395,
+   "pEnd": 7512.20000000298,
+   "dur": 16,
+   "iid": 1409
+  },
+  {
+   "name": "mousedown",
+   "start": 7511.0999999940395,
+   "pStart": 7512.20000000298,
+   "pEnd": 7512.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 7511.20000000298,
+   "pStart": 7512.9000000059605,
+   "pEnd": 7513.0999999940395,
+   "dur": 16,
+   "iid": 1409
+  },
+  {
+   "name": "mouseup",
+   "start": 7511.20000000298,
+   "pStart": 7513.0999999940395,
+   "pEnd": 7513.0999999940395,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 7511.20000000298,
+   "pStart": 7513.0999999940395,
+   "pEnd": 7513.5,
+   "dur": 16,
+   "iid": 1409
+  },
+  {
+   "name": "pointerout",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7697.79999999702,
+   "pStart": 7700.29999999702,
+   "pEnd": 7700.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 7697.79999999702,
+   "pStart": 7700.5,
+   "pEnd": 7700.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 7697.79999999702,
+   "pStart": 7700.5,
+   "pEnd": 7700.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 7698,
+   "pStart": 7701.0999999940395,
+   "pEnd": 7701.0999999940395,
+   "dur": 24,
+   "iid": 1416
+  },
+  {
+   "name": "mousedown",
+   "start": 7698,
+   "pStart": 7701.0999999940395,
+   "pEnd": 7701.0999999940395,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 7698,
+   "pStart": 7703.5,
+   "pEnd": 7703.5,
+   "dur": 24,
+   "iid": 1416
+  },
+  {
+   "name": "mouseup",
+   "start": 7698,
+   "pStart": 7703.5,
+   "pEnd": 7703.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 7698,
+   "pStart": 7703.5,
+   "pEnd": 7708.4000000059605,
+   "dur": 24,
+   "iid": 1416
+  },
+  {
+   "name": "pointerout",
+   "start": 7961.0999999940395,
+   "pStart": 7963.5,
+   "pEnd": 7963.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 7961.0999999940395,
+   "pStart": 7963.5,
+   "pEnd": 7963.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 7961.0999999940395,
+   "pStart": 7963.5,
+   "pEnd": 7963.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 7961.0999999940395,
+   "pStart": 7963.5,
+   "pEnd": 7963.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 7961.0999999940395,
+   "pStart": 7963.5,
+   "pEnd": 7963.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 7961.0999999940395,
+   "pStart": 7963.5,
+   "pEnd": 7963.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 7961.20000000298,
+   "pStart": 7964.5,
+   "pEnd": 7964.5,
+   "dur": 24,
+   "iid": 1423
+  },
+  {
+   "name": "mousedown",
+   "start": 7961.20000000298,
+   "pStart": 7964.5,
+   "pEnd": 7964.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 7961.29999999702,
+   "pStart": 7965.70000000298,
+   "pEnd": 7965.70000000298,
+   "dur": 24,
+   "iid": 1423
+  },
+  {
+   "name": "mouseup",
+   "start": 7961.29999999702,
+   "pStart": 7965.70000000298,
+   "pEnd": 7965.70000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 7961.29999999702,
+   "pStart": 7965.70000000298,
+   "pEnd": 7967.5,
+   "dur": 24,
+   "iid": 1423
+  },
+  {
+   "name": "pointerdown",
+   "start": 8481.29999999702,
+   "pStart": 8482.29999999702,
+   "pEnd": 8482.40000000596,
+   "dur": 16,
+   "iid": 1437
+  },
+  {
+   "name": "mousedown",
+   "start": 8481.29999999702,
+   "pStart": 8482.40000000596,
+   "pEnd": 8482.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 8481.29999999702,
+   "pStart": 8483.20000000298,
+   "pEnd": 8483.29999999702,
+   "dur": 16,
+   "iid": 1437
+  },
+  {
+   "name": "mouseup",
+   "start": 8481.29999999702,
+   "pStart": 8483.29999999702,
+   "pEnd": 8483.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 8481.29999999702,
+   "pStart": 8483.29999999702,
+   "pEnd": 8483.79999999702,
+   "dur": 16,
+   "iid": 1437
+  },
+  {
+   "name": "pointerout",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 8822.40000000596,
+   "pStart": 8824,
+   "pEnd": 8824,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 8822.40000000596,
+   "pStart": 8824.5,
+   "pEnd": 8824.59999999404,
+   "dur": 16,
+   "iid": 1451
+  },
+  {
+   "name": "mousedown",
+   "start": 8822.40000000596,
+   "pStart": 8824.59999999404,
+   "pEnd": 8824.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 8822.40000000596,
+   "pStart": 8826.09999999404,
+   "pEnd": 8826.09999999404,
+   "dur": 16,
+   "iid": 1451
+  },
+  {
+   "name": "mouseup",
+   "start": 8822.40000000596,
+   "pStart": 8826.09999999404,
+   "pEnd": 8826.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 8822.40000000596,
+   "pStart": 8826.20000000298,
+   "pEnd": 8828.40000000596,
+   "dur": 16,
+   "iid": 1451
+  },
+  {
+   "name": "pointerout",
+   "start": 9086.79999999702,
+   "pStart": 9089.20000000298,
+   "pEnd": 9089.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9086.79999999702,
+   "pStart": 9089.29999999702,
+   "pEnd": 9089.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 9086.79999999702,
+   "pStart": 9089.29999999702,
+   "pEnd": 9089.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9086.79999999702,
+   "pStart": 9089.29999999702,
+   "pEnd": 9089.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 9086.79999999702,
+   "pStart": 9089.29999999702,
+   "pEnd": 9089.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 9086.79999999702,
+   "pStart": 9089.29999999702,
+   "pEnd": 9089.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 9086.90000000596,
+   "pStart": 9090,
+   "pEnd": 9090,
+   "dur": 32,
+   "iid": 1458
+  },
+  {
+   "name": "mousedown",
+   "start": 9086.90000000596,
+   "pStart": 9090,
+   "pEnd": 9090,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 9087,
+   "pStart": 9092.29999999702,
+   "pEnd": 9092.5,
+   "dur": 32,
+   "iid": 1458
+  },
+  {
+   "name": "mouseup",
+   "start": 9087,
+   "pStart": 9092.5,
+   "pEnd": 9092.5,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 9087,
+   "pStart": 9092.5,
+   "pEnd": 9095.59999999404,
+   "dur": 32,
+   "iid": 1458
+  },
+  {
+   "name": "pointerout",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 9593.59999999404,
+   "pStart": 9594.29999999702,
+   "pEnd": 9594.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 9593.70000000298,
+   "pStart": 9594.59999999404,
+   "pEnd": 9594.79999999702,
+   "dur": 16,
+   "iid": 1472
+  },
+  {
+   "name": "mousedown",
+   "start": 9593.70000000298,
+   "pStart": 9594.79999999702,
+   "pEnd": 9594.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 9593.79999999702,
+   "pStart": 9595.59999999404,
+   "pEnd": 9595.59999999404,
+   "dur": 16,
+   "iid": 1472
+  },
+  {
+   "name": "mouseup",
+   "start": 9593.79999999702,
+   "pStart": 9595.59999999404,
+   "pEnd": 9595.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 9593.79999999702,
+   "pStart": 9595.59999999404,
+   "pEnd": 9595.90000000596,
+   "dur": 16,
+   "iid": 1472
+  },
+  {
+   "name": "pointerout",
+   "start": 9945.29999999702,
+   "pStart": 9946.90000000596,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9945.29999999702,
+   "pStart": 9947,
+   "pEnd": 9947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 9945.29999999702,
+   "pStart": 9947.20000000298,
+   "pEnd": 9947.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 9945.29999999702,
+   "pStart": 9947.20000000298,
+   "pEnd": 9947.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 9945.29999999702,
+   "pStart": 9947.20000000298,
+   "pEnd": 9947.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 9945.40000000596,
+   "pStart": 9947.5,
+   "pEnd": 9947.59999999404,
+   "dur": 16,
+   "iid": 1486
+  },
+  {
+   "name": "mousedown",
+   "start": 9945.40000000596,
+   "pStart": 9947.59999999404,
+   "pEnd": 9947.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 9945.40000000596,
+   "pStart": 9948.79999999702,
+   "pEnd": 9949,
+   "dur": 16,
+   "iid": 1486
+  },
+  {
+   "name": "mouseup",
+   "start": 9945.40000000596,
+   "pStart": 9949,
+   "pEnd": 9949,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 9945.40000000596,
+   "pStart": 9949,
+   "pEnd": 9951.40000000596,
+   "dur": 16,
+   "iid": 1486
+  },
+  {
+   "name": "pointerout",
+   "start": 10208,
+   "pStart": 10209.59999999404,
+   "pEnd": 10209.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 10208,
+   "pStart": 10209.70000000298,
+   "pEnd": 10209.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 10208,
+   "pStart": 10209.70000000298,
+   "pEnd": 10209.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 10208,
+   "pStart": 10209.70000000298,
+   "pEnd": 10209.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 10208,
+   "pStart": 10209.70000000298,
+   "pEnd": 10209.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 10208,
+   "pStart": 10209.70000000298,
+   "pEnd": 10209.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 10208.09999999404,
+   "pStart": 10210.29999999702,
+   "pEnd": 10210.29999999702,
+   "dur": 16,
+   "iid": 1493
+  },
+  {
+   "name": "mousedown",
+   "start": 10208.09999999404,
+   "pStart": 10210.29999999702,
+   "pEnd": 10210.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 10208.09999999404,
+   "pStart": 10211.40000000596,
+   "pEnd": 10211.70000000298,
+   "dur": 16,
+   "iid": 1493
+  },
+  {
+   "name": "mouseup",
+   "start": 10208.09999999404,
+   "pStart": 10211.70000000298,
+   "pEnd": 10211.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 10208.09999999404,
+   "pStart": 10211.70000000298,
+   "pEnd": 10213,
+   "dur": 16,
+   "iid": 1493
+  },
+  {
+   "name": "pointerout",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10704.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 10704.09999999404,
+   "pStart": 10704.79999999702,
+   "pEnd": 10705,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 10704.09999999404,
+   "pStart": 10705,
+   "pEnd": 10705,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 10704.29999999702,
+   "pStart": 10705.20000000298,
+   "pEnd": 10705.20000000298,
+   "dur": 16,
+   "iid": 1507
+  },
+  {
+   "name": "mousedown",
+   "start": 10704.29999999702,
+   "pStart": 10705.20000000298,
+   "pEnd": 10705.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 10704.29999999702,
+   "pStart": 10706,
+   "pEnd": 10706,
+   "dur": 16,
+   "iid": 1507
+  },
+  {
+   "name": "mouseup",
+   "start": 10704.29999999702,
+   "pStart": 10706.09999999404,
+   "pEnd": 10706.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 10704.29999999702,
+   "pStart": 10706.20000000298,
+   "pEnd": 10706.40000000596,
+   "dur": 16,
+   "iid": 1507
+  },
+  {
+   "name": "pointerout",
+   "start": 11049.79999999702,
+   "pStart": 11051.79999999702,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 11049.79999999702,
+   "pStart": 11052,
+   "pEnd": 11052,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 11049.79999999702,
+   "pStart": 11052.79999999702,
+   "pEnd": 11053.09999999404,
+   "dur": 32,
+   "iid": 1521
+  },
+  {
+   "name": "mousedown",
+   "start": 11049.79999999702,
+   "pStart": 11053.09999999404,
+   "pEnd": 11053.09999999404,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 11050,
+   "pStart": 11055.5,
+   "pEnd": 11055.5,
+   "dur": 32,
+   "iid": 1521
+  },
+  {
+   "name": "mouseup",
+   "start": 11050,
+   "pStart": 11055.5,
+   "pEnd": 11055.5,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 11050,
+   "pStart": 11055.70000000298,
+   "pEnd": 11060.70000000298,
+   "dur": 32,
+   "iid": 1521
+  },
+  {
+   "name": "pointerout",
+   "start": 11314,
+   "pStart": 11317.09999999404,
+   "pEnd": 11317.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11314,
+   "pStart": 11317.29999999702,
+   "pEnd": 11317.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 11314,
+   "pStart": 11317.29999999702,
+   "pEnd": 11317.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11314,
+   "pStart": 11317.29999999702,
+   "pEnd": 11317.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 11314,
+   "pStart": 11317.29999999702,
+   "pEnd": 11317.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 11314,
+   "pStart": 11317.29999999702,
+   "pEnd": 11317.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 11314.20000000298,
+   "pStart": 11318.09999999404,
+   "pEnd": 11318.29999999702,
+   "dur": 32,
+   "iid": 1528
+  },
+  {
+   "name": "mousedown",
+   "start": 11314.20000000298,
+   "pStart": 11318.29999999702,
+   "pEnd": 11318.29999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 11314.20000000298,
+   "pStart": 11321.29999999702,
+   "pEnd": 11321.59999999404,
+   "dur": 32,
+   "iid": 1528
+  },
+  {
+   "name": "mouseup",
+   "start": 11314.20000000298,
+   "pStart": 11321.59999999404,
+   "pEnd": 11321.59999999404,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 11314.20000000298,
+   "pStart": 11321.59999999404,
+   "pEnd": 11324.90000000596,
+   "dur": 32,
+   "iid": 1528
+  },
+  {
+   "name": "pointerout",
+   "start": 11629.79999999702,
+   "pStart": 11631.70000000298,
+   "pEnd": 11631.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 11629.79999999702,
+   "pStart": 11631.70000000298,
+   "pEnd": 11631.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11629.79999999702,
+   "pStart": 11631.90000000596,
+   "pEnd": 11631.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 11629.79999999702,
+   "pStart": 11631.90000000596,
+   "pEnd": 11631.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 11629.79999999702,
+   "pStart": 11631.90000000596,
+   "pEnd": 11631.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 11630,
+   "pStart": 11633.09999999404,
+   "pEnd": 11633.29999999702,
+   "dur": 16,
+   "iid": 1535
+  },
+  {
+   "name": "mousedown",
+   "start": 11630,
+   "pStart": 11633.29999999702,
+   "pEnd": 11633.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 11630,
+   "pStart": 11638,
+   "pEnd": 11638.29999999702,
+   "dur": 16,
+   "iid": 1535
+  },
+  {
+   "name": "mouseup",
+   "start": 11630,
+   "pStart": 11638.29999999702,
+   "pEnd": 11638.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 11630,
+   "pStart": 11638.29999999702,
+   "pEnd": 11638.40000000596,
+   "dur": 16,
+   "iid": 1535
+  },
+  {
+   "name": "pointerout",
+   "start": 11654.79999999702,
+   "pStart": 11655.20000000298,
+   "pEnd": 11655.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11654.79999999702,
+   "pStart": 11655.40000000596,
+   "pEnd": 11655.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 11654.79999999702,
+   "pStart": 11655.40000000596,
+   "pEnd": 11655.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 11654.79999999702,
+   "pStart": 11655.40000000596,
+   "pEnd": 11655.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 11654.79999999702,
+   "pStart": 11655.40000000596,
+   "pEnd": 11655.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerout",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 11824.70000000298,
+   "pStart": 11825.29999999702,
+   "pEnd": 11825.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11824.70000000298,
+   "pStart": 11825.59999999404,
+   "pEnd": 11825.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 11824.70000000298,
+   "pStart": 11825.59999999404,
+   "pEnd": 11825.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 11824.70000000298,
+   "pStart": 11825.59999999404,
+   "pEnd": 11825.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 11824.70000000298,
+   "pStart": 11825.59999999404,
+   "pEnd": 11825.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 11824.70000000298,
+   "pStart": 11826,
+   "pEnd": 11826,
+   "dur": 16,
+   "iid": 1542
+  },
+  {
+   "name": "mousedown",
+   "start": 11824.70000000298,
+   "pStart": 11826,
+   "pEnd": 11826,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 11824.79999999702,
+   "pStart": 11826.79999999702,
+   "pEnd": 11826.79999999702,
+   "dur": 16,
+   "iid": 1542
+  },
+  {
+   "name": "mouseup",
+   "start": 11824.79999999702,
+   "pStart": 11826.79999999702,
+   "pEnd": 11826.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 11824.79999999702,
+   "pStart": 11826.79999999702,
+   "pEnd": 11826.90000000596,
+   "dur": 16,
+   "iid": 1542
+  },
+  {
+   "name": "pointerout",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 12177.40000000596,
+   "pStart": 12179.09999999404,
+   "pEnd": 12179.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 12177.59999999404,
+   "pStart": 12179.70000000298,
+   "pEnd": 12179.70000000298,
+   "dur": 16,
+   "iid": 1556
+  },
+  {
+   "name": "mousedown",
+   "start": 12177.59999999404,
+   "pStart": 12179.79999999702,
+   "pEnd": 12179.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 12177.59999999404,
+   "pStart": 12181.5,
+   "pEnd": 12181.5,
+   "dur": 16,
+   "iid": 1556
+  },
+  {
+   "name": "mouseup",
+   "start": 12177.59999999404,
+   "pStart": 12181.5,
+   "pEnd": 12181.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 12177.59999999404,
+   "pStart": 12181.5,
+   "pEnd": 12184.20000000298,
+   "dur": 16,
+   "iid": 1556
+  },
+  {
+   "name": "pointerout",
+   "start": 12439.20000000298,
+   "pStart": 12441.70000000298,
+   "pEnd": 12441.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12439.20000000298,
+   "pStart": 12441.79999999702,
+   "pEnd": 12441.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 12439.20000000298,
+   "pStart": 12441.79999999702,
+   "pEnd": 12441.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12439.20000000298,
+   "pStart": 12441.79999999702,
+   "pEnd": 12441.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 12439.20000000298,
+   "pStart": 12441.79999999702,
+   "pEnd": 12441.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 12439.20000000298,
+   "pStart": 12441.79999999702,
+   "pEnd": 12441.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 12439.40000000596,
+   "pStart": 12442.40000000596,
+   "pEnd": 12442.59999999404,
+   "dur": 24,
+   "iid": 1563
+  },
+  {
+   "name": "mousedown",
+   "start": 12439.40000000596,
+   "pStart": 12442.59999999404,
+   "pEnd": 12442.59999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 12439.5,
+   "pStart": 12445.09999999404,
+   "pEnd": 12445.29999999702,
+   "dur": 24,
+   "iid": 1563
+  },
+  {
+   "name": "mouseup",
+   "start": 12439.5,
+   "pStart": 12445.29999999702,
+   "pEnd": 12445.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 12439.5,
+   "pStart": 12445.29999999702,
+   "pEnd": 12447.79999999702,
+   "dur": 24,
+   "iid": 1563
+  },
+  {
+   "name": "pointerout",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 12945.90000000596,
+   "pStart": 12946.59999999404,
+   "pEnd": 12946.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 12946.09999999404,
+   "pStart": 12947,
+   "pEnd": 12947,
+   "dur": 16,
+   "iid": 1577
+  },
+  {
+   "name": "mousedown",
+   "start": 12946.09999999404,
+   "pStart": 12947,
+   "pEnd": 12947,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 12946.09999999404,
+   "pStart": 12948.09999999404,
+   "pEnd": 12948.09999999404,
+   "dur": 16,
+   "iid": 1577
+  },
+  {
+   "name": "mouseup",
+   "start": 12946.09999999404,
+   "pStart": 12948.09999999404,
+   "pEnd": 12948.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 12946.09999999404,
+   "pStart": 12948.09999999404,
+   "pEnd": 12948.20000000298,
+   "dur": 16,
+   "iid": 1577
+  },
+  {
+   "name": "pointerdown",
+   "start": 13106.5,
+   "pStart": 13107.59999999404,
+   "pEnd": 13107.70000000298,
+   "dur": 16,
+   "iid": 1584
+  },
+  {
+   "name": "mousedown",
+   "start": 13106.5,
+   "pStart": 13107.79999999702,
+   "pEnd": 13107.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 13106.59999999404,
+   "pStart": 13108.29999999702,
+   "pEnd": 13108.40000000596,
+   "dur": 16,
+   "iid": 1584
+  },
+  {
+   "name": "mouseup",
+   "start": 13106.59999999404,
+   "pStart": 13108.40000000596,
+   "pEnd": 13108.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 13106.59999999404,
+   "pStart": 13108.40000000596,
+   "pEnd": 13108.79999999702,
+   "dur": 16,
+   "iid": 1584
+  },
+  {
+   "name": "pointerout",
+   "start": 13292.20000000298,
+   "pStart": 13294.5,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 13292.20000000298,
+   "pStart": 13294.70000000298,
+   "pEnd": 13294.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 13292.29999999702,
+   "pStart": 13295.79999999702,
+   "pEnd": 13296.09999999404,
+   "dur": 32,
+   "iid": 1591
+  },
+  {
+   "name": "mousedown",
+   "start": 13292.29999999702,
+   "pStart": 13296.09999999404,
+   "pEnd": 13296.09999999404,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 13292.40000000596,
+   "pStart": 13299.59999999404,
+   "pEnd": 13299.70000000298,
+   "dur": 32,
+   "iid": 1591
+  },
+  {
+   "name": "mouseup",
+   "start": 13292.40000000596,
+   "pStart": 13299.79999999702,
+   "pEnd": 13299.79999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 13292.40000000596,
+   "pStart": 13299.90000000596,
+   "pEnd": 13306.5,
+   "dur": 32,
+   "iid": 1591
+  },
+  {
+   "name": "pointerout",
+   "start": 13556.09999999404,
+   "pStart": 13558.20000000298,
+   "pEnd": 13558.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 13556.09999999404,
+   "pStart": 13558.20000000298,
+   "pEnd": 13558.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 13556.09999999404,
+   "pStart": 13558.20000000298,
+   "pEnd": 13558.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13556.09999999404,
+   "pStart": 13558.20000000298,
+   "pEnd": 13558.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 13556.09999999404,
+   "pStart": 13558.29999999702,
+   "pEnd": 13558.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 13556.09999999404,
+   "pStart": 13558.40000000596,
+   "pEnd": 13558.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 13556.20000000298,
+   "pStart": 13559,
+   "pEnd": 13559.09999999404,
+   "dur": 24,
+   "iid": 1598
+  },
+  {
+   "name": "mousedown",
+   "start": 13556.20000000298,
+   "pStart": 13559.09999999404,
+   "pEnd": 13559.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 13556.20000000298,
+   "pStart": 13561,
+   "pEnd": 13561.09999999404,
+   "dur": 24,
+   "iid": 1598
+  },
+  {
+   "name": "mouseup",
+   "start": 13556.20000000298,
+   "pStart": 13561.09999999404,
+   "pEnd": 13561.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 13556.20000000298,
+   "pStart": 13561.09999999404,
+   "pEnd": 13563.09999999404,
+   "dur": 24,
+   "iid": 1598
+  },
+  {
+   "name": "pointerout",
+   "start": 13896.29999999702,
+   "pStart": 13898.5,
+   "pEnd": 13898.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 13896.29999999702,
+   "pStart": 13898.70000000298,
+   "pEnd": 13898.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 13896.29999999702,
+   "pStart": 13898.70000000298,
+   "pEnd": 13898.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 13896.29999999702,
+   "pStart": 13898.70000000298,
+   "pEnd": 13898.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 13896.29999999702,
+   "pStart": 13898.70000000298,
+   "pEnd": 13898.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 13896.5,
+   "pStart": 13899.70000000298,
+   "pEnd": 13899.90000000596,
+   "dur": 16,
+   "iid": 1605
+  },
+  {
+   "name": "mousedown",
+   "start": 13896.5,
+   "pStart": 13899.90000000596,
+   "pEnd": 13900.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 13896.5,
+   "pStart": 13903.59999999404,
+   "pEnd": 13903.79999999702,
+   "dur": 16,
+   "iid": 1605
+  },
+  {
+   "name": "mouseup",
+   "start": 13896.5,
+   "pStart": 13903.79999999702,
+   "pEnd": 13903.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 13896.5,
+   "pStart": 13903.79999999702,
+   "pEnd": 13904,
+   "dur": 16,
+   "iid": 1605
+  },
+  {
+   "name": "pointerdown",
+   "start": 14094.59999999404,
+   "pStart": 14095.59999999404,
+   "pEnd": 14095.59999999404,
+   "dur": 16,
+   "iid": 1612
+  },
+  {
+   "name": "mousedown",
+   "start": 14094.59999999404,
+   "pStart": 14095.59999999404,
+   "pEnd": 14095.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 14094.59999999404,
+   "pStart": 14096.59999999404,
+   "pEnd": 14096.90000000596,
+   "dur": 16,
+   "iid": 1612
+  },
+  {
+   "name": "mouseup",
+   "start": 14094.59999999404,
+   "pStart": 14096.90000000596,
+   "pEnd": 14096.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 14094.59999999404,
+   "pStart": 14096.90000000596,
+   "pEnd": 14097,
+   "dur": 16,
+   "iid": 1612
+  },
+  {
+   "name": "pointerout",
+   "start": 14437.20000000298,
+   "pStart": 14439.29999999702,
+   "pEnd": 14439.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 14437.20000000298,
+   "pStart": 14439.5,
+   "pEnd": 14439.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 14437.29999999702,
+   "pStart": 14440.29999999702,
+   "pEnd": 14440.40000000596,
+   "dur": 24,
+   "iid": 1626
+  },
+  {
+   "name": "mousedown",
+   "start": 14437.29999999702,
+   "pStart": 14440.40000000596,
+   "pEnd": 14440.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 14437.29999999702,
+   "pStart": 14441.79999999702,
+   "pEnd": 14442,
+   "dur": 24,
+   "iid": 1626
+  },
+  {
+   "name": "mouseup",
+   "start": 14437.29999999702,
+   "pStart": 14442,
+   "pEnd": 14442,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 14437.29999999702,
+   "pStart": 14442,
+   "pEnd": 14446,
+   "dur": 24,
+   "iid": 1626
+  },
+  {
+   "name": "pointerout",
+   "start": 14701.40000000596,
+   "pStart": 14704.29999999702,
+   "pEnd": 14704.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 14701.40000000596,
+   "pStart": 14704.29999999702,
+   "pEnd": 14704.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 14701.40000000596,
+   "pStart": 14704.29999999702,
+   "pEnd": 14704.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 14701.40000000596,
+   "pStart": 14704.29999999702,
+   "pEnd": 14704.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 14701.40000000596,
+   "pStart": 14704.29999999702,
+   "pEnd": 14704.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 14701.40000000596,
+   "pStart": 14704.29999999702,
+   "pEnd": 14704.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 14701.5,
+   "pStart": 14704.90000000596,
+   "pEnd": 14705,
+   "dur": 24,
+   "iid": 1633
+  },
+  {
+   "name": "mousedown",
+   "start": 14701.5,
+   "pStart": 14705,
+   "pEnd": 14705.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 14701.70000000298,
+   "pStart": 14707.5,
+   "pEnd": 14707.70000000298,
+   "dur": 24,
+   "iid": 1633
+  },
+  {
+   "name": "mouseup",
+   "start": 14701.70000000298,
+   "pStart": 14707.70000000298,
+   "pEnd": 14707.70000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 14701.70000000298,
+   "pStart": 14707.70000000298,
+   "pEnd": 14709.90000000596,
+   "dur": 24,
+   "iid": 1633
+  },
+  {
+   "name": "pointerout",
+   "start": 15051,
+   "pStart": 15051.40000000596,
+   "pEnd": 15051.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15051,
+   "pStart": 15051.5,
+   "pEnd": 15051.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 15051,
+   "pStart": 15051.5,
+   "pEnd": 15051.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 15051,
+   "pStart": 15051.5,
+   "pEnd": 15051.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 15051,
+   "pStart": 15051.59999999404,
+   "pEnd": 15051.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerout",
+   "start": 15240,
+   "pStart": 15240.70000000298,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 15240,
+   "pStart": 15240.90000000596,
+   "pEnd": 15240.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 15240.09999999404,
+   "pStart": 15241.59999999404,
+   "pEnd": 15241.59999999404,
+   "dur": 24,
+   "iid": 1647
+  },
+  {
+   "name": "mousedown",
+   "start": 15240.09999999404,
+   "pStart": 15241.59999999404,
+   "pEnd": 15241.59999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 15240.20000000298,
+   "pStart": 15242.29999999702,
+   "pEnd": 15242.40000000596,
+   "dur": 24,
+   "iid": 1647
+  },
+  {
+   "name": "mouseup",
+   "start": 15240.20000000298,
+   "pStart": 15242.40000000596,
+   "pEnd": 15242.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 15240.20000000298,
+   "pStart": 15242.5,
+   "pEnd": 15242.79999999702,
+   "dur": 24,
+   "iid": 1647
+  },
+  {
+   "name": "pointerdown",
+   "start": 15407.40000000596,
+   "pStart": 15409.59999999404,
+   "pEnd": 15409.90000000596,
+   "dur": 24,
+   "iid": 1654
+  },
+  {
+   "name": "mousedown",
+   "start": 15407.40000000596,
+   "pStart": 15409.90000000596,
+   "pEnd": 15409.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 15407.5,
+   "pStart": 15410.09999999404,
+   "pEnd": 15410.20000000298,
+   "dur": 24,
+   "iid": 1654
+  },
+  {
+   "name": "mouseup",
+   "start": 15407.5,
+   "pStart": 15410.20000000298,
+   "pEnd": 15410.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 15407.5,
+   "pStart": 15410.20000000298,
+   "pEnd": 15410.40000000596,
+   "dur": 24,
+   "iid": 1654
+  },
+  {
+   "name": "pointerout",
+   "start": 15593.59999999404,
+   "pStart": 15596.79999999702,
+   "pEnd": 15596.79999999702,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15593.59999999404,
+   "pStart": 15596.79999999702,
+   "pEnd": 15596.79999999702,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15593.59999999404,
+   "pStart": 15596.79999999702,
+   "pEnd": 15596.79999999702,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 15593.59999999404,
+   "pStart": 15596.79999999702,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 15593.59999999404,
+   "pStart": 15596.90000000596,
+   "pEnd": 15596.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 15593.79999999702,
+   "pStart": 15598.09999999404,
+   "pEnd": 15598.40000000596,
+   "dur": 48,
+   "iid": 1661
+  },
+  {
+   "name": "mousedown",
+   "start": 15593.79999999702,
+   "pStart": 15598.5,
+   "pEnd": 15598.5,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 15593.79999999702,
+   "pStart": 15603.20000000298,
+   "pEnd": 15603.40000000596,
+   "dur": 48,
+   "iid": 1661
+  },
+  {
+   "name": "mouseup",
+   "start": 15593.79999999702,
+   "pStart": 15603.5,
+   "pEnd": 15603.90000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 15593.79999999702,
+   "pStart": 15603.90000000596,
+   "pEnd": 15613,
+   "dur": 48,
+   "iid": 1661
+  },
+  {
+   "name": "pointerout",
+   "start": 15854.5,
+   "pStart": 15857.5,
+   "pEnd": 15857.5,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 15854.5,
+   "pStart": 15857.5,
+   "pEnd": 15857.5,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 15854.5,
+   "pStart": 15857.5,
+   "pEnd": 15857.5,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 15854.5,
+   "pStart": 15857.5,
+   "pEnd": 15857.5,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 15854.5,
+   "pStart": 15857.70000000298,
+   "pEnd": 15857.70000000298,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 15854.5,
+   "pStart": 15857.70000000298,
+   "pEnd": 15857.70000000298,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 15854.70000000298,
+   "pStart": 15858.5,
+   "pEnd": 15858.70000000298,
+   "dur": 40,
+   "iid": 1668
+  },
+  {
+   "name": "mousedown",
+   "start": 15854.70000000298,
+   "pStart": 15858.70000000298,
+   "pEnd": 15858.70000000298,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 15854.70000000298,
+   "pStart": 15861.59999999404,
+   "pEnd": 15861.70000000298,
+   "dur": 40,
+   "iid": 1668
+  },
+  {
+   "name": "mouseup",
+   "start": 15854.70000000298,
+   "pStart": 15861.70000000298,
+   "pEnd": 15861.70000000298,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 15854.70000000298,
+   "pStart": 15861.70000000298,
+   "pEnd": 15865.20000000298,
+   "dur": 40,
+   "iid": 1668
+  },
+  {
+   "name": "pointerout",
+   "start": 16167.20000000298,
+   "pStart": 16168.90000000596,
+   "pEnd": 16168.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 16167.20000000298,
+   "pStart": 16168.90000000596,
+   "pEnd": 16168.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16167.20000000298,
+   "pStart": 16168.90000000596,
+   "pEnd": 16168.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 16167.20000000298,
+   "pStart": 16168.90000000596,
+   "pEnd": 16168.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 16167.20000000298,
+   "pStart": 16168.90000000596,
+   "pEnd": 16168.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 16167.29999999702,
+   "pStart": 16169.90000000596,
+   "pEnd": 16170.09999999404,
+   "dur": 16,
+   "iid": 1675
+  },
+  {
+   "name": "mousedown",
+   "start": 16167.29999999702,
+   "pStart": 16170.09999999404,
+   "pEnd": 16170.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 16167.40000000596,
+   "pStart": 16172.5,
+   "pEnd": 16172.79999999702,
+   "dur": 16,
+   "iid": 1675
+  },
+  {
+   "name": "mouseup",
+   "start": 16167.40000000596,
+   "pStart": 16172.79999999702,
+   "pEnd": 16172.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 16167.40000000596,
+   "pStart": 16172.79999999702,
+   "pEnd": 16172.90000000596,
+   "dur": 16,
+   "iid": 1675
+  },
+  {
+   "name": "pointerout",
+   "start": 16359.20000000298,
+   "pStart": 16361.59999999404,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 16359.20000000298,
+   "pStart": 16361.79999999702,
+   "pEnd": 16361.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 16359.29999999702,
+   "pStart": 16362.40000000596,
+   "pEnd": 16362.5,
+   "dur": 24,
+   "iid": 1682
+  },
+  {
+   "name": "mousedown",
+   "start": 16359.29999999702,
+   "pStart": 16362.5,
+   "pEnd": 16362.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 16359.29999999702,
+   "pStart": 16363.90000000596,
+   "pEnd": 16364,
+   "dur": 24,
+   "iid": 1682
+  },
+  {
+   "name": "mouseup",
+   "start": 16359.29999999702,
+   "pStart": 16364,
+   "pEnd": 16364,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 16359.29999999702,
+   "pStart": 16364.09999999404,
+   "pEnd": 16364.29999999702,
+   "dur": 24,
+   "iid": 1682
+  },
+  {
+   "name": "pointerdown",
+   "start": 16525.79999999702,
+   "pStart": 16526.90000000596,
+   "pEnd": 16526.90000000596,
+   "dur": 16,
+   "iid": 1689
+  },
+  {
+   "name": "mousedown",
+   "start": 16525.79999999702,
+   "pStart": 16526.90000000596,
+   "pEnd": 16526.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 16525.90000000596,
+   "pStart": 16527.29999999702,
+   "pEnd": 16527.40000000596,
+   "dur": 16,
+   "iid": 1689
+  },
+  {
+   "name": "mouseup",
+   "start": 16525.90000000596,
+   "pStart": 16527.40000000596,
+   "pEnd": 16527.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 16525.90000000596,
+   "pStart": 16527.40000000596,
+   "pEnd": 16527.70000000298,
+   "dur": 16,
+   "iid": 1689
+  },
+  {
+   "name": "pointerout",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 16715,
+   "pStart": 16717.09999999404,
+   "pEnd": 16717.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 16715,
+   "pStart": 16717.70000000298,
+   "pEnd": 16717.79999999702,
+   "dur": 24,
+   "iid": 1696
+  },
+  {
+   "name": "mousedown",
+   "start": 16715,
+   "pStart": 16717.79999999702,
+   "pEnd": 16717.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 16715.09999999404,
+   "pStart": 16719.29999999702,
+   "pEnd": 16719.29999999702,
+   "dur": 24,
+   "iid": 1696
+  },
+  {
+   "name": "mouseup",
+   "start": 16715.09999999404,
+   "pStart": 16719.29999999702,
+   "pEnd": 16719.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 16715.09999999404,
+   "pStart": 16719.5,
+   "pEnd": 16722.70000000298,
+   "dur": 24,
+   "iid": 1696
+  },
+  {
+   "name": "pointerout",
+   "start": 16978.59999999404,
+   "pStart": 16981.20000000298,
+   "pEnd": 16981.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 16978.59999999404,
+   "pStart": 16981.20000000298,
+   "pEnd": 16981.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 16978.59999999404,
+   "pStart": 16981.20000000298,
+   "pEnd": 16981.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 16978.59999999404,
+   "pStart": 16981.20000000298,
+   "pEnd": 16981.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 16978.59999999404,
+   "pStart": 16981.20000000298,
+   "pEnd": 16981.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 16978.59999999404,
+   "pStart": 16981.20000000298,
+   "pEnd": 16981.20000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 16978.70000000298,
+   "pStart": 16981.90000000596,
+   "pEnd": 16982.09999999404,
+   "dur": 24,
+   "iid": 1703
+  },
+  {
+   "name": "mousedown",
+   "start": 16978.70000000298,
+   "pStart": 16982.09999999404,
+   "pEnd": 16982.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 16978.70000000298,
+   "pStart": 16984,
+   "pEnd": 16984.09999999404,
+   "dur": 24,
+   "iid": 1703
+  },
+  {
+   "name": "mouseup",
+   "start": 16978.70000000298,
+   "pStart": 16984.09999999404,
+   "pEnd": 16984.09999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 16978.70000000298,
+   "pStart": 16984.09999999404,
+   "pEnd": 16985.90000000596,
+   "dur": 24,
+   "iid": 1703
+  },
+  {
+   "name": "pointerout",
+   "start": 17310.29999999702,
+   "pStart": 17328.5,
+   "pEnd": 17328.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 17310.29999999702,
+   "pStart": 17328.5,
+   "pEnd": 17328.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17310.29999999702,
+   "pStart": 17328.5,
+   "pEnd": 17328.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 17310.29999999702,
+   "pStart": 17328.5,
+   "pEnd": 17328.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 17310.29999999702,
+   "pStart": 17328.5,
+   "pEnd": 17328.5,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 17310.40000000596,
+   "pStart": 17328.70000000298,
+   "pEnd": 17328.70000000298,
+   "dur": 24,
+   "iid": 1710
+  },
+  {
+   "name": "mousedown",
+   "start": 17310.40000000596,
+   "pStart": 17328.70000000298,
+   "pEnd": 17328.70000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 17310.59999999404,
+   "pStart": 17329.29999999702,
+   "pEnd": 17329.29999999702,
+   "dur": 24,
+   "iid": 1710
+  },
+  {
+   "name": "mouseup",
+   "start": 17310.59999999404,
+   "pStart": 17329.29999999702,
+   "pEnd": 17329.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 17310.59999999404,
+   "pStart": 17329.29999999702,
+   "pEnd": 17329.29999999702,
+   "dur": 24,
+   "iid": 1710
+  },
+  {
+   "name": "pointerout",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 17519.29999999702,
+   "pStart": 17520.09999999404,
+   "pEnd": 17520.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 17519.29999999702,
+   "pStart": 17520.70000000298,
+   "pEnd": 17520.79999999702,
+   "dur": 16,
+   "iid": 1717
+  },
+  {
+   "name": "mousedown",
+   "start": 17519.29999999702,
+   "pStart": 17520.79999999702,
+   "pEnd": 17520.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 17519.5,
+   "pStart": 17522.29999999702,
+   "pEnd": 17522.5,
+   "dur": 16,
+   "iid": 1717
+  },
+  {
+   "name": "mouseup",
+   "start": 17519.5,
+   "pStart": 17522.5,
+   "pEnd": 17522.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 17519.5,
+   "pStart": 17522.5,
+   "pEnd": 17522.70000000298,
+   "dur": 16,
+   "iid": 1717
+  },
+  {
+   "name": "pointerdown",
+   "start": 17681.70000000298,
+   "pStart": 17683,
+   "pEnd": 17683,
+   "dur": 16,
+   "iid": 1724
+  },
+  {
+   "name": "mousedown",
+   "start": 17681.70000000298,
+   "pStart": 17683,
+   "pEnd": 17683,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 17681.79999999702,
+   "pStart": 17683.5,
+   "pEnd": 17683.59999999404,
+   "dur": 16,
+   "iid": 1724
+  },
+  {
+   "name": "mouseup",
+   "start": 17681.79999999702,
+   "pStart": 17683.59999999404,
+   "pEnd": 17683.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 17681.79999999702,
+   "pStart": 17683.59999999404,
+   "pEnd": 17684,
+   "dur": 16,
+   "iid": 1724
+  },
+  {
+   "name": "pointerout",
+   "start": 17871.20000000298,
+   "pStart": 17874.79999999702,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 17871.20000000298,
+   "pStart": 17874.90000000596,
+   "pEnd": 17874.90000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 17871.40000000596,
+   "pStart": 17876.29999999702,
+   "pEnd": 17876.29999999702,
+   "dur": 40,
+   "iid": 1731
+  },
+  {
+   "name": "mousedown",
+   "start": 17871.40000000596,
+   "pStart": 17876.29999999702,
+   "pEnd": 17876.5,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 17871.40000000596,
+   "pStart": 17880.70000000298,
+   "pEnd": 17881.09999999404,
+   "dur": 40,
+   "iid": 1731
+  },
+  {
+   "name": "mouseup",
+   "start": 17871.40000000596,
+   "pStart": 17881.09999999404,
+   "pEnd": 17881.09999999404,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 17871.40000000596,
+   "pStart": 17881.09999999404,
+   "pEnd": 17890.09999999404,
+   "dur": 40,
+   "iid": 1731
+  },
+  {
+   "name": "pointerout",
+   "start": 18135.40000000596,
+   "pStart": 18138.79999999702,
+   "pEnd": 18138.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 18135.40000000596,
+   "pStart": 18138.79999999702,
+   "pEnd": 18138.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 18135.40000000596,
+   "pStart": 18138.79999999702,
+   "pEnd": 18138.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 18135.40000000596,
+   "pStart": 18138.79999999702,
+   "pEnd": 18138.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 18135.40000000596,
+   "pStart": 18138.90000000596,
+   "pEnd": 18138.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 18135.40000000596,
+   "pStart": 18138.90000000596,
+   "pEnd": 18138.90000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 18135.5,
+   "pStart": 18139.59999999404,
+   "pEnd": 18139.59999999404,
+   "dur": 24,
+   "iid": 1738
+  },
+  {
+   "name": "mousedown",
+   "start": 18135.5,
+   "pStart": 18139.59999999404,
+   "pEnd": 18139.59999999404,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 18135.5,
+   "pStart": 18141.79999999702,
+   "pEnd": 18141.79999999702,
+   "dur": 24,
+   "iid": 1738
+  },
+  {
+   "name": "mouseup",
+   "start": 18135.5,
+   "pStart": 18141.79999999702,
+   "pEnd": 18141.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 18135.5,
+   "pStart": 18141.90000000596,
+   "pEnd": 18144.40000000596,
+   "dur": 24,
+   "iid": 1738
+  },
+  {
+   "name": "pointerout",
+   "start": 18448.09999999404,
+   "pStart": 18450.40000000596,
+   "pEnd": 18450.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 18448.09999999404,
+   "pStart": 18450.59999999404,
+   "pEnd": 18450.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 18448.09999999404,
+   "pStart": 18450.59999999404,
+   "pEnd": 18450.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 18448.09999999404,
+   "pStart": 18450.59999999404,
+   "pEnd": 18450.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 18448.09999999404,
+   "pStart": 18450.59999999404,
+   "pEnd": 18450.59999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 18448.20000000298,
+   "pStart": 18452.29999999702,
+   "pEnd": 18452.5,
+   "dur": 16,
+   "iid": 1745
+  },
+  {
+   "name": "mousedown",
+   "start": 18448.20000000298,
+   "pStart": 18452.5,
+   "pEnd": 18452.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 18448.29999999702,
+   "pStart": 18457,
+   "pEnd": 18457.20000000298,
+   "dur": 16,
+   "iid": 1745
+  },
+  {
+   "name": "mouseup",
+   "start": 18448.29999999702,
+   "pStart": 18457.20000000298,
+   "pEnd": 18457.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 18448.29999999702,
+   "pStart": 18457.40000000596,
+   "pEnd": 18457.40000000596,
+   "dur": 16,
+   "iid": 1745
+  },
+  {
+   "name": "pointerout",
+   "start": 18664.29999999702,
+   "pStart": 18665,
+   "pEnd": 18665,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 18664.29999999702,
+   "pStart": 18665,
+   "pEnd": 18665,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 18664.29999999702,
+   "pStart": 18665,
+   "pEnd": 18665,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 18664.29999999702,
+   "pStart": 18665,
+   "pEnd": 18665,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 18664.29999999702,
+   "pStart": 18665,
+   "pEnd": 18665,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 18664.29999999702,
+   "pStart": 18665,
+   "pEnd": 18665,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 18664.29999999702,
+   "pStart": 18665.09999999404,
+   "pEnd": 18665.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 18664.29999999702,
+   "pStart": 18665.09999999404,
+   "pEnd": 18665.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 18664.29999999702,
+   "pStart": 18665.09999999404,
+   "pEnd": 18665.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 18664.29999999702,
+   "pStart": 18665.09999999404,
+   "pEnd": 18665.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 18664.29999999702,
+   "pStart": 18665.09999999404,
+   "pEnd": 18665.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 18664.59999999404,
+   "pStart": 18665.59999999404,
+   "pEnd": 18665.79999999702,
+   "dur": 16,
+   "iid": 1752
+  },
+  {
+   "name": "mousedown",
+   "start": 18664.59999999404,
+   "pStart": 18665.79999999702,
+   "pEnd": 18665.79999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 18664.59999999404,
+   "pStart": 18667.20000000298,
+   "pEnd": 18667.20000000298,
+   "dur": 16,
+   "iid": 1752
+  },
+  {
+   "name": "mouseup",
+   "start": 18664.59999999404,
+   "pStart": 18667.20000000298,
+   "pEnd": 18667.20000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 18664.59999999404,
+   "pStart": 18667.40000000596,
+   "pEnd": 18667.59999999404,
+   "dur": 16,
+   "iid": 1752
+  },
+  {
+   "name": "pointerdown",
+   "start": 18821.79999999702,
+   "pStart": 18824.5,
+   "pEnd": 18824.79999999702,
+   "dur": 40,
+   "iid": 1759
+  },
+  {
+   "name": "mousedown",
+   "start": 18821.79999999702,
+   "pStart": 18824.79999999702,
+   "pEnd": 18824.79999999702,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 18821.90000000596,
+   "pStart": 18826.09999999404,
+   "pEnd": 18826.40000000596,
+   "dur": 40,
+   "iid": 1759
+  },
+  {
+   "name": "mouseup",
+   "start": 18821.90000000596,
+   "pStart": 18826.40000000596,
+   "pEnd": 18826.40000000596,
+   "dur": 40,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 18821.90000000596,
+   "pStart": 18826.40000000596,
+   "pEnd": 18827,
+   "dur": 40,
+   "iid": 1759
+  },
+  {
+   "name": "pointerout",
+   "start": 19013.09999999404,
+   "pStart": 19017.09999999404,
+   "pEnd": 19017.09999999404,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19013.09999999404,
+   "pStart": 19017.09999999404,
+   "pEnd": 19017.09999999404,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19013.09999999404,
+   "pStart": 19017.20000000298,
+   "pEnd": 19017.20000000298,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 19013.09999999404,
+   "pStart": 19017.20000000298,
+   "pEnd": 19017.20000000298,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19013.09999999404,
+   "pStart": 19017.20000000298,
+   "pEnd": 19017.20000000298,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19013.09999999404,
+   "pStart": 19017.40000000596,
+   "pEnd": 19017.40000000596,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19013.09999999404,
+   "pStart": 19017.40000000596,
+   "pEnd": 19017.40000000596,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19013.09999999404,
+   "pStart": 19017.40000000596,
+   "pEnd": 19017.40000000596,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19013.09999999404,
+   "pStart": 19017.40000000596,
+   "pEnd": 19017.40000000596,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 19013.09999999404,
+   "pStart": 19017.40000000596,
+   "pEnd": 19017.40000000596,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 19013.09999999404,
+   "pStart": 19017.40000000596,
+   "pEnd": 19017.40000000596,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 19013.29999999702,
+   "pStart": 19018.90000000596,
+   "pEnd": 19019.09999999404,
+   "dur": 80,
+   "iid": 1766
+  },
+  {
+   "name": "mousedown",
+   "start": 19013.29999999702,
+   "pStart": 19019.09999999404,
+   "pEnd": 19019.29999999702,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 19013.5,
+   "pStart": 19027.20000000298,
+   "pEnd": 19027.5,
+   "dur": 80,
+   "iid": 1766
+  },
+  {
+   "name": "mouseup",
+   "start": 19013.5,
+   "pStart": 19027.59999999404,
+   "pEnd": 19027.70000000298,
+   "dur": 80,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 19013.5,
+   "pStart": 19027.70000000298,
+   "pEnd": 19041.79999999702,
+   "dur": 80,
+   "iid": 1766
+  },
+  {
+   "name": "pointerout",
+   "start": 19272.90000000596,
+   "pStart": 19279.20000000298,
+   "pEnd": 19279.40000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19272.90000000596,
+   "pStart": 19279.40000000596,
+   "pEnd": 19279.40000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 19272.90000000596,
+   "pStart": 19279.40000000596,
+   "pEnd": 19279.40000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19272.90000000596,
+   "pStart": 19279.40000000596,
+   "pEnd": 19279.40000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 19272.90000000596,
+   "pStart": 19279.40000000596,
+   "pEnd": 19279.40000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 19272.90000000596,
+   "pStart": 19279.40000000596,
+   "pEnd": 19279.40000000596,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 19273,
+   "pStart": 19280,
+   "pEnd": 19280.09999999404,
+   "dur": 48,
+   "iid": 1773
+  },
+  {
+   "name": "mousedown",
+   "start": 19273,
+   "pStart": 19280.09999999404,
+   "pEnd": 19280.09999999404,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 19273.09999999404,
+   "pStart": 19283,
+   "pEnd": 19283,
+   "dur": 48,
+   "iid": 1773
+  },
+  {
+   "name": "mouseup",
+   "start": 19273.09999999404,
+   "pStart": 19283,
+   "pEnd": 19283,
+   "dur": 48,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 19273.09999999404,
+   "pStart": 19283,
+   "pEnd": 19287.29999999702,
+   "dur": 48,
+   "iid": 1773
+  },
+  {
+   "name": "pointerout",
+   "start": 19599.79999999702,
+   "pStart": 19601.79999999702,
+   "pEnd": 19601.90000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 19599.79999999702,
+   "pStart": 19601.90000000596,
+   "pEnd": 19602,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19599.79999999702,
+   "pStart": 19602,
+   "pEnd": 19602,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 19599.79999999702,
+   "pStart": 19602,
+   "pEnd": 19602,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 19599.79999999702,
+   "pStart": 19602,
+   "pEnd": 19602,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 19599.90000000596,
+   "pStart": 19603.20000000298,
+   "pEnd": 19603.40000000596,
+   "dur": 16,
+   "iid": 1780
+  },
+  {
+   "name": "mousedown",
+   "start": 19599.90000000596,
+   "pStart": 19603.40000000596,
+   "pEnd": 19603.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 19600,
+   "pStart": 19607.29999999702,
+   "pEnd": 19607.5,
+   "dur": 16,
+   "iid": 1780
+  },
+  {
+   "name": "mouseup",
+   "start": 19600,
+   "pStart": 19607.5,
+   "pEnd": 19607.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 19600,
+   "pStart": 19607.5,
+   "pEnd": 19607.5,
+   "dur": 16,
+   "iid": 1780
+  },
+  {
+   "name": "pointerout",
+   "start": 19823.40000000596,
+   "pStart": 19824.29999999702,
+   "pEnd": 19824.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19823.40000000596,
+   "pStart": 19824.40000000596,
+   "pEnd": 19824.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19823.40000000596,
+   "pStart": 19824.40000000596,
+   "pEnd": 19824.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19823.40000000596,
+   "pStart": 19824.40000000596,
+   "pEnd": 19824.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19823.40000000596,
+   "pStart": 19824.40000000596,
+   "pEnd": 19824.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 19823.40000000596,
+   "pStart": 19824.40000000596,
+   "pEnd": 19824.40000000596,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 19823.40000000596,
+   "pStart": 19824.40000000596,
+   "pEnd": 19824.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19823.40000000596,
+   "pStart": 19824.5,
+   "pEnd": 19824.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 19823.40000000596,
+   "pStart": 19824.5,
+   "pEnd": 19824.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 19823.40000000596,
+   "pStart": 19824.5,
+   "pEnd": 19824.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 19823.40000000596,
+   "pStart": 19824.5,
+   "pEnd": 19824.5,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 19823.59999999404,
+   "pStart": 19824.90000000596,
+   "pEnd": 19825.09999999404,
+   "dur": 16,
+   "iid": 1787
+  },
+  {
+   "name": "mousedown",
+   "start": 19823.59999999404,
+   "pStart": 19825.09999999404,
+   "pEnd": 19825.09999999404,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 19823.70000000298,
+   "pStart": 19826.29999999702,
+   "pEnd": 19826.29999999702,
+   "dur": 16,
+   "iid": 1787
+  },
+  {
+   "name": "mouseup",
+   "start": 19823.70000000298,
+   "pStart": 19826.29999999702,
+   "pEnd": 19826.29999999702,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 19823.70000000298,
+   "pStart": 19826.29999999702,
+   "pEnd": 19826.70000000298,
+   "dur": 16,
+   "iid": 1787
+  },
+  {
+   "name": "pointerdown",
+   "start": 19989.90000000596,
+   "pStart": 19991,
+   "pEnd": 19991,
+   "dur": 16,
+   "iid": 1794
+  },
+  {
+   "name": "mousedown",
+   "start": 19989.90000000596,
+   "pStart": 19991,
+   "pEnd": 19991,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 19989.90000000596,
+   "pStart": 19991.70000000298,
+   "pEnd": 19991.70000000298,
+   "dur": 16,
+   "iid": 1794
+  },
+  {
+   "name": "mouseup",
+   "start": 19989.90000000596,
+   "pStart": 19991.70000000298,
+   "pEnd": 19991.70000000298,
+   "dur": 16,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 19989.90000000596,
+   "pStart": 19991.90000000596,
+   "pEnd": 19992.29999999702,
+   "dur": 16,
+   "iid": 1794
+  },
+  {
+   "name": "pointerout",
+   "start": 20177.09999999404,
+   "pStart": 20179.20000000298,
+   "pEnd": 20179.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 20177.09999999404,
+   "pStart": 20179.29999999702,
+   "pEnd": 20179.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 20177.09999999404,
+   "pStart": 20179.29999999702,
+   "pEnd": 20179.29999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 20177.09999999404,
+   "pStart": 20179.29999999702,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 20177.09999999404,
+   "pStart": 20179.40000000596,
+   "pEnd": 20179.40000000596,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 20177.20000000298,
+   "pStart": 20180.40000000596,
+   "pEnd": 20180.70000000298,
+   "dur": 24,
+   "iid": 1801
+  },
+  {
+   "name": "mousedown",
+   "start": 20177.20000000298,
+   "pStart": 20180.70000000298,
+   "pEnd": 20180.70000000298,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 20177.29999999702,
+   "pStart": 20183.79999999702,
+   "pEnd": 20183.79999999702,
+   "dur": 24,
+   "iid": 1801
+  },
+  {
+   "name": "mouseup",
+   "start": 20177.29999999702,
+   "pStart": 20183.79999999702,
+   "pEnd": 20183.79999999702,
+   "dur": 24,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 20177.29999999702,
+   "pStart": 20183.79999999702,
+   "pEnd": 20189.29999999702,
+   "dur": 24,
+   "iid": 1801
+  },
+  {
+   "name": "pointerout",
+   "start": 20440.09999999404,
+   "pStart": 20443.70000000298,
+   "pEnd": 20443.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerleave",
+   "start": 20440.09999999404,
+   "pStart": 20443.79999999702,
+   "pEnd": 20443.79999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerover",
+   "start": 20440.09999999404,
+   "pStart": 20443.79999999702,
+   "pEnd": 20443.79999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerenter",
+   "start": 20440.09999999404,
+   "pStart": 20443.79999999702,
+   "pEnd": 20443.79999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseout",
+   "start": 20440.09999999404,
+   "pStart": 20443.90000000596,
+   "pEnd": 20443.90000000596,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "mouseover",
+   "start": 20440.09999999404,
+   "pStart": 20443.90000000596,
+   "pEnd": 20443.90000000596,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerdown",
+   "start": 20440.20000000298,
+   "pStart": 20444.59999999404,
+   "pEnd": 20444.79999999702,
+   "dur": 32,
+   "iid": 1808
+  },
+  {
+   "name": "mousedown",
+   "start": 20440.20000000298,
+   "pStart": 20444.79999999702,
+   "pEnd": 20444.79999999702,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "pointerup",
+   "start": 20440.29999999702,
+   "pStart": 20448.5,
+   "pEnd": 20448.59999999404,
+   "dur": 32,
+   "iid": 1808
+  },
+  {
+   "name": "mouseup",
+   "start": 20440.29999999702,
+   "pStart": 20448.70000000298,
+   "pEnd": 20448.70000000298,
+   "dur": 32,
+   "iid": 0
+  },
+  {
+   "name": "click",
+   "start": 20440.29999999702,
+   "pStart": 20448.70000000298,
+   "pEnd": 20451.90000000596,
+   "dur": 32,
+   "iid": 1808
+  }
+ ],
+ "longtasks": [],
+ "clicks": [
+  {
+   "t": 6222.20000000298,
+   "what": "menu",
+   "paired": true,
+   "start": 6222.2,
+   "inputDelay": 4.7,
+   "processing": 0.5,
+   "presentation": 10.8,
+   "durTotal": 16,
+   "iid": 1367,
+   "overlap": []
+  },
+  {
+   "t": 6384.0999999940395,
+   "what": "menu",
+   "paired": false
+  },
+  {
+   "t": 6572.79999999702,
+   "what": "tab",
+   "paired": true,
+   "start": 6572.8,
+   "inputDelay": 4.8,
+   "processing": 3.4,
+   "presentation": 23.8,
+   "durTotal": 32,
+   "iid": 1381,
+   "overlap": []
+  },
+  {
+   "t": 6825.0999999940395,
+   "what": "tab",
+   "paired": true,
+   "start": 6825.1,
+   "inputDelay": 6.6,
+   "processing": 2.9,
+   "presentation": 22.5,
+   "durTotal": 32,
+   "iid": 1388,
+   "overlap": []
+  },
+  {
+   "t": 7139.20000000298,
+   "what": "read",
+   "paired": true,
+   "start": 7139.2,
+   "inputDelay": 6.9,
+   "processing": 0.2,
+   "presentation": 8.9,
+   "durTotal": 16,
+   "iid": 1395,
+   "overlap": []
+  },
+  {
+   "t": 7349.20000000298,
+   "what": "menu",
+   "paired": true,
+   "start": 7349.2,
+   "inputDelay": 3.6,
+   "processing": 0.7,
+   "presentation": 19.7,
+   "durTotal": 24,
+   "iid": 1402,
+   "overlap": []
+  },
+  {
+   "t": 7511.20000000298,
+   "what": "menu",
+   "paired": true,
+   "start": 7511.2,
+   "inputDelay": 1.9,
+   "processing": 0.4,
+   "presentation": 13.7,
+   "durTotal": 16,
+   "iid": 1409,
+   "overlap": []
+  },
+  {
+   "t": 7698,
+   "what": "tab",
+   "paired": true,
+   "start": 7698,
+   "inputDelay": 5.5,
+   "processing": 4.9,
+   "presentation": 13.6,
+   "durTotal": 24,
+   "iid": 1416,
+   "overlap": []
+  },
+  {
+   "t": 7961.29999999702,
+   "what": "tab",
+   "paired": true,
+   "start": 7961.3,
+   "inputDelay": 4.4,
+   "processing": 1.8,
+   "presentation": 17.8,
+   "durTotal": 24,
+   "iid": 1423,
+   "overlap": []
+  },
+  {
+   "t": 8289.90000000596,
+   "what": "read",
+   "paired": false
+  },
+  {
+   "t": 8481.29999999702,
+   "what": "menu",
+   "paired": true,
+   "start": 8481.3,
+   "inputDelay": 2.0,
+   "processing": 0.5,
+   "presentation": 13.5,
+   "durTotal": 16,
+   "iid": 1437,
+   "overlap": []
+  },
+  {
+   "t": 8636,
+   "what": "menu",
+   "paired": false
+  },
+  {
+   "t": 8822.40000000596,
+   "what": "tab",
+   "paired": true,
+   "start": 8822.4,
+   "inputDelay": 3.8,
+   "processing": 2.2,
+   "presentation": 10.0,
+   "durTotal": 16,
+   "iid": 1451,
+   "overlap": []
+  },
+  {
+   "t": 9087,
+   "what": "tab",
+   "paired": true,
+   "start": 9087,
+   "inputDelay": 5.5,
+   "processing": 3.1,
+   "presentation": 23.4,
+   "durTotal": 32,
+   "iid": 1458,
+   "overlap": []
+  },
+  {
+   "t": 9399.09999999404,
+   "what": "read",
+   "paired": false
+  },
+  {
+   "t": 9593.79999999702,
+   "what": "menu",
+   "paired": true,
+   "start": 9593.8,
+   "inputDelay": 1.8,
+   "processing": 0.3,
+   "presentation": 13.9,
+   "durTotal": 16,
+   "iid": 1472,
+   "overlap": []
+  },
+  {
+   "t": 9759.09999999404,
+   "what": "menu",
+   "paired": false
+  },
+  {
+   "t": 9945.40000000596,
+   "what": "tab",
+   "paired": true,
+   "start": 9945.4,
+   "inputDelay": 3.6,
+   "processing": 2.4,
+   "presentation": 10.0,
+   "durTotal": 16,
+   "iid": 1486,
+   "overlap": []
+  },
+  {
+   "t": 10208.09999999404,
+   "what": "tab",
+   "paired": true,
+   "start": 10208.1,
+   "inputDelay": 3.6,
+   "processing": 1.3,
+   "presentation": 11.1,
+   "durTotal": 16,
+   "iid": 1493,
+   "overlap": []
+  },
+  {
+   "t": 10520.59999999404,
+   "what": "read",
+   "paired": false
+  },
+  {
+   "t": 10704.29999999702,
+   "what": "menu",
+   "paired": true,
+   "start": 10704.3,
+   "inputDelay": 1.9,
+   "processing": 0.2,
+   "presentation": 13.9,
+   "durTotal": 16,
+   "iid": 1507,
+   "overlap": []
+  },
+  {
+   "t": 10862.5,
+   "what": "menu",
+   "paired": false
+  },
+  {
+   "t": 11050,
+   "what": "tab",
+   "paired": true,
+   "start": 11050,
+   "inputDelay": 5.7,
+   "processing": 5.0,
+   "presentation": 21.3,
+   "durTotal": 32,
+   "iid": 1521,
+   "overlap": []
+  },
+  {
+   "t": 11314.20000000298,
+   "what": "tab",
+   "paired": true,
+   "start": 11314.2,
+   "inputDelay": 7.4,
+   "processing": 3.3,
+   "presentation": 21.3,
+   "durTotal": 32,
+   "iid": 1528,
+   "overlap": []
+  },
+  {
+   "t": 11630,
+   "what": "read",
+   "paired": true,
+   "start": 11630,
+   "inputDelay": 8.3,
+   "processing": 0.1,
+   "presentation": 7.6,
+   "durTotal": 16,
+   "iid": 1535,
+   "overlap": []
+  },
+  {
+   "t": 11824.79999999702,
+   "what": "menu",
+   "paired": true,
+   "start": 11824.8,
+   "inputDelay": 2.0,
+   "processing": 0.1,
+   "presentation": 13.9,
+   "durTotal": 16,
+   "iid": 1542,
+   "overlap": []
+  },
+  {
+   "t": 11990.70000000298,
+   "what": "menu",
+   "paired": false
+  },
+  {
+   "t": 12177.59999999404,
+   "what": "tab",
+   "paired": true,
+   "start": 12177.6,
+   "inputDelay": 3.9,
+   "processing": 2.7,
+   "presentation": 9.4,
+   "durTotal": 16,
+   "iid": 1556,
+   "overlap": []
+  },
+  {
+   "t": 12439.5,
+   "what": "tab",
+   "paired": true,
+   "start": 12439.5,
+   "inputDelay": 5.8,
+   "processing": 2.5,
+   "presentation": 15.7,
+   "durTotal": 24,
+   "iid": 1563,
+   "overlap": []
+  },
+  {
+   "t": 12763.90000000596,
+   "what": "read",
+   "paired": false
+  },
+  {
+   "t": 12946.09999999404,
+   "what": "menu",
+   "paired": true,
+   "start": 12946.1,
+   "inputDelay": 2.0,
+   "processing": 0.1,
+   "presentation": 13.9,
+   "durTotal": 16,
+   "iid": 1577,
+   "overlap": []
+  },
+  {
+   "t": 13106.59999999404,
+   "what": "menu",
+   "paired": true,
+   "start": 13106.6,
+   "inputDelay": 1.8,
+   "processing": 0.4,
+   "presentation": 13.8,
+   "durTotal": 16,
+   "iid": 1584,
+   "overlap": []
+  },
+  {
+   "t": 13292.40000000596,
+   "what": "tab",
+   "paired": true,
+   "start": 13292.4,
+   "inputDelay": 7.5,
+   "processing": 6.6,
+   "presentation": 17.9,
+   "durTotal": 32,
+   "iid": 1591,
+   "overlap": []
+  },
+  {
+   "t": 13556.20000000298,
+   "what": "tab",
+   "paired": true,
+   "start": 13556.2,
+   "inputDelay": 4.9,
+   "processing": 2.0,
+   "presentation": 17.1,
+   "durTotal": 24,
+   "iid": 1598,
+   "overlap": []
+  },
+  {
+   "t": 13896.5,
+   "what": "read",
+   "paired": true,
+   "start": 13896.5,
+   "inputDelay": 7.3,
+   "processing": 0.2,
+   "presentation": 8.5,
+   "durTotal": 16,
+   "iid": 1605,
+   "overlap": []
+  },
+  {
+   "t": 14094.59999999404,
+   "what": "menu",
+   "paired": true,
+   "start": 14094.6,
+   "inputDelay": 2.3,
+   "processing": 0.1,
+   "presentation": 13.6,
+   "durTotal": 16,
+   "iid": 1612,
+   "overlap": []
+  },
+  {
+   "t": 14251.09999999404,
+   "what": "menu",
+   "paired": false
+  },
+  {
+   "t": 14437.29999999702,
+   "what": "tab",
+   "paired": true,
+   "start": 14437.3,
+   "inputDelay": 4.7,
+   "processing": 4,
+   "presentation": 15.3,
+   "durTotal": 24,
+   "iid": 1626,
+   "overlap": []
+  },
+  {
+   "t": 14701.70000000298,
+   "what": "tab",
+   "paired": true,
+   "start": 14701.7,
+   "inputDelay": 6.0,
+   "processing": 2.2,
+   "presentation": 15.8,
+   "durTotal": 24,
+   "iid": 1633,
+   "overlap": []
+  },
+  {
+   "t": 15032.20000000298,
+   "what": "read",
+   "paired": false
+  },
+  {
+   "t": 15240.20000000298,
+   "what": "menu",
+   "paired": true,
+   "start": 15240.2,
+   "inputDelay": 2.3,
+   "processing": 0.3,
+   "presentation": 21.4,
+   "durTotal": 24,
+   "iid": 1647,
+   "overlap": []
+  },
+  {
+   "t": 15407.5,
+   "what": "menu",
+   "paired": true,
+   "start": 15407.5,
+   "inputDelay": 2.7,
+   "processing": 0.2,
+   "presentation": 21.1,
+   "durTotal": 24,
+   "iid": 1654,
+   "overlap": []
+  },
+  {
+   "t": 15593.79999999702,
+   "what": "tab",
+   "paired": true,
+   "start": 15593.8,
+   "inputDelay": 10.1,
+   "processing": 9.1,
+   "presentation": 28.8,
+   "durTotal": 48,
+   "iid": 1661,
+   "overlap": []
+  },
+  {
+   "t": 15854.70000000298,
+   "what": "tab",
+   "paired": true,
+   "start": 15854.7,
+   "inputDelay": 7.0,
+   "processing": 3.5,
+   "presentation": 29.5,
+   "durTotal": 40,
+   "iid": 1668,
+   "overlap": []
+  },
+  {
+   "t": 16167.40000000596,
+   "what": "read",
+   "paired": true,
+   "start": 16167.4,
+   "inputDelay": 5.4,
+   "processing": 0.1,
+   "presentation": 10.5,
+   "durTotal": 16,
+   "iid": 1675,
+   "overlap": []
+  },
+  {
+   "t": 16359.29999999702,
+   "what": "menu",
+   "paired": true,
+   "start": 16359.3,
+   "inputDelay": 4.8,
+   "processing": 0.2,
+   "presentation": 19.0,
+   "durTotal": 24,
+   "iid": 1682,
+   "overlap": []
+  },
+  {
+   "t": 16525.90000000596,
+   "what": "menu",
+   "paired": true,
+   "start": 16525.9,
+   "inputDelay": 1.5,
+   "processing": 0.3,
+   "presentation": 14.2,
+   "durTotal": 16,
+   "iid": 1689,
+   "overlap": []
+  },
+  {
+   "t": 16715.09999999404,
+   "what": "tab",
+   "paired": true,
+   "start": 16715.1,
+   "inputDelay": 4.4,
+   "processing": 3.2,
+   "presentation": 16.4,
+   "durTotal": 24,
+   "iid": 1696,
+   "overlap": []
+  },
+  {
+   "t": 16978.70000000298,
+   "what": "tab",
+   "paired": true,
+   "start": 16978.7,
+   "inputDelay": 5.4,
+   "processing": 1.8,
+   "presentation": 16.8,
+   "durTotal": 24,
+   "iid": 1703,
+   "overlap": []
+  },
+  {
+   "t": 17310.59999999404,
+   "what": "read",
+   "paired": true,
+   "start": 17310.6,
+   "inputDelay": 18.7,
+   "processing": 0.0,
+   "presentation": 5.3,
+   "durTotal": 24,
+   "iid": 1710,
+   "overlap": []
+  },
+  {
+   "t": 17519.5,
+   "what": "menu",
+   "paired": true,
+   "start": 17519.5,
+   "inputDelay": 3.0,
+   "processing": 0.2,
+   "presentation": 12.8,
+   "durTotal": 16,
+   "iid": 1717,
+   "overlap": []
+  },
+  {
+   "t": 17681.79999999702,
+   "what": "menu",
+   "paired": true,
+   "start": 17681.8,
+   "inputDelay": 1.8,
+   "processing": 0.4,
+   "presentation": 13.8,
+   "durTotal": 16,
+   "iid": 1724,
+   "overlap": []
+  },
+  {
+   "t": 17871.40000000596,
+   "what": "tab",
+   "paired": true,
+   "start": 17871.4,
+   "inputDelay": 9.7,
+   "processing": 9.0,
+   "presentation": 21.3,
+   "durTotal": 40,
+   "iid": 1731,
+   "overlap": []
+  },
+  {
+   "t": 18135.5,
+   "what": "tab",
+   "paired": true,
+   "start": 18135.5,
+   "inputDelay": 6.4,
+   "processing": 2.5,
+   "presentation": 15.1,
+   "durTotal": 24,
+   "iid": 1738,
+   "overlap": []
+  },
+  {
+   "t": 18448.29999999702,
+   "what": "read",
+   "paired": true,
+   "start": 18448.3,
+   "inputDelay": 9.1,
+   "processing": 0.0,
+   "presentation": 6.9,
+   "durTotal": 16,
+   "iid": 1745,
+   "overlap": []
+  },
+  {
+   "t": 18664.59999999404,
+   "what": "menu",
+   "paired": true,
+   "start": 18664.6,
+   "inputDelay": 2.8,
+   "processing": 0.2,
+   "presentation": 13.0,
+   "durTotal": 16,
+   "iid": 1752,
+   "overlap": []
+  },
+  {
+   "t": 18821.90000000596,
+   "what": "menu",
+   "paired": true,
+   "start": 18821.9,
+   "inputDelay": 4.5,
+   "processing": 0.6,
+   "presentation": 34.9,
+   "durTotal": 40,
+   "iid": 1759,
+   "overlap": []
+  },
+  {
+   "t": 19013.5,
+   "what": "tab",
+   "paired": true,
+   "start": 19013.5,
+   "inputDelay": 14.2,
+   "processing": 14.1,
+   "presentation": 51.7,
+   "durTotal": 80,
+   "iid": 1766,
+   "overlap": []
+  },
+  {
+   "t": 19273.09999999404,
+   "what": "tab",
+   "paired": true,
+   "start": 19273.1,
+   "inputDelay": 9.9,
+   "processing": 4.3,
+   "presentation": 33.8,
+   "durTotal": 48,
+   "iid": 1773,
+   "overlap": []
+  },
+  {
+   "t": 19600,
+   "what": "read",
+   "paired": true,
+   "start": 19600,
+   "inputDelay": 7.5,
+   "processing": 0.0,
+   "presentation": 8.5,
+   "durTotal": 16,
+   "iid": 1780,
+   "overlap": []
+  },
+  {
+   "t": 19823.70000000298,
+   "what": "menu",
+   "paired": true,
+   "start": 19823.7,
+   "inputDelay": 2.6,
+   "processing": 0.4,
+   "presentation": 13.0,
+   "durTotal": 16,
+   "iid": 1787,
+   "overlap": []
+  },
+  {
+   "t": 19989.90000000596,
+   "what": "menu",
+   "paired": true,
+   "start": 19989.9,
+   "inputDelay": 2.0,
+   "processing": 0.4,
+   "presentation": 13.6,
+   "durTotal": 16,
+   "iid": 1794,
+   "overlap": []
+  },
+  {
+   "t": 20177.29999999702,
+   "what": "tab",
+   "paired": true,
+   "start": 20177.3,
+   "inputDelay": 6.5,
+   "processing": 5.5,
+   "presentation": 12.0,
+   "durTotal": 24,
+   "iid": 1801,
+   "overlap": []
+  },
+  {
+   "t": 20440.29999999702,
+   "what": "tab",
+   "paired": true,
+   "start": 20440.3,
+   "inputDelay": 8.4,
+   "processing": 3.2,
+   "presentation": 20.4,
+   "durTotal": 32,
+   "iid": 1808,
+   "overlap": []
+  },
+  {
+   "t": 20765.70000000298,
+   "what": "read",
+   "paired": false
+  }
+ ],
+ "lcp": [
+  {
+   "start": 2696,
+   "size": 189932,
+   "url": "http://127.0.0.1:8945/3d/poster-light.png",
+   "tag": "IMG"
+  }
+ ],
+ "fcp": 2156,
+ "mode": "static",
+ "tRun": 20.9,
+ "sceneAt": null,
+ "posterAt": null,
+ "sceneTimeout": true,
+ "posterTimeout": true,
+ "stopReason": "window",
+ "nRounds": 13,
+ "dispatch": [
+  {
+   "what": "menu",
+   "tMs": 1791869745185
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869745338
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869745546
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869745794
+  },
+  {
+   "what": "read",
+   "tMs": 1791869746109
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869746309
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869746467
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869746666
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869746923
+  },
+  {
+   "what": "read",
+   "tMs": 1791869747255
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869747438
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869747590
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869747782
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869748054
+  },
+  {
+   "what": "read",
+   "tMs": 1791869748363
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869748549
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869748713
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869748905
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869749168
+  },
+  {
+   "what": "read",
+   "tMs": 1791869749484
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869749659
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869749816
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869750018
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869750285
+  },
+  {
+   "what": "read",
+   "tMs": 1791869750601
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869750780
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869750944
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869751138
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869751405
+  },
+  {
+   "what": "read",
+   "tMs": 1791869751726
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869751902
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869752062
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869752263
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869752520
+  },
+  {
+   "what": "read",
+   "tMs": 1791869752864
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869753051
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869753205
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869753402
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869753667
+  },
+  {
+   "what": "read",
+   "tMs": 1791869753997
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869754199
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869754365
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869754573
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869754825
+  },
+  {
+   "what": "read",
+   "tMs": 1791869755131
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869755321
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869755480
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869755677
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869755942
+  },
+  {
+   "what": "read",
+   "tMs": 1791869756294
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869756478
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869756637
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869756848
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869757101
+  },
+  {
+   "what": "read",
+   "tMs": 1791869757423
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869757622
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869757784
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869758007
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869758248
+  },
+  {
+   "what": "read",
+   "tMs": 1791869758569
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869758782
+  },
+  {
+   "what": "menu",
+   "tMs": 1791869758946
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869759145
+  },
+  {
+   "what": "tab",
+   "tMs": 1791869759409
+  },
+  {
+   "what": "read",
+   "tMs": 1791869759731
+  }
+ ],
+ "threeReqs": [
+  "http://127.0.0.1:8945/3d/boot6.js",
+  "http://127.0.0.1:8945/3d/scene6.js"
+ ],
+ "config": {
+  "viewport": "412x823 DSF1.75 is_mobile",
+  "throttle": "latency=562.5ms down=184320B/s up=84375B/s cpu=4x (=archived throttling)",
+  "service": "builtin gzip-6 (text only), no-store, shared",
+  "windowS": 20.0,
+  "click": "CDP Input via mouse.click, async create_task dispatch (no ack serialization, no actionability wait)",
+  "lhTbtHomeMs": 846.4,
+  "lhTbtStatic": "not-measured"
+ }
+}

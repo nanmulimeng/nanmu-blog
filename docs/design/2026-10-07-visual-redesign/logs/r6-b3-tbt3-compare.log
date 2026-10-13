@@ -1,0 +1,23 @@
+chromium 156.0.8078.4
+[full] tRun=19.3s rounds=11 stopReason=p3-stable scene@14.1 poster@15.9 sceneTimeout=False posterTimeout=False
+[full] fcp=2168ms lcp=2680(IMG)
+[full] longtasks=6 Σdur=779ms(Lighthouse TBT home=846.4ms,引用归档)
+[full]   longtask start=9644ms dur=145ms unknown
+[full]   longtask start=9839ms dur=78ms unknown
+[full]   longtask start=14376ms dur=155ms unknown
+[full]   longtask start=14549ms dur=139ms unknown
+[full]   longtask start=14694ms dur=126ms unknown
+[full]   longtask start=14846ms dur=136ms unknown
+[full] menu: inputDelay n=15 min=1 med=2 max=5 ms | processing n=15 min=0 med=0 max=1 ms | input→paint n=15 min=16 med=16 max=24 ms | missing=3 skipped=0
+[full] tab: inputDelay n=18 min=3 med=4 max=11 ms | processing n=18 min=1 med=3 max=8 ms | input→paint n=18 min=16 med=24 max=40 ms | missing=0 skipped=0
+[full] read: inputDelay n=6 min=4 med=5 max=9 ms | processing n=6 min=0 med=0 max=0 ms | input→paint n=6 min=16 med=16 max=24 ms | missing=4 skipped=0
+[full] overlap samples=0
+[full] saved D:\software\item\nanmu-blog\docs\design\2026-10-07-visual-redesign\logs\r6-b3-tbt3-compare-full.json
+[static] tRun=20.9s rounds=13 stopReason=window scene@None poster@None sceneTimeout=True posterTimeout=True (static 常显=预期终态)
+[static] fcp=2156ms lcp=2696(IMG)
+[static] longtasks=0 Σdur=0ms(Lighthouse TBT=未测,归档摘录仅 full 基准)
+[static] menu: inputDelay n=20 min=2 med=2 max=5 ms | processing n=20 min=0 med=0 max=1 ms | input→paint n=20 min=16 med=16 max=40 ms | missing=6 skipped=0
+[static] tab: inputDelay n=26 min=4 med=6 max=14 ms | processing n=26 min=1 med=3 max=14 ms | input→paint n=26 min=16 med=24 max=80 ms | missing=0 skipped=0
+[static] read: inputDelay n=7 min=5 med=8 max=19 ms | processing n=7 min=0 med=0 max=0 ms | input→paint n=7 min=16 med=16 max=24 ms | missing=6 skipped=0
+[static] overlap samples=0
+[static] saved D:\software\item\nanmu-blog\docs\design\2026-10-07-visual-redesign\logs\r6-b3-tbt3-compare-static.json

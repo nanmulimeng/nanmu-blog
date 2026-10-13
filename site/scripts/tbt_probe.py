@@ -34,11 +34,13 @@ v2 口径(条件与 logs/r6-b3-lh-after-*.excerpt.json 归档配置逐项对齐)
     规则),full/static 两组共用同一实例 = 服务/压缩/视口/节流一致。
   - 采样阶段:P1 加载与场景窗口(t≈6s 起,每 ~2s 一轮三入口点击)→
     P2 等待 poster 退场(持续采样)→ P3 poster 退场后稳定期 3 轮;
-    总截止 45s;sceneReady/posterGone 未在窗口内达成 = 如实登记超时,
-    不提前收口。
+    统一观察窗 20s(两组一致:full 早收口记 p3-stable,static poster
+    常显为 abort 路径预期终态、窗口截止记 window,不再跑满 45s);
+    sceneReady/posterGone 未在窗口内达成 = 如实登记超时。
   - 重叠判定:交互条目的 [startTime, processingStart) 与任一 longtask
     区间相交 = 排队受长任务影响的实际样本(overlap),逐条列出。
-产出:logs/r6-b3-tbt2-compare-{full,static}.json + stdout 摘要。
+产出:logs/r6-b3-tbt3-compare-{full,static}.json + stdout 摘要
+(tbt2=2026-10-10 v2 重测基线;tbt3=2026-10-13 口径修正+B 优化后对照)。
 一次性补证工具,无 PASS/FAIL 断言:数据供性能取舍裁决,不自动优化。
 用法:python -I scripts/tbt_probe.py [--port 8945](前置 npm run build)
 """
@@ -62,7 +64,10 @@ PORT = 8945
 SITE = Path(__file__).resolve().parents[1]          # site/
 LOGS = (SITE.parent / "docs" / "design" / "2026-10-07-visual-redesign"
         / "logs")                                    # 历轮 r6-b3-* 归档处
-DEADLINE_S = 45.0                                    # 总截止(超时如实登记)
+DEADLINE_S = 45.0                                    # (已废,见 MAX_WINDOW_S)
+MAX_WINDOW_S = 20.0                                  # 统一观察窗:两组一致收口,
+                                                     # static poster 常显按预期
+                                                     # 终态处理,不再跑满 45s
 ROUND_GAP_S = 1.0                                    # 轮间隔(v2.1 加密,见 OPS 注)
 P1_FROM_S = 6.0                                      # 首轮墙钟秒
 P3_ROUNDS = 3                                        # poster 退场后稳定轮数
@@ -148,12 +153,14 @@ class GzipHandler(http.server.SimpleHTTPRequestHandler):
         # 状态行必须先于任何 header 写入(首版在 else 分支先
         # send_header 再 super().do_GET,headers buffer 顺序颠倒,
         # 响应非法 → net::ERR_INVALID_HTTP_RESPONSE,已勘误)。
+        # text 判定按实际文件后缀(目录请求 `/` 已映射 index.html,
+        # self.path.endswith 会漏掉它 → 首页 HTML 未压缩直传,已勘误)。
         p = Path(self.translate_path(self.path))
         if p.is_dir():
             p = p / "index.html"
         if p.is_file():
-            text = self.path.endswith(
-                (".html", ".css", ".js", ".json", ".svg", ".txt", ".xml"))
+            text = p.suffix in (".html", ".css", ".js", ".json",
+                                ".svg", ".txt", ".xml")
             body = (gzip.compress(p.read_bytes(), 6, mtime=0) if text
                     else p.read_bytes())
             self.send_response(200)
@@ -256,6 +263,7 @@ async def run_group(b, base, mode):
     dispatch_log = []
     round_marks = []                             # 每轮墙钟偏移秒
     scene_at = poster_at = None
+    stop_reason = "window"                       # p3-stable | window
     pending = []                                 # 击任务跨轮累积(见下)
 
     async def poll_states():
@@ -270,7 +278,11 @@ async def run_group(b, base, mode):
 
     while True:
         now = time.time() - t0
-        if now >= DEADLINE_S:
+        # 统一观察窗(两组一致):poster 退场+P3 稳定轮早收口,否则
+        # 20s 窗口截止——static 组 poster 常显是 abort 路径的预期终态,
+        # 不再为等它跑满 45s(截止原因如实登记 stopReason)
+        if now >= MAX_WINDOW_S:
+            stop_reason = "window"
             break
         if now >= P1_FROM_S and now - (round_marks[-1] if round_marks
                                        else P1_FROM_S - ROUND_GAP_S) \
@@ -293,6 +305,7 @@ async def run_group(b, base, mode):
             # P3:poster 已退场且其后已采满稳定轮 → 收口
             if poster_at is not None and sum(
                     1 for r in round_marks if r > poster_at) >= P3_ROUNDS:
+                stop_reason = "p3-stable"
                 break
             continue
         await poll_states()
@@ -308,7 +321,7 @@ async def run_group(b, base, mode):
         "posterAt": round(poster_at, 1) if poster_at is not None else None,
         "sceneTimeout": scene_at is None,
         "posterTimeout": poster_at is None,
-        "deadlineHit": time.time() - t0 >= DEADLINE_S,
+        "stopReason": stop_reason,
         "nRounds": len(round_marks),
         "dispatch": dispatch_log,
         "threeReqs": sorted(u for u in reqs if "/3d/" in u
@@ -318,10 +331,13 @@ async def run_group(b, base, mode):
             "throttle": ("latency=562.5ms down=184320B/s up=84375B/s"
                          " cpu=4x (=archived throttling)"),
             "service": "builtin gzip-6 (text only), no-store, shared",
+            "windowS": MAX_WINDOW_S,
             "click": ("CDP Input via mouse.click, async create_task"
                       " dispatch (no ack serialization, no"
                       " actionability wait)"),
-            "lhTbtHomeMs": LH_TBT_HOME_MS},
+            "lhTbtHomeMs": LH_TBT_HOME_MS,
+            # static 组 Lighthouse 未测:归档摘录仅 full 首页一组
+            "lhTbtStatic": "not-measured"},
     })
     await pg.close()
     await ctx.close()
@@ -366,18 +382,28 @@ def dist(vals):
 
 
 def summarize(mode, d):
-    print("[%s] tRun=%.1fs rounds=%d scene@%s poster@%s"
-          " sceneTimeout=%s posterTimeout=%s deadlineHit=%s"
-          % (mode, d["tRun"], d["nRounds"], d["sceneAt"], d["posterAt"],
-             d["sceneTimeout"], d["posterTimeout"], d["deadlineHit"]))
+    print("[%s] tRun=%.1fs rounds=%d stopReason=%s scene@%s poster@%s"
+          " sceneTimeout=%s posterTimeout=%s%s"
+          % (mode, d["tRun"], d["nRounds"], d.get("stopReason", "?"),
+             d["sceneAt"], d["posterAt"],
+             d["sceneTimeout"], d["posterTimeout"],
+             " (static 常显=预期终态)" if mode == "static" else ""))
     print("[%s] fcp=%dms lcp=%s(%s)"
           % (mode, d["fcp"],
              d["lcp"][-1]["start"] if d["lcp"] else -1,
              (d["lcp"][-1]["tag"] or d["lcp"][-1]["url"] or "?")
              if d["lcp"] else "?"))
     lts = d["longtasks"]
-    print("[%s] longtasks=%d Σdur=%dms(Lighthouse TBT home=%.1fms,引用归档)"
-          % (mode, len(lts), sum(x["dur"] for x in lts), LH_TBT_HOME_MS))
+    if mode == "full":
+        print("[%s] longtasks=%d Σdur=%dms(Lighthouse TBT home=%.1fms,"
+              "引用归档)" % (mode, len(lts),
+                              sum(x["dur"] for x in lts), LH_TBT_HOME_MS))
+    else:
+        # static 组 Lighthouse 未测:归档摘录只有 full 首页一组,
+        # 不把 full 组数字挪用为 static 结论(口径修正 2026-10-13)
+        print("[%s] longtasks=%d Σdur=%dms(Lighthouse TBT=未测,"
+              "归档摘录仅 full 基准)" % (mode, len(lts),
+                                          sum(x["dur"] for x in lts)))
     for x in lts:
         print("[%s]   longtask start=%.0fms dur=%.0fms %s"
               % (mode, x["start"], x["dur"], x["name"]))
@@ -418,7 +444,7 @@ async def main_async(port):
                 d = await run_group(b, base, mode)
                 pair_clicks(d)
                 summarize(mode, d)
-                out = LOGS / ("r6-b3-tbt2-compare-%s.json" % mode)
+                out = LOGS / ("r6-b3-tbt3-compare-%s.json" % mode)
                 out.write_text(json.dumps(d, ensure_ascii=False,
                                           indent=1), encoding="utf-8")
                 print("[%s] saved %s" % (mode, out))

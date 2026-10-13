@@ -352,7 +352,10 @@ export async function createScene(host, opts = {}){
     camera.userData.txK = Math.min(Math.max((1.05 - camera.aspect) / 0.45, 0), 1);
     camera.updateProjectionMatrix();
     placeCam();
-    if (!running) renderOnce();   /* 循环停止(暂停/reduced-motion)时,窗口变化也要重绘 */
+    /* 循环停止(暂停/reduced-motion)时,窗口变化也要重绘;初始化期
+       (inited=false)跳过——首绘由下方 compile 段后的首次渲染承担,
+       避免与启动后的首帧渲染重复做 shader 编译/纹理上传 */
+    if (!running && inited) renderOnce();
   }
   addEventListener('resize', resize);
 
@@ -420,12 +423,20 @@ export async function createScene(host, opts = {}){
     return m;
   });
   const pageMats = pages.map(m => m.material);
-  /* 字体就绪后换正式纹理(每张纹理含纸底+内容+明暗带) */
-  const texReady = fontsReady(article, digest, site).then(() => {
-    PAGES.forEach((def, i) => {
-      const t = def.tex();
+  /* 字体就绪后换正式纹理(每张纹理含纸底+内容+明暗带)。
+     逐张生成/换贴/绘制,阶段之间让出主线程:三张 1024×1460 连续排印
+     是单个 ~390ms 长任务(移动档实测),期间点击输入排队不可接受;
+     分帧后单段最长 ~155ms,段间输入照常处理。首张带贴后立即 renderOnce
+     把纹理上传也摊到各段,避免纹理全换后的首个动画帧集中上传。 */
+  const texReady = fontsReady(article, digest, site).then(async () => {
+    await new Promise(r => setTimeout(r, 0));   /* 与字体收尾 task 剥离 */
+    for (let i = 0; i < PAGES.length; i++){
+      const t = PAGES[i].tex();
+      await new Promise(r => setTimeout(r, 0));
       pageMats[i].map = t; pageMats[i].emissiveMap = t; pageMats[i].needsUpdate = true;
-    });
+      renderOnce();
+      await new Promise(r => setTimeout(r, 0));
+    }
     if (reduced()) renderOnce(); else start();
   });
 
@@ -629,6 +640,7 @@ export async function createScene(host, opts = {}){
 
   /* 循环管理:按需渲染 */
   let running = false, ambientOn = true, inView = true, pageVisible = !document.hidden, amb = 0;
+  let inited = false;   /* 初始化收尾完成前 resize 不做首绘(见 resize 注) */
   const clock = new THREE.Clock();
   function needsLoop(){
     if (reduced()) return entT >= 0 || !!swap;
@@ -676,6 +688,13 @@ export async function createScene(host, opts = {}){
     new IntersectionObserver(en => { inView = en[0].isIntersecting; if (inView) start(); }, {threshold: 0.05}).observe(host);
   document.addEventListener('visibilitychange', () => { pageVisible = !document.hidden; if (pageVisible) start(); });
 
+  /* 初始化分段让出:几何/线装主体与 program 编译、编译与首个渲染之间
+     各让出一帧,移动档下 createScene 尾部原是单个 ~410ms 长任务(首绘
+     内联在 resize 里做全部 shader 编译,~284ms),分帧后单段 <160ms,
+     段间点击输入照常处理;场景宿主初始 opacity=0,中间多出的帧不可见 */
+  await new Promise(r => setTimeout(r, 0));
+  renderer.compile(scene, camera);
+  await new Promise(r => setTimeout(r, 0));
   resize(); placeCam();
   if (reduced()){ finishEntrance(); } else { playEntrance(); }
   applyTheme(0);
@@ -719,5 +738,6 @@ export async function createScene(host, opts = {}){
     },
   };
   start();
+  inited = true;   /* 此后暂停态下的窗口变化恢复即时重绘 */
   return api;
 }
