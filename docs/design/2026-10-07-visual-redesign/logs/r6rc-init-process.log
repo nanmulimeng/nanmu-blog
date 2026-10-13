@@ -1,0 +1,85 @@
+chromium 156.0.8078.4
+PASS s1/fast-dark-tab poster 退场 1.7s
+PASS s1/fast-dark-tab 场景存活无异常 tris=4351
+PASS s1/fast-dark-tab host opacity=1 1
+PASS s1/fast-dark-tab 初始 dark 保持 themeDark=True html=dark
+PASS s1/fast-dark-tab 就绪前页签保持 digest cur=digest tab=digest
+PASS s1/fast-dark-tab 零 console error/pageerror 
+PASS s1/fast-light poster 退场 2.2s
+PASS s1/fast-light 场景存活无异常 tris=4351
+PASS s1/fast-light host opacity=1 1
+PASS s1/fast-light 零 console error/pageerror 
+PASS s1/reduced poster 退场 2.0s
+PASS s1/reduced 场景存活无异常 tris=4351
+PASS s1/reduced host opacity=1 1
+PASS s1/reduced reduced 场景+HUD 
+PASS s1/reduced 零 console error/pageerror 
+PASS s1/warm-2nd-visit poster 退场 2.1s
+PASS s1/warm-2nd-visit 场景存活无异常 tris=4351
+PASS s1/warm-2nd-visit host opacity=1 1
+PASS s1/warm-2nd-visit 零 console error/pageerror 
+  frame f05.0.png posters=2 hostOp=1
+  frame f05.5.png posters=2 hostOp=1
+  frame f05.9.png posters=0 hostOp=1
+  frame f06.4.png posters=0 hostOp=1
+  frame f06.8.png posters=0 hostOp=1
+  frame f07.2.png posters=0 hostOp=1
+  frame f07.7.png posters=0 hostOp=1
+  frame f08.1.png posters=0 hostOp=1
+  frame f08.5.png posters=0 hostOp=1
+  frame f09.0.png posters=0 hostOp=1
+  frame f09.4.png posters=0 hostOp=1
+  frame f09.8.png posters=0 hostOp=1
+  frame f10.3.png posters=0 hostOp=1
+  frame f10.7.png posters=0 hostOp=1
+  frame f11.2.png posters=0 hostOp=1
+  frame f11.6.png posters=0 hostOp=1
+  frame f12.0.png posters=0 hostOp=1
+  frame f12.5.png posters=0 hostOp=1
+  frame f12.9.png posters=0 hostOp=1
+  frame f13.5.png posters=0 hostOp=1
+  frame f13.9.png posters=0 hostOp=1
+  frame f14.1.png posters=0 hostOp=1
+  frame f14.3.png posters=0 hostOp=1
+  frame f14.4.png posters=0 hostOp=1
+  frame f14.6.png posters=0 hostOp=1
+  frame f14.7.png posters=0 hostOp=1
+  frame f14.9.png posters=0 hostOp=1
+  frame f15.1.png posters=0 hostOp=1
+  frame f15.2.png posters=0 hostOp=1
+  frame f15.4.png posters=0 hostOp=1
+  frame f15.8.png posters=0 hostOp=1
+  frame f16.3.png posters=0 hostOp=1
+  frame f16.7.png posters=0 hostOp=1
+  frame f17.2.png posters=0 hostOp=1
+  frame f17.7.png posters=0 hostOp=1
+  frame f18.1.png posters=0 hostOp=1
+  frame f18.6.png posters=0 hostOp=1
+  frame f19.0.png posters=0 hostOp=1
+  frame f19.4.png posters=0 hostOp=1
+  frame f19.9.png posters=0 hostOp=1
+PASS s2 poster 超时退场(素纸接替) t_plain=5.9s
+PASS s2 超时路径先于纹理(退场早于 fonts 到达+1s) t_plain=5.9 fonts_done=12.8
+PASS s2 素纸期可见(退场后仍有 ≥2 帧在 fonts 到达前) 
+PASS s2 主题恒定无中途切换 seen=[['sys', 'rgb(240, 237, 229)']]
+PASS s2 终态场景就绪 tris=4351
+PASS s2 终态 host opacity=1 1
+PASS s2 终态 poster 已移除 posters=0
+PASS s2 暂停动态生效 ambientOn=False
+PASS s2 暂停态 resize 画布跟随 canvas=390 host=390
+PASS s2 恢复动态生效 
+PASS s2 零 console error/pageerror(碑页纹理失败 warn 也不应出现) 
+video timeline: t_plain=5.57 fonts_done=12.7
+PASS s2 录屏轮同路径(guard 兑现先于字体到达) t_plain=5.57 fonts_done=12.7
+video -> r6rc-init-s2-timeline.webm
+frames dir: C:\tmp\s2frames(40 张,关键帧挑选后归档)
+PASS s3 poster 常显 posters=2
+PASS s3 半成品 host 已清理 hosts=0
+PASS s3 no-webgl 终态+has-scene 移除 noWebgl=True hasScene=False
+PASS s3 阅读入口保留 /posts/hello-nanmu-blog/
+PASS s3 目录展开导航可用 nav display=flex
+PASS s3 页签面板仍切换 
+PASS s3 预期 warn 一次且无 error/pageerror R6 场景加载失败,已回退静态图: Error: rc-injected-compile
+    at Module.createScene (http://127.0.0.1:8961/3d/scene6.js:696:42)
+
+38/38 PASS

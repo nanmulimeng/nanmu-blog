@@ -15,9 +15,9 @@
 
 ## site/(TypeScript + Astro,M0)
 
-- **客户端脚本按 ADR-0010 白名单**(2026-10-09 起生效):允许且仅允许 `public/scripts/site.js`(defer)与 `<head>` 首帧内联主题脚本(内容签名由 smoke.mjs 断言);`.astro` 组件内其余 `<script>` 仍禁止,新增脚本先修订 ADR-0010
+- **客户端脚本按 ADR-0010 白名单**(2026-10-09 起生效,R6 批次 2 起扩至四入口):全站允许且仅允许 `public/scripts/site.js`(defer)与 `<head>` 首帧内联主题脚本(内容签名由 smoke.mjs 断言);仅首页(`index.astro`)额外允许 `public/scripts/home.js`(defer,页签↔场景联动等页面侧行为)与 `public/3d/boot6.js`(type=module,3D 加载器)——smoke 白名单按页面范围限定,首页之外的页面出现即构建失败;`.astro` 组件内其余 `<script>` 仍禁止,新增脚本先修订 ADR-0010
 - 运行时依赖白名单:`astro`、`@astrojs/rss`。新增依赖必须有充分理由(写进 commit message)
-- 样式:全局用 `src/styles/global.css` 的 CSS 变量;组件内可用 scoped `<style>`;禁止引入 CSS 框架
+- 样式:`src/styles/` 三层——`tokens.css`(双主题 CSS 变量)、`base.css`(全站基础排版/导航/页脚/焦点/内页组件)、`home.css`(首页专属:场景宿主/页叠/HUD);全局取 token 变量,组件内可用 scoped `<style>`;禁止引入 CSS 框架
 - 组件:展示组件放 `src/components/`,只接收 props 不做数据获取;数据获取只在页面 `frontmatter`(`getCollection`/`getStaticPaths`)
 - content schema 是契约(`src/content.config.ts`):改 schema 必须同步①spec §4.1 ②M0计划中仍作为实施基线的schema ③受影响的内容/冒烟断言;不要求无关的路由清单跟着字段变化
 - 列表过滤规则统一:`draft` 排除逻辑出现在列表、详情 getStaticPaths、RSS 三处,新增出口必须同样排除

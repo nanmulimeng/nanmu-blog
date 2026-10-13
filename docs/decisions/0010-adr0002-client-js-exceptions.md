@@ -4,7 +4,7 @@
 - 日期:2026-10-09
 - 关联:ADR-0002 / [R6 接入方案](../design/2026-10-07-visual-redesign/INTEGRATION-PLAN.md)
 - 取代范围:仅 ADR-0002 决策第二条「零客户端 JS:明暗主题纯 CSS `prefers-color-scheme`」;其余条目(Content Layer 契约、git 即 CMS、无后台无数据库、构建不调模型)全部不变
-- 当前实施入口:批次 0–1(资产/公共布局/内页)已于 2026-10-09 在本地分支 `codex/r6-interaction` 落地;例外 3(首页 3D)与例外 4 的跨页配对待批次 2
+- 当前实施入口:批次 0–2 及定点修正轮、批次 3(Lighthouse/CLS 修复、兼容验收、修正轮、B 初始化优化)均已于 2026-10-13 前在本地分支 `codex/r6-interaction` 落地并通过验收;2026-10-13 发布候选收口批将本文与生产入口逐项对齐。未合并 main、未部署,合入以用户授权为准
 
 ## 背景
 
@@ -18,7 +18,7 @@ R3→R6 视觉与交互评审已认可的全站体验,需要若干客户端行�
    边界:无 JS 时回退纯 CSS `prefers-color-scheme`(即 ADR-0002 原行为);不改任何内容渲染。
 2. **阅读增强**(仅文章详情):阅读进度条、目录 scrollspy 书签、代码块复制按钮、图片 `<dialog>` 展开。
    边界:内容与目录本体由静态 HTML 承载(目录为构建期生成的锚链接);增强元素(复制按钮/展开按钮/灯箱)由 JS 挂载——**禁 JS 时 DOM 与无增强版本一致**,目录仍是普通锚链接、代码可手选复制、图片内联显示。
-3. **首页 3D**(仅首页):three r180 **本地自托管固定版**(`site/public/3d/`,静态文件,非 npm 依赖),poster 后动态 import;场景内文本与链接**全部来自页面 HTML 的数据属性/内嵌 JSON**,JS 不复制内容。
+3. **首页 3D**(仅首页):three r180 **本地自托管固定版**(`site/public/3d/`,静态文件,非 npm 依赖),poster 后动态 import;场景内文本与链接**全部来自页面 HTML 的数据属性/内嵌 JSON**,JS 不复制内容。生产入口三个文件,均仅 `index.astro` 引用:`public/3d/boot6.js`(type=module,WebGL 探测+idle 动态 import 场景)、动态加载的 `public/3d/scene6.js`+three(不经 HTML 引用,由 boot6 在运行时 import)、`public/scripts/home.js`(defer,页面侧的页签↔场景联动/装订线滚动/「这个站」展开,与场景侧共同构成此类例外)。
    边界:WebGL 探测失败或初始化抛错 → 静态 poster 常驻;reduced-motion → 静态完成态;提供暂停控制与离屏暂停;封面文章标题/摘要存在于 HTML,不依赖 3D 可读。
 4. **跨页 View Transitions**(全站):根交叉淡化为纯 CSS 声明(`@view-transition{navigation:auto}`,reduced-motion 时 `none`,声明序 auto→none 为受控实现细节);封面↔文章页头的 `latest-cover` 配对**由 `site.js` §4b 的挂名生命周期管理**(按入口挂上/摘除,含 `navigation.activation.from` 来源判断)——即此类例外有 JS 参与,不是纯 CSS。
    边界:旧浏览器自动退化为普通导航(渐进增强);`prefers-reduced-motion` 下 CSS 禁用、JS 不挂名。
@@ -28,8 +28,8 @@ R3→R6 视觉与交互评审已认可的全站体验,需要若干客户端行�
 - 静态内容独立可读:禁用 JS 后全站内容、导航、RSS 链接完整可用;每批接入验收必须包含无 JS 用例,不达标不合入。
 - 页面与构建不调用模型(铁律 6,不变);不引入数据库、管理后台。
 - **零第三方网络请求与遥测**:不新增 CDN 脚本、追踪、分析;**唯一第三方库为 three(r180),本地自托管**——它是第三方运行时,此为明确例外,不表述为"零第三方运行时"。
-- 体积预算:全站脚本(site.js gzip)+ 内联首帧脚本 ≤ 8KB;首页 3D 相关(three+scene, gzip)≤ 220KB 且不阻塞首绘;字体传输预算见接入方案 §5。超预算须回表裁决,不默放。
-- **生产强制点**:`site/scripts/smoke.mjs` 由"拒绝一切 `<script>`"改为**白名单断言**——允许且仅允许 `/scripts/site.js` 引用与那段内联首帧主题脚本(内容签名比对),其余任何脚本仍构建失败。
+- 体积预算:全站脚本(`site.js` gzip)+ 内联首帧脚本 ≤ 8KB;`home.js` 计入该线的**首页专属口径**(内页不含 home.js,site.js 字节不增;实测 site.js+内联 gzip 约 3KB);首页 3D 相关 = `three.module`+`three.core`+`scene6`+`boot6` 四件 gzip-6 ≤ 220KB(实测 192.8 KiB)且不阻塞首绘(poster 先于任何 3D 字节、`requestIdleCallback` 后动态 import);字体与 poster 预算见接入方案 §5。超预算须回表裁决,不默放。
+- **生产强制点**:`site/scripts/smoke.mjs` 由"拒绝一切 `<script>`"改为**白名单断言**——全站页面允许且仅允许 `/scripts/site.js` 引用与那段内联首帧主题脚本(内容签名比对);仅 dist 根 `index.html` 额外允许 `/scripts/home.js` 与 `/3d/boot6.js` 两个引用且**限定页面范围**(scene6/three 由 boot6 运行时动态加载,不出现于 HTML,不属 HTML 白名单);其余任何页出现上述首页入口或任何别的脚本仍构建失败。
 - 授权标准:某行为进入生产的理由 = 体验价值 + 降级路径完备,**不是**「原型已经用了」;反之,已认可的体验也不为遵守旧条款而整类删除——逐项按上述边界裁决。
 
 ## 理由

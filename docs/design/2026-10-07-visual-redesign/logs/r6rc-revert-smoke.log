@@ -1,0 +1,7 @@
+chromium 156.0.8078.4
+PASS 回退态 poster 独撑 posters=2
+PASS 回退态 hero/页签完整 h1=先把最小的东西做完 tabs=3
+PASS 回退态零 3D 请求 0 个
+PASS 回退态文章页正文可用 
+
+4/4 PASS
