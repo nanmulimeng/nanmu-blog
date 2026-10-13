@@ -56,15 +56,15 @@ route 层改写 scene6.js 在 `renderer.compile(scene, camera);` 后注入 throw
 
 ### 恢复方式核对(实测,区分两条路径)
 
-1. **服务器切回上一完整版本**(部署层,分钟级紧急恢复):M0 部署已有持锁回滚实操演练(切旧版 c8a4567 确认后切回)。本次发布后若整站异常,同法切回发布前归档的产物目录——**不依赖 Git,先于一切代码层操作**。发布部署时先归档当版目录即获得该能力。
-2. **Git 撤销 3D 实现**(代码层;旧「revert 两个 3D 提交无冲突」结论系自 1e23049 实测,**不适用候选 d226a26**,本批在隔离 worktree 重测):自 d226a26 起 **revert d226a26 → revert 809cdd8 → revert ffffd6e**(后进先出三笔);**唯一冲突 smoke.mjs**(ae4c7be 的 js 类内联签名与 ffffd6e 白名单同区域),解法固定=保留批次 3 内联签名(不在撤销链)、去 boot6 白名单、home.js 保留(属 a498f05 静态首页)。回退态实测:npm run verify 绿 + 浏览器冒烟 4/4(logs/r6rc-revert-smoke.log;poster 独撑=预期终态——poster 两张系静态首页资产、零 3D 引擎请求、hero/页签完整、文章页可用)。**副作用须知**:revert d226a26 连带撤销 tbt_probe 口径修正与 B 优化文档/截图,回退态性能=tbt2 基线(446ms 长任务/448ms 输入到绘制,已知数据)。
+1. **服务器切回上一完整版本**(部署层,分钟级紧急恢复):按 [部署手册 §7](../ops/deploy.md) 既有机制——每次发布由 hook 构建到独立 `releases/<完整SHA>/` 目录并写 `.complete`,回滚=选**带 `.complete` 的旧版完整 SHA**(40 hex),在**同一把 build.lock** 下校验 `$target/.complete` 与 `$target/dist/release.txt` 均等于该 SHA 后原子切换 `current`(`ln -sfn`+`mv -T`),不删当前版本与锁文件。M0 已持锁回滚实操演练(切旧版 c8a4567 确认后切回)。**回滚准备=部署前记录线上当版完整 SHA**(hook 构建保留全部历史 release 目录,无需额外归档);紧急恢复先于一切代码层操作。
+2. **Git 撤销 3D 实现**(代码层;旧「revert 两个 3D 提交无冲突」结论系自 1e23049 实测,**不适用候选 d226a26**,本批在隔离 worktree 重测):自 d226a26 起 **revert d226a26 → revert 809cdd8 → revert ffffd6e**(后进先出三笔)=**完整撤销 3D**,终态为静态首页;**唯一冲突 smoke.mjs**(ae4c7be 的 js 类内联签名与 ffffd6e 白名单同区域),解法固定=保留批次 3 内联签名(不在撤销链)、去 boot6 白名单、home.js 保留(属 a498f05 静态首页)。回退态实际验收:npm run verify 绿 + 浏览器冒烟 4/4(logs/r6rc-revert-smoke.log;poster 独撑=预期终态——poster 两张系静态首页资产、零 3D 引擎请求、hero/页签完整、文章页可用)。**〔勘误 2026-10-13〕本节早前版本「回退态性能=tbt2 基线」系口径错误,删除**:tbt2/tbt3 均为**含 3D** 状态下的测量,须区分两种撤销状态——仅撤销优化(revert d226a26 单笔,3D 保留)时性能可参照 tbt2 数字(最长连续任务 446ms/输入到绘制最长 448ms);完整撤销 3D(三笔链)后为静态首页,无 3D 长任务,tbt 数字不适用,以上方回退态实际验收(verify 绿+冒烟 4/4)为准。
 3. 中间档(记录不实施):C「移动端仅 poster」备选仍保留(§8),若真机帧率不达标再议。
 
 ### 后续授权动作(待用户逐项明确授权,本文档不构成)
 
 1. **远端保存开发分支**:推 `codex/r6-interaction` 至 GitHub origin——目标=候选与全部过程证据异地留存(本批后分支含 R6 全部 20+ 提交),范围=仅此分支,不动 main。
 2. **合并 main**:本地 merge `codex/r6-interaction` → main——目标=形成可部署主线;范围=站点与文档,engine/上游零变更;合并后 npm run verify 复跑一次。
-3. **部署**:按 [部署手册](../ops/deploy.md) 同步 dist 至服务器并切版——目标=线上生效;范围=博客静态站(Caddy 80/443 归属不变);**部署前归档服务器当版目录**(恢复路径 1 的前提);engine/timer/付费配置不碰。
+3. **部署**:按 [部署手册](../ops/deploy.md) §6 常态发布流程——本机 main 分支 `git push server main` → 服务器 post-receive hook 构建至 `releases/<SHA>/` → `current` 符号链接原子切版;本机轮询 `https://nanmu.xyz/release.txt` 与本地 main SHA 比对(≤180s)——目标=线上生效;范围=博客静态站(Caddy 80/443 归属不变);engine/timer/付费配置不碰。**回滚准备(部署前置)**:记录发布前线上当版完整 SHA(恢复路径 1 的目标),回滚按手册 §7 同锁切换。
 
 ### 线上验收清单(部署后执行)
 
