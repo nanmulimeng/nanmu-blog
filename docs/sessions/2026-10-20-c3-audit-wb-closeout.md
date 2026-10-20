@@ -26,9 +26,20 @@
 
 **第三项 6e2aa5d(§4.4+§5,历史证据推演)**:按 deploy/deploy.sh 实际顺序(L28-38 mv 产物→L41-42 切 current)撤回「release 目录存在=曾上线」;四态=构建完成/当前上线(内容身份核对)/曾确认上线(唯一证据=operation 的 confirmed 记录)/历史无法确认(保守显示未知);不改 hook、不新增审计平台;保留「后续变更→早期 op 显示被替代」。§5 存储示例对齐 §4.2 单记录(draft.json+draft.prev.json,删 meta.json/body.md 旧例)。
 
+## B 线:预览机制勘误轮(同日续;有痕勘误,不改写历史提交)
+
+- **对上轮「探针 7/7」的勘误**:其 typography 断言无效——用户审计并经本轮复现:预览 HTML 200 但 fonts.css 401、document.fonts 为空、fonts.check 对目标字体与不存在的字体都返回 true(无区分度)。「7/7 已证明字体加载与完整隔离」不成立;隔离部分结论仍有效,字体部分作废。提交 273bc65 不改写,勘误记录于 DESIGN.md 与本节。
+- **失败判据先行(RED)**:探针 v2 重写为三阶段。RED 阶段用 cookie-only 模式(资源仅认会话 cookie,模拟旧方案)实测资源组 5 FAIL(fonts.css 401、分片 0 个 200、FontFace 空、check 无区分度、外部 CSS 变量空)——探针先能识别当前失败,再调整方案。
+- **定案=静态校对预览**(优先评估的禁脚本方案经实验证实可行:CSP sandbox 无 allow-scripts 下 Playwright CDP 注入仍可读 FontFaceSet/computed style,判据不依赖页面脚本):响应头 `CSP: sandbox`(无 allow-scripts),作者活动内容与公开站增强脚本一律不执行;一套承诺(保留排版/字体/配图/内链,零脚本),删除「保真增强」与「降级」并存表述。
+- **资源加载三层修复**(GREEN 16/16 的前提):①opaque origin 子资源不带会话 cookie→子资源改**短期 token** 鉴权(返回 HTML 时签发、绑定会话、30 分钟过期、注入资源 URL、服务端改写 CSS 内分片 URL 补 token、Referrer-Policy: no-referrer);②字体加载走 CORS 模式,opaque origin 视为跨源——网络层 200 但字体层拒绝(FontFace 停留 unloaded),字体分片响应加 `Access-Control-Allow-Origin: *` 后样文所需 14 个分片真实加载(FontFace 14 条 loaded);③GREEN 实测 16/16:资源组 9(fonts.css/分片/图片 200、FontFace loaded、外部 CSS 变量生效、中文样文、check 无区分度如实记录)。
+- **安全验证以服务端记录为准**:探针服务记录每请求(到达/方法/Origin/会话校验/返回状态/数据是否被修改);写目标=内存 dict,四路非法直连(无会话 401/伪造 Origin 403/null Origin 403/缺 X-Requested-With 403)后数据未变;合法对照真实删除(mutated=true)。撤回 v1「TypeError 比 401 更强不可达」表述——浏览器层抛错只说明响应不可读,不作「请求未到达服务端」证据。预览内活动脚本零执行的判据=服务端零 /api 到达+页面无副作用标记。
+- **反向自检(BLOCK)**:token 方案但 fonts.css 恒 401→资源组 4 FAIL,阻断资源时验收必须失败,不静默以系统字体算通过。
+- 反例表扩至十一条(新增:check 无区分度禁作证据/网络 200≠字体可用(CORS 拒绝同显 200)/内联样式≠外部 CSS/阻断必须 FAIL)。探针 v2 入库替换 v1(276 行→约 470 行,--phase red|green|block|all 可复现)。
+- 边界不变:临时服务+占位口令、不连生产、未改 engine/hook/服务器;工作台仍未实现。
+
 ## 状态与停止点
 
-- 本地 main=6e2aa5d+本交接;origin/server 未推送,发布待用户授权。
+- 本地 main=本轮勘误提交之后(最终发布对象按文末勘误节的取值规则,发布开始时实读);origin/server 未推送,发布待用户授权。
 - B 线停在设计复核位置,未开始正式工作台开发;反例为验收预期非已通过测试数。
 - 未改 engine/上游/timer/付费配置/deploy hook/服务器配置。
 - 未覆盖环境维持:真机 Safari/触摸/设备帧率。
