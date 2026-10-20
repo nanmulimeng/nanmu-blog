@@ -93,7 +93,12 @@ PREVIEW_HTML = """<!doctype html><meta charset="utf-8">
 <h1>校对样文——静态预览探针</h1>
 <p>这一段普通排版文字用于确认静态校对预览保留真实排版与字体加载:
 自动挑题、摘要与配图在首版保留范围内。</p>
-<p><a href="/preview/p1/index.html">站内链接(留在预览命名空间)</a></p>
+<h2 id="sec">锚点目标小节</h2>
+<p>链接首版收敛示例(构建后改写形态):站内链接
+<a data-wb-target="/posts/example/">《旧文标题》</a>、外部链接
+<a data-wb-target="https://example.com/ref">外部参考</a>
+——保留文字与目标信息、不可导航;页内锚点
+<a href="#sec">回到小节</a>(同文档滚动,保留)。</p>
 <!-- 作者活动内容(探针故意放置):CSP sandbox 无 allow-scripts
      应阻止其执行——判据在服务端请求记录,不在页面内 -->
 <script>
@@ -475,7 +480,42 @@ def run_browser(res):
               "token=%s expire后=%s(token 绑定会话,已下载内容不承诺远程抹除)"
               % (tok[:8] + "…" if tok else "无", r_exp))
 
-        pg.close(); pg2.close(); ctx.close(); b.close()
+        pg.close(); pg2.close(); ctx.close()
+
+        # ---- 组 N:导航首版收敛(实际点击,不只查 href 字符串)----
+        # 在独立上下文重开预览页(S2 已使会话失效,重登后点击)
+        ctx3 = b.new_context()
+        ctx3.request.post("http://127.0.0.1:%d/login" % PORT,
+                          form={"pw": PROBE_PASSWORD})
+        pg3 = ctx3.new_page()
+        pg3.goto("http://127.0.0.1:%d/preview/p1/index.html" % PORT)
+        pg3.wait_for_timeout(800)
+        url_before = pg3.url
+        req_loaded = len(REQLOG)
+        # 实际点击改写后的站内/外部链接:零导航、零新资源请求
+        pg3.click("a[data-wb-target='/posts/example/']")
+        pg3.click("a[data-wb-target='https://example.com/ref']")
+        pg3.wait_for_timeout(600)
+        n_new = len([e for e in REQLOG[req_loaded:]
+                     if e["path"].startswith("/preview")])
+        check(res, "N", "n12-links-no-nav",
+              pg3.url == url_before and n_new == 0,
+              "url 不变=%s;/preview 新请求=%d(链接不可导航=点击后"
+              "零跳转零请求,以服务端记录与页面 url 为准)"
+              % (pg3.url == url_before, n_new))
+        # 页内锚点:同文档滚动生效(校对需求内保留,不产生请求)
+        req_before_anchor = len(REQLOG)
+        pg3.click("a[href='#sec']")
+        pg3.wait_for_timeout(400)
+        h = pg3.evaluate("location.hash")
+        n_anchor = len([e for e in REQLOG[req_before_anchor:]
+                        if e["path"].startswith("/preview")])
+        check(res, "N", "n3-anchor-same-doc",
+              h == "#sec" and n_anchor == 0,
+              "hash=%s;锚点新请求=%d(同文档滚动,非导航)"
+              % (h, n_anchor))
+        pg3.close(); ctx3.close()
+        b.close()
 
 
 def summary(res, phase, expect_pass):
