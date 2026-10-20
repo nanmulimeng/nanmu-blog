@@ -314,7 +314,7 @@ def netmap(pg):
     return m
 
 
-def run_browser(res):
+def run_browser(res, with_token=True, with_nav=True):
     with sync_playwright() as pw:
         launch = ({"executable_path": find_chrome()}
                   if find_chrome() else {})
@@ -479,53 +479,55 @@ def run_browser(res):
                  snap == snap2,
                  [(e["auth"], e["status"]) for e in log4]))
 
-        # ---- 组 T:资源 token 边界(短期 bearer 资源凭证)----
-        # 无会话上下文验证:token 是独立凭证,子资源不要求登录 cookie
-        noku = b.new_context()
-        base_u = "http://127.0.0.1:%d" % PORT
+        # ---- 组 T:资源 token 边界(短期 bearer 资源凭证;GREEN 专属,
+        #      RED=旧方案无 token 机制,BLOCK=资源阻断反向自检)----
+        if with_token:
+            noku = b.new_context()           # 无会话上下文:token 是独立凭证
+            base_u = "http://127.0.0.1:%d" % PORT
 
-        def tget(u):
-            return noku.request.get(base_u + u).status
-        r_html = ctx.request.get(base_u + "/preview/p1/index.html")
-        tokA = re.search(r"[?&]t=([0-9a-f]+)", r_html.text()).group(1)
-        t1 = tget("/preview/p1/fonts/fonts.css?t=" + tokA)
-        check(res, "T", "t1-token-loads-own-css", t1 == 200,
-              "无 cookie 上下文+token=%d(bearer 凭证独立起作用)" % t1)
-        t2 = tget("/preview/p2/fonts/fonts.css?t=" + tokA)
-        check(res, "T", "t2-cross-preview-denied", t2 in (401, 403),
-              "A 的 token 访问 B 预览资源=%d(须拒,token 绑定预览)"
-              % t2)
-        t3a = tget("/preview/p1/index.html?t=" + tokA)
-        t3b = tget("/api/drafts?t=" + tokA)
-        check(res, "T", "t3-token-not-for-html-api",
-              t3a == 401 and t3b == 401,
-              "HTML=%d API=%d(token 不替代会话;HTML 只走登录路径,"
-              "管理 API 永不接受资源 token)" % (t3a, t3b))
-        # 到期:可控时钟=直接修改临时记录,不实际等待 30 分钟
-        TOKENS[tokA]["exp"] = time.time() - 1
-        t4 = tget("/preview/p1/fonts/shards/"
-                  "noto-serif-sc-400-000.woff2?t=" + tokA)
-        check(res, "T", "t4-expiry-denied", t4 == 401,
-              "到期后=%d(会话失效拒绝见 S2,此条只验凭证自身到期)"
-              % t4)
-        TOKENS[tokA]["exp"] = time.time() + TOKEN_TTL
-        # 预览被删除:未过期 token 也不得继续访问
-        PREVIEWS.discard("p1")
-        t5 = tget("/preview/p1/fonts/fonts.css?t=" + tokA)
-        check(res, "T", "t5-preview-deleted-denied", t5 in (401, 410),
-              "预览删除后=%d(24h 保留期与 30min 凭证相互独立,"
-              "预览没了凭证随之失效)" % t5)
-        # 有效会话重开保留期内预览:获得新凭证(与旧凭证不同且可用)
-        PREVIEWS.add("p1")
-        r_html2 = ctx.request.get(base_u + "/preview/p1/index.html")
-        m6 = re.search(r"[?&]t=([0-9a-f]+)", r_html2.text())
-        tokB = m6.group(1) if m6 else ""
-        t6 = tget("/preview/p1/fonts/fonts.css?t=" + tokB) if tokB else 0
-        check(res, "T", "t6-reopen-issues-new-token",
-              bool(tokB) and tokB != tokA and t6 == 200,
-              "新凭证≠旧且可用=%s(token 值不入日志与交接)"
-              % (bool(tokB) and tokB != tokA and t6 == 200))
-        noku.close()
+            def tget(u):
+                return noku.request.get(base_u + u).status
+            r_html = ctx.request.get(base_u + "/preview/p1/index.html")
+            tokA = re.search(r"[?&]t=([0-9a-f]+)", r_html.text()).group(1)
+            t1 = tget("/preview/p1/fonts/fonts.css?t=" + tokA)
+            check(res, "T", "t1-token-loads-own-css", t1 == 200,
+                  "无 cookie 上下文+token=%d(bearer 凭证独立起作用)" % t1)
+            t2 = tget("/preview/p2/fonts/fonts.css?t=" + tokA)
+            check(res, "T", "t2-cross-preview-denied", t2 in (401, 403),
+                  "A 的 token 访问 B 预览资源=%d(须拒,token 绑定预览)"
+                  % t2)
+            t3a = tget("/preview/p1/index.html?t=" + tokA)
+            t3b = tget("/api/drafts?t=" + tokA)
+            check(res, "T", "t3-token-not-for-html-api",
+                  t3a == 401 and t3b == 401,
+                  "HTML=%d API=%d(token 不替代会话;HTML 只走登录路径,"
+                  "管理 API 永不接受资源 token)" % (t3a, t3b))
+            # 到期:可控时钟=直接修改临时记录,不实际等待 30 分钟
+            TOKENS[tokA]["exp"] = time.time() - 1
+            t4 = tget("/preview/p1/fonts/shards/"
+                      "noto-serif-sc-400-000.woff2?t=" + tokA)
+            check(res, "T", "t4-expiry-denied", t4 == 401,
+                  "到期后=%d(会话失效拒绝见 S2,此条只验凭证自身到期)"
+                  % t4)
+            TOKENS[tokA]["exp"] = time.time() + TOKEN_TTL
+            # 预览被删除:未过期 token 也不得继续访问
+            PREVIEWS.discard("p1")
+            t5 = tget("/preview/p1/fonts/fonts.css?t=" + tokA)
+            check(res, "T", "t5-preview-deleted-denied", t5 in (401, 410),
+                  "预览删除后=%d(24h 保留期与 30min 凭证相互独立,"
+                  "预览没了凭证随之失效)" % t5)
+            # 有效会话重开保留期内预览:获得新凭证(与旧凭证不同且可用)
+            PREVIEWS.add("p1")
+            r_html2 = ctx.request.get(base_u + "/preview/p1/index.html")
+            m6 = re.search(r"[?&]t=([0-9a-f]+)", r_html2.text())
+            tokB = m6.group(1) if m6 else ""
+            t6 = (tget("/preview/p1/fonts/fonts.css?t=" + tokB)
+                  if tokB else 0)
+            check(res, "T", "t6-reopen-issues-new-token",
+                  bool(tokB) and tokB != tokA and t6 == 200,
+                  "新凭证≠旧且可用=%s(token 值不入日志与交接)"
+                  % (bool(tokB) and tokB != tokA and t6 == 200))
+            noku.close()
 
         # ---- 组 2:S2 会话失效:HTML/CSS/字体/图片重请求全拒 ----
         # 先取已签发 token 的资源 URL(expire 之前 HTML 可取),
@@ -544,48 +546,94 @@ def run_browser(res):
         # css/woff2/img 用已签发 token——会话已失效,token 须连带失效
         check(res, "S", "s2-expired-session-resources-401",
               bool(tok) and r_exp == [401, 401, 401, 401],
-              "token=%s expire后=%s(token 绑定会话,已下载内容不承诺远程抹除)"
-              % (tok[:8] + "…" if tok else "无", r_exp))
+              "token已获取=%s expire后=%s(token 绑定会话连带失效,"
+              "已下载内容不承诺远程抹除;token 值不入日志)"
+              % (bool(tok), r_exp))
 
         pg.close(); pg2.close(); ctx.close()
 
-        # ---- 组 N:导航首版收敛(实际点击,不只查 href 字符串)----
-        # 在独立上下文重开预览页(S2 已使会话失效,重登后点击)
-        ctx3 = b.new_context()
-        ctx3.request.post("http://127.0.0.1:%d/login" % PORT,
-                          form={"pw": PROBE_PASSWORD})
-        pg3 = ctx3.new_page()
-        pg3.goto("http://127.0.0.1:%d/preview/p1/index.html" % PORT)
-        pg3.wait_for_timeout(800)
-        url_before = pg3.url
-        req_loaded = len(REQLOG)
-        # 实际点击改写后的站内/外部链接:零导航、零新资源请求
-        pg3.click("a[data-wb-target='/posts/example/']")
-        pg3.click("a[data-wb-target='https://example.com/ref']")
-        pg3.wait_for_timeout(600)
-        n_new = len([e for e in REQLOG[req_loaded:]
-                     if e["path"].startswith("/preview")])
-        check(res, "N", "n12-links-no-nav",
-              pg3.url == url_before and n_new == 0,
-              "url 不变=%s;/preview 新请求=%d(链接不可导航=点击后"
-              "零跳转零请求,以服务端记录与页面 url 为准)"
-              % (pg3.url == url_before, n_new))
-        # 页内锚点:同文档滚动生效(校对需求内保留,不产生请求)
-        req_before_anchor = len(REQLOG)
-        pg3.click("a[href='#sec']")
-        pg3.wait_for_timeout(400)
-        h = pg3.evaluate("location.hash")
-        n_anchor = len([e for e in REQLOG[req_before_anchor:]
-                        if e["path"].startswith("/preview")])
-        check(res, "N", "n3-anchor-same-doc",
-              h == "#sec" and n_anchor == 0,
-              "hash=%s;锚点新请求=%d(同文档滚动,非导航)"
-              % (h, n_anchor))
-        pg3.close(); ctx3.close()
+        # ---- 组 N:导航首版收敛(实际点击,不只查 href 字符串;
+        #      RED 同样适用——链接形态属改写层,与资源模式无关)----
+        if with_nav:
+            ctx3 = b.new_context()
+            ctx3.request.post("http://127.0.0.1:%d/login" % PORT,
+                              form={"pw": PROBE_PASSWORD})
+            pg3 = ctx3.new_page()
+            pg3.goto("http://127.0.0.1:%d/preview/p1/index.html" % PORT)
+            pg3.wait_for_timeout(800)
+            url_before = pg3.url
+            req_loaded = len(REQLOG)
+            # 实际点击改写后的站内/外部链接:零导航、零新资源请求
+            pg3.click("a[data-wb-target='/posts/example/']")
+            pg3.click("a[data-wb-target='https://example.com/ref']")
+            pg3.wait_for_timeout(600)
+            n_new = len([e for e in REQLOG[req_loaded:]
+                         if e["path"].startswith("/preview")])
+            check(res, "N", "n12-links-no-nav",
+                  pg3.url == url_before and n_new == 0,
+                  "url 不变=%s;/preview 新请求=%d(链接不可导航=点击后"
+                  "零跳转零请求,以服务端记录与页面 url 为准)"
+                  % (pg3.url == url_before, n_new))
+            # 页内锚点:同文档滚动生效(校对需求内保留,不产生请求)
+            req_before_anchor = len(REQLOG)
+            pg3.click("a[href='#sec']")
+            pg3.wait_for_timeout(400)
+            h = pg3.evaluate("location.hash")
+            n_anchor = len([e for e in REQLOG[req_before_anchor:]
+                            if e["path"].startswith("/preview")])
+            check(res, "N", "n3-anchor-same-doc",
+                  h == "#sec" and n_anchor == 0,
+                  "hash=%s;锚点新请求=%d(同文档滚动,非导航)"
+                  % (h, n_anchor))
+            pg3.close(); ctx3.close()
         b.close()
 
 
-def summary(res, phase, expect_pass):
+# 阶段预期:本阶段**应 FAIL** 的断言标签集;未列出者应 PASS。
+# 判定依据=「是否符合该阶段预期」,不是「是否存在失败」——
+# 资源意外通过、无关安全失败或其他异常都不能冒充反向自检成功。
+RED_EXPECT = {"r2-fonts-css-200", "r3-woff2-shard-200", "r3b-img-200",
+              "r4-fontface-loaded", "r6-external-css-applied"}
+BLOCK_EXPECT = {"r2-fonts-css-200", "r3-woff2-shard-200",
+                "r4-fontface-loaded", "r6-external-css-applied"}
+
+
+def phase_verdict(res, expect_fail):
+    """逐断言比对阶段预期,返回不符项列表(空=符合预期)。"""
+    bad = []
+    for g, l, ok, d in res:
+        want = (not ok) if l in expect_fail else ok
+        if not want:
+            bad.append("%s(预期%s)"
+                       % (l, "FAIL但通过" if ok else "PASS但失败"))
+    return bad
+
+
+def selftest_verdict():
+    """汇总判定自身的小范围反例:三条构造结果验证判定方向,
+    不为此增加产品代码。全部 OK 才允许后续阶段以此为判据。"""
+    cases = [
+        ("RED 预期 r2 FAIL,资源意外通过 → 必须判不符(退出 1)",
+         [("R", "r2-fonts-css-200", True, "")],
+         {"r2-fonts-css-200"}, 1),
+        ("RED 预期 r2 FAIL,实际失败且其余过 → 符合预期(退出 0)",
+         [("R", "r2-fonts-css-200", False, ""),
+          ("R", "r1-preview-html-200", True, "")],
+         {"r2-fonts-css-200"}, 0),
+        ("GREEN 预期全过,安全组意外失败 → 必须判不符(退出 1)",
+         [("S", "s1-x", False, "")], frozenset(), 1),
+    ]
+    allok = True
+    for name, res, exp, want_rc in cases:
+        rc = 1 if phase_verdict(res, exp) else 0
+        good = rc == want_rc
+        allok = allok and good
+        print("[selftest] %s => %s(rc=%d,应为 %d)"
+              % (name, "OK" if good else "BAD", rc, want_rc))
+    return allok
+
+
+def summary(res, phase, expect_fail=frozenset()):
     fails = [(g, l) for g, l, ok, _ in res if not ok]
     groups = {}
     for g, l, ok, d in res:
@@ -594,17 +642,21 @@ def summary(res, phase, expect_pass):
     print("\n== %s: %d/%d PASS ==" % (phase, len(res) - len(fails), len(res)))
     for g, (ok_c, bad_c) in sorted(groups.items()):
         print("   组%s:%d 通过 / %d 失败" % (g, ok_c, bad_c))
-    if expect_pass:
-        return 0 if not fails else 1
-    return 1 if fails else 0    # 期望 FAIL 的阶段:有失败=探针有区分度
+    bad = phase_verdict(res, expect_fail)
+    if bad:
+        print("   ** 不符合阶段预期:%s" % "; ".join(bad))
+        return 1
+    print("   符合阶段预期(RED/BLOCK 的失败=探针有区分度)")
+    return 0
 
 
 def phase_setup(mode, block_css=False):
-    global MODE, BLOCK_CSS, SESSIONS, TOKENS, REQLOG, DRAFTS
+    global MODE, BLOCK_CSS, SESSIONS, TOKENS, REQLOG, DRAFTS, PREVIEWS
     MODE, BLOCK_CSS = mode, block_css
     SESSIONS = set()
     TOKENS = {}
     REQLOG = []
+    PREVIEWS = {"p1", "p2"}
     DRAFTS = {"probe-draft": {"title": "校对样文"},
               "probe-draft-2": {"title": "对照草稿"}}
 
@@ -613,9 +665,14 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", choices=["red", "green", "block", "all"],
-                    default="all")
+    ap.add_argument("--phase", choices=["red", "green", "block", "all",
+                                        "selftest"], default="all")
     args = ap.parse_args()
+    if not selftest_verdict():
+        print("selftest 未通过:汇总判定自身失效,后续结果不可信")
+        return 2
+    if args.phase == "selftest":
+        return 0
     socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.ThreadingTCPServer(("127.0.0.1", PORT), H)
     httpd.daemon_threads = True
@@ -626,24 +683,24 @@ def main():
             print("---- 阶段 RED:cookie-only(模拟审计复现的当前失败)----")
             phase_setup("cookie-only")
             res = []
-            run_browser(res)
-            rc |= summary(res, "RED", expect_pass=False)
+            run_browser(res, with_token=False)   # 旧方案无 token 机制
+            rc |= summary(res, "RED", RED_EXPECT)
         if args.phase in ("green", "all"):
             print("---- 阶段 GREEN:token 方案(静态预览+签名资源)----")
             phase_setup("token")
             res = []
             run_browser(res)
-            rc |= summary(res, "GREEN", expect_pass=True)
+            rc |= summary(res, "GREEN")
         if args.phase in ("block", "all"):
             print("---- 阶段 BLOCK:token 方案但 fonts.css 恒 401(反向自检)----")
             phase_setup("token", block_css=True)
             res = []
             try:
-                run_browser(res)
+                run_browser(res, with_token=False, with_nav=False)
             except Exception as e:      # 反向阶段允许浏览器步骤报错,
                 print("(block 阶段浏览器步骤异常,继续汇总:%s)"
                       % str(e)[:120])   # 只看资源组判据是否转红
-            rc |= summary(res, "BLOCK", expect_pass=False)
+            rc |= summary(res, "BLOCK", BLOCK_EXPECT)
     finally:
         httpd.shutdown()
     return rc
