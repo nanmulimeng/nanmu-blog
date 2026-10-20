@@ -53,17 +53,17 @@ def main():
             pg.goto(base + "/posts/", wait_until="domcontentloaded")
             st = pg.evaluate("""() => ({
               rows: document.querySelectorAll('.row-item').length,
-              h3: (document.querySelector('.row-item h3')||{textContent:''}).textContent})""")
-            check("fx/posts", st["rows"] >= 1 and "你好" in st["h3"],
-                  "rows=%d h3=%s" % (st["rows"], st["h3"]))
-            pg.goto(base + "/posts/hello-nanmu-blog/",
-                    wait_until="domcontentloaded")
-            st = pg.evaluate("""() => ({
-              head: !!document.querySelector('.paper-head'),
-              paras: document.querySelectorAll('.prose p').length,
-              bar: !!document.querySelector('.progress-bar')})""")
-            check("fx/post", st["head"] and st["paras"] >= 3 and st["bar"],
-                  str(st))
+              blank: (document.querySelector('.blank-sheet .bs-state')
+                      ||{textContent:''}).textContent})""")
+            # 批次 C 撤稿:零文章空态,无文章行、不造假
+            check("fx/posts", st["rows"] == 0 and "还没有文章" in st["blank"],
+                  "rows=%d state=%s" % (st["rows"], st["blank"]))
+            resp = pg.goto(base + "/posts/hello-nanmu-blog/",
+                           wait_until="domcontentloaded")
+            body = pg.evaluate("document.body.innerText")
+            check("fx/post-withdrawn-404", resp.status == 404
+                  and "你好" not in body[:200],
+                  "status=%s" % resp.status)
             pg.goto(base + "/digest/", wait_until="domcontentloaded")
             st = pg.evaluate("""() => ({
               blank: !!document.querySelector('.blank-sheet .bs-state'),
@@ -82,8 +82,9 @@ def main():
               posters: document.querySelectorAll('#scene3d img.poster').length,
               cover: !!document.querySelector('.cover-card'),
               tabs: document.querySelectorAll('.page-tabs button').length})""")
+            # 批次 C 撤稿后零文章:页签目录在、无封面卡(空态不残留入口)
             check("fx/index", st["hero"] and st["posters"] >= 1
-                  and st["cover"] and st["tabs"] >= 3, str(st))
+                  and not st["cover"] and st["tabs"] >= 3, str(st))
             pg.goto(base + "/404.html", wait_until="domcontentloaded")
             st = pg.evaluate("""() => ({
               h1: (document.querySelector('.gate-wrap h1')||{textContent:''}).textContent,

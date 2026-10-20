@@ -204,9 +204,9 @@ def main():
             ctx = b.new_context(viewport={"width": 1440, "height": 900})
             pg = ctx.new_page()
             seen = set()
-            cold, _, fails_a = fetch(pg, base + "/posts/hello-nanmu-blog/", seen)
+            cold, _, fails_a = fetch(pg, base + "/digest/", seen)
             total = sum(cold.values())
-            print("A 冷缓存 /posts/hello-nanmu-blog/(仅 2xx,原始字节):")
+            print("A 冷缓存 /digest/(仅 2xx,原始字节):")
             for k in ("html", "css", "js", "woff2", "other"):
                 if k in cold:
                     print("   %-6s %8d B" % (k, cold[k]))
@@ -232,8 +232,8 @@ def main():
             ctx = b.new_context(viewport={"width": 1440, "height": 900})
             pg = ctx.new_page()
             cdp, rec = cdp_probe(ctx, pg)
-            seq = [("冷访", "/posts/hello-nanmu-blog/"),
-                   ("重访", "/posts/hello-nanmu-blog/"),
+            seq = [("冷访", "/digest/"),
+                   ("重访", "/digest/"),
                    ("暖访", "/posts/"), ("暖访", "/digest/"), ("暖访", "/about/")]
             print("C 真实暖缓存传输(Cache-Control: max-age=3600,CDP 实测,"
                   "网络字节含响应头):")

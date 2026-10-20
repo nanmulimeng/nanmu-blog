@@ -130,10 +130,12 @@ def serve(root, port=PORT, fonts_delay=0, hang_first_fonts=0):
 
 
 # (路径, 键, 导航 aria-current 期望)
+# 批次 C 撤稿:《你好,nanmu-blog》已撤下,posts 详情页从矩阵移除
+# (零文章态下矩阵覆盖 首页/列表/日报/关于/404;旧文章 URL 的 404 在
+# B 段单独断言)
 PAGES = [
     ("/", "index", "/"),
     ("/posts/", "posts", "/posts/"),
-    ("/posts/hello-nanmu-blog/", "post", "/posts/"),
     ("/digest/", "digest", "/digest/"),
     ("/about/", "about", "/about/"),
     ("/404.html", "404", None),
@@ -181,7 +183,7 @@ def main():
                         out.mono = document.fonts.check(`17px 'NM Plex Mono'`, 'nanmu 2026');
                       } catch (e) { out.mono = 'err'; }
                       return out;
-                    }""") if key == "post" else None
+                    }""") if key == "index" else None
                     st = pg.evaluate("""(cur) => ({
                       top: !!document.querySelector('header.top'),
                       navLinks: document.querySelectorAll('nav.main a').length,
@@ -202,9 +204,10 @@ def main():
                     if theme == "dark":
                         ok = ok and st["dt"] == "dark" \
                             and st["bg"] != "rgb(240, 237, 229)"
-                    if key == "post":
+                    if key == "index":
                         # 分片实际命中:≥5 个且全部 2xx;中文样本逐字重
                         # (400/600/900)与改名 mono 经 load+check 实测装载
+                        # (批次 C:post 页已撤,字体装载检查移挂首页)
                         ok = ok and sum(font_hits) >= 5 and all(font_hits) \
                             and fontck is not None and all(
                                 v is True for v in fontck.values())
@@ -226,24 +229,33 @@ def main():
             ctx = b.new_context(viewport={"width": 1440, "height": 900})
             pg = ctx.new_page()
             pg.goto(base + "/posts/", wait_until="domcontentloaded")
-            n = pg.evaluate("document.querySelectorAll('.row-item').length")
-            h3 = pg.evaluate("(document.querySelector('.row-item h3')||{textContent:''}).textContent")
-            check("posts/rows", n >= 1 and "你好" in h3, "rows=%d h3=%s" % (n, h3))
-            sub = pg.evaluate("(document.querySelector('.subscribe')||{textContent:''}).textContent")
-            check("posts/subscribe", "rss.xml" in sub, sub[:40])
-            pg.goto(base + "/posts/hello-nanmu-blog/", wait_until="domcontentloaded")
-            st = pg.evaluate("""() => {
-              const ph = document.querySelector('.paper-head');
-              return {
-              head: !!ph,
-              vt: ph ? getComputedStyle(ph).viewTransitionName : '(missing)',
-              paras: document.querySelectorAll('.prose p').length,
-              fin: !!document.querySelector('.colophon .fin'),
-              none: document.querySelectorAll('.prev-next .none').length,
-              bar: !!document.querySelector('.progress-bar')};}""")
-            check("post/content", st["head"] and st["vt"] == "latest-cover"
-                  and st["paras"] >= 3 and st["fin"] and st["none"] == 2
-                  and st["bar"], str(st))
+            st = pg.evaluate("""() => ({
+              rows: document.querySelectorAll('.row-item').length,
+              blank: !!document.querySelector('.blank-sheet .bs-state'),
+              state: (document.querySelector('.blank-sheet .bs-state')
+                      || {textContent:''}).textContent,
+              sub: (document.querySelector('.subscribe')||{textContent:''}).textContent})""")
+            # 批次 C 撤稿后零文章态:列表完整可用(空态文案+订阅),
+            # 不残留任何文章行,不造假内容
+            check("posts/empty", st["rows"] == 0 and st["blank"]
+                  and "还没有文章" in st["state"] and "rss.xml" in st["sub"],
+                  "rows=%d state=%s" % (st["rows"], st["state"]))
+            # 旧文章 URL:真撤稿=不再返回正文(Astro 预渲染 404 页)
+            resp = pg.goto(base + "/posts/hello-nanmu-blog/",
+                           wait_until="domcontentloaded")
+            body = pg.evaluate("document.body.innerText")
+            check("post/withdrawn-404", resp.status == 404
+                  and "你好" not in body[:200],
+                  "status=%s bodyHead=%s" % (resp.status, body[:40]))
+            # RSS 同步撤空:解析 channel 内 <item> 数=0(不输出已撤文章)
+            rss = pg.evaluate("""async () => {
+              const x = await (await fetch('/rss.xml')).text();
+              const d = new DOMParser().parseFromString(x, 'text/xml');
+              return {items: d.querySelectorAll('channel > item').length,
+                      title: (d.querySelector('channel > title')
+                              || {textContent:''}).textContent};}""")
+            check("rss/withdrawn-empty", rss["items"] == 0
+                  and rss["title"] != "", str(rss))
             pg.goto(base + "/digest/", wait_until="domcontentloaded")
             st = pg.evaluate("""() => ({
               blank: !!document.querySelector('.blank-sheet .bs-state'),
@@ -297,8 +309,7 @@ def main():
             ctx = b.new_context(java_script_enabled=False,
                                 viewport={"width": 1440, "height": 900})
             for path, key, sel in (("", "index", None),
-                                   ("posts/", "posts", ".row-item h3"),
-                                   ("posts/hello-nanmu-blog/", "post", ".prose p"),
+                                   ("posts/", "posts", ".blank-sheet .bs-state"),
                                    ("digest/", "digest", ".blank-sheet .bs-state"),
                                    ("about/", "about", ".about-grid .prose p")):
                 pg = ctx.new_page()
@@ -309,18 +320,27 @@ def main():
                       posters: document.querySelectorAll('#scene3d img.poster').length,
                       panelPosts: !(document.getElementById('panel-posts')
                           || {hasAttribute: () => true}).hasAttribute('hidden'),
+                      emptyText: (document.querySelector(
+                          '#panel-posts .tp-name') || {textContent: ''})
+                          .textContent.replace(/\s+/g, ' '),
                       readBtn: !!document.querySelector('#panel-posts a.btn'),
                       bodies: Array.from(document.querySelectorAll('.li-body'))
                           .filter(b => !b.hasAttribute('hidden')).length,
                       cover: !!document.querySelector('.cover-card'),
                       js: document.documentElement.classList.contains('js')})""")
+                    # 批次 C 撤稿后零文章:文章面板空态文案在、无「读全文」
+                    # 按钮、无封面卡;三层全开不变
                     check("nojs/index",
                           st["hero"] and st["posters"] == 2
-                          and st["panelPosts"] and st["readBtn"]
-                          and st["bodies"] == 3 and st["cover"] and not st["js"],
-                          "hero=%s posters=%d panel=%s read=%s bodies=%d js=%s"
+                          and st["panelPosts"]
+                          and "还没有文章" in st["emptyText"]
+                          and not st["readBtn"]
+                          and st["bodies"] == 3 and not st["cover"]
+                          and not st["js"],
+                          "hero=%s posters=%d panel=%s empty=%s read=%s bodies=%d js=%s"
                           % (st["hero"], st["posters"], st["panelPosts"],
-                             st["readBtn"], st["bodies"], st["js"]))
+                             st["emptyText"], st["readBtn"], st["bodies"],
+                             st["js"]))
                     pg.close()
                     continue
                 st = pg.evaluate("""(sel) => {
@@ -396,12 +416,7 @@ def main():
             try:
                 pg.click("nav.main >> text=文章", timeout=5000)
                 pg.wait_for_url("**/posts/", timeout=8000)
-                pg.wait_for_selector(".row-item", timeout=8000)
-                pg.click(".row-item")          # 点进唯一真实文章
-                pg.wait_for_url("**/posts/hello-nanmu-blog/", timeout=8000)
-                pg.wait_for_selector(".prose p", timeout=8000)
-                pg.evaluate("history.back()")  # 返回文章目录
-                pg.wait_for_url("**/posts/", timeout=8000)
+                pg.wait_for_selector(".blank-sheet", timeout=8000)
                 ok = True
                 chain = [("nav.main >> text=日报", "/digest/"),
                          ("nav.main >> text=关于", "/about/")]
@@ -493,7 +508,7 @@ def main():
                   and st["tabs"] == 3 and st["panels"] == 3
                   and st["panelPostsOn"]
                   and st["knots"] == ["#posts", "#digest", "#about", "#subscribe"]
-                  and st["coverVT"] == "" and st["copies"] == 2
+                  and st["copies"] == 2
                   and "暂无" in st["digestState"])
             # 日报状态/站点说明同源:data-digest 空串(零期现状)、
             # data-site 三层与页面层列表 li-state 逐字一致(改一处即不同步)
@@ -507,6 +522,10 @@ def main():
                     == st["readHref"] and st["cbTitle"].replace("\n", "") \
                     and art.get("title") in st["cbTitle"].replace("\n", "") \
                     and art.get("title", "X") not in st["lightAlt"]
+            else:
+                # 批次 C 撤稿后零文章态:封面卡/读全文按钮/卡标题均不
+                # 残留(不保留指向已撤文章的任何入口),hero 大标题仍在
+                ok = ok and st["coverHref"] is None                     and st["readHref"] is None and st["cbTitle"] == ""
             check("home/static", ok,
                   "hero=%s posters=%d fp=%s lazy=%s/%s tabs=%d/%d knots=%d"
                   " copies=%d art.url=%s cover=%s read=%s dd=%s li=%s" %
@@ -845,37 +864,27 @@ def main():
             finally:
                 httpd_slow.shutdown()
 
-            # ── O. 封面挂名生命周期:两条去程回程后均不残留 ──
+            # ── O. 撤稿无残留入口(批次 C:封面卡挂名生命周期对象已撤)──
             try:
                 ctx = b.new_context(viewport={"width": 1440, "height": 900})
                 pg = ctx.new_page()
                 errs = []
                 pg.on("pageerror", lambda e: errs.append(str(e)))
-                ok = True
-                details = []
-                for label, sel in (("cover", ".cover-card"),
-                                   ("readbtn", ".featured .f-actions a.btn")):
-                    pg.goto(base + "/", wait_until="domcontentloaded")
-                    pg.wait_for_selector(sel, timeout=8000)
-                    pg.click(sel)
-                    # glob 的 * 不跨 "/",pathname 断言更直接
-                    pg.wait_for_function(
-                        "location.pathname.startsWith('/posts/')",
-                        timeout=8000)
-                    head = pg.evaluate(
-                        "getComputedStyle(document.querySelector('.paper-head')"
-                        " || document.body).viewTransitionName")
-                    pg.evaluate("history.back()")
-                    pg.wait_for_function("location.pathname === '/'",
-                                         timeout=8000)
-                    pg.wait_for_timeout(1200)  # VT finished 后摘除
-                    vt = pg.evaluate(
-                        "(document.querySelector('.cover-card')"
-                        "||{style:{}}).style.viewTransitionName")
-                    details.append("%s:head=%s back=%s" % (label, head, vt))
-                    ok = ok and head == "latest-cover" and vt == ""
-                check("home/cover-vt", ok and not errs, " ".join(details)
-                      + " errs=%s" % errs[:2])
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                pg.wait_for_timeout(300)
+                # 批次 C 撤稿:原封面卡/读全文挂名生命周期测试对象已
+                # 随《你好,nanmu-blog》撤下移除;零文章态断言=两类入口
+                # 均不存在(无指向已撤文章的链接),且全页无 latest-cover
+                # 挂名残留(未来复用该 VT 名时重写生命周期用例)
+                st = pg.evaluate("""() => ({
+                  cover: !!document.querySelector('.cover-card'),
+                  readbtn: !!document.querySelector(
+                      '.featured .f-actions a.btn'),
+                  vtNamed: document.querySelectorAll(
+                      '[style*=view-transition-name]').length})""")
+                check("home/withdrawn-no-entry",
+                      not st["cover"] and not st["readbtn"]
+                      and st["vtNamed"] == 0 and not errs, str(st))
                 pg.close()
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
@@ -1002,7 +1011,7 @@ def main():
                              {attributes: true, subtree: true,
                               attributeFilter: ['class']});
                 })();""")
-                pg.goto(base + "/posts/hello-nanmu-blog/",
+                pg.goto(base + "/digest/",
                         wait_until="domcontentloaded")
                 pg.wait_for_timeout(400)
                 st = pg.evaluate("""(() => {
@@ -1038,7 +1047,7 @@ def main():
                                     viewport={"width": 390, "height": 844},
                                     has_touch=True, is_mobile=True)
                 pg = ctx.new_page()
-                pg.goto(base + "/posts/hello-nanmu-blog/",
+                pg.goto(base + "/digest/",
                         wait_until="domcontentloaded")
                 # DCL 不等样式表:无等待采样会碰上 UA 默认形态竞速
                 # (nav=block/mainTop=54,本轮实测一次)——先等 CSS 就绪。
@@ -1072,7 +1081,7 @@ def main():
             # 正常首帧稳定由 Q1(正常路径)保障,无 JS 回归由 Q2 保障。
             for label, url, href in (
                     ("mobile/js-fail-nav-home", "/", "/posts/"),
-                    ("mobile/js-fail-nav-post", "/posts/hello-nanmu-blog/",
+                    ("mobile/js-fail-nav-digest", "/digest/",
                      "/about/")):
                 try:
                     ctx = b.new_context(viewport={"width": 390,
@@ -1128,13 +1137,13 @@ def main():
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                 check("mobile/js-throw-nav", False, str(exc)[:80])
 
-            # ── S. 主按钮文字对比度(WCAG AA 1.4.3,批次 3 修正轮)──
-            # 首页 hero「读全文」.btn.primary:文字色对底色,昼/夜 ×
-            # 常态/hover 四组 ≥ 4.5:1(15.5px/400 非大字号,普通文字
-            # 线)。审计 P2:夜间常态 #F7F4EB on --seal #D4604C =
-            # 3.42:1、hover on --seal-text #E08A72 = 2.37:1 双不
-            # 达标;昼间两组合规。断言按计算样式实取颜色算比率,
-            # 不硬编码产品色。
+            # ── S. 主按钮文字对比度(WCAG AA 1.4.3,批次 3 修正轮;
+            # 批次 C 撤稿后改注入元素)── 原测试对象=首页 hero「读全文」
+            # .btn.primary,随《你好,nanmu-blog》撤下暂无页面实例;
+            # .btn.primary 规则仍在家目样式表(未来文章复用),改为注入
+            # 元素按计算样式实测同一规则(昼/夜 × 常态/hover 四组
+            # ≥ 4.5:1,15.5px/400 普通文字线)。审计 P2 修复回归在此
+            # 把关;hover 用真实 :hover 触发,不硬编码产品色。
             def _lum_of(rgbstr):
                 m = re.match(r"rgba?\((\d+),\s*(\d+),\s*(\d+)", rgbstr)
                 if not m:
@@ -1174,14 +1183,22 @@ def main():
                     # 实测 light 取到常态值、dark 取到过渡中间值)。
                     pg.wait_for_timeout(900)
 
+                    # 注入 .btn.primary(撤稿后无页面实例;样式规则
+                    # 仍在,注入元素按同一规则取计算样式)
+                    pg.evaluate("""(() => {
+                      const a = document.createElement('a');
+                      a.className = 'btn primary'; a.id = 'vt-probe-btn';
+                      a.textContent = '读全文'; a.href = '#';
+                      document.body.appendChild(a);})()""")
+
                     def _grab(page):
                         return page.evaluate("""(() => {
                           const s = getComputedStyle(
-                              document.querySelector('.btn.primary'));
+                              document.querySelector('#vt-probe-btn'));
                           return {fg: s.color, bg: s.backgroundColor};})()""")
 
                     norm = _grab(pg)
-                    pg.hover(".btn.primary")
+                    pg.hover("#vt-probe-btn")
                     pg.wait_for_timeout(400)     # transition --t-fast .18s 完成后取
                     hov = _grab(pg)
                     rn, rh = _contrast_pair(norm), _contrast_pair(hov)

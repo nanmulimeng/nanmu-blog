@@ -47,7 +47,7 @@ function rng(seed){ let s = seed >>> 0; return () => (s = s * 1664525 + 10139042
 /* 固定文案全集:三页 label/状态行/空态/落款(与 articleTex/digestTex/
    aboutTex 内的字面量保持同步) */
 const FIXED_SAMPLE =
-  '你好,nanmu-blogAI日报这个站手写文章个人检索NANMU·nanmu.xyzdigest' +
+  'AI日报这个站手写文章个人检索NANMU·nanmu.xyzdigest' +
   '计划每日一期发出后注明生成引擎已通过设计评审正在做上线前核验第到达时会出现在栏目暂无发布' +
   '三层各管任何挂掉博客照常在线已在服务器的自动发布链路上线随笔建站篇全文约字0123456789-·:;,。——/()「」' +
   '无题第一写。文章最新往正文见';
