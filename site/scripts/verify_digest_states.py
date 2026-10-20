@@ -93,8 +93,10 @@ def clear_persistent_store():
     return not target.exists()
 
 
-def build_with_digest(date, count, tmp):
-    """临时副本 + junction node_modules + 注入指定日期/条数的夹具,真实构建。"""
+def build_with_digest(entries, tmp):
+    """临时副本 + junction node_modules + 注入指定各期夹具,真实构建。
+    entries = [(date, entry_count), ...]——多期用于「更新」态(旧期
+    保留 + 新一期),断言期数派生与最新期跟随。"""
     if tmp.exists():
         if not remove_junction(tmp / "node_modules"):
             raise RuntimeError("旧 junction 无法摘除,拒绝继续(保护真实"
@@ -110,11 +112,12 @@ def build_with_digest(date, count, tmp):
         os.symlink(str(SITE / "node_modules"), str(link))  # POSIX 退符号链接
     dig = tmp / "src" / "content" / "digest"
     dig.mkdir(parents=True, exist_ok=True)
-    raw = FIXTURE.read_text(encoding="utf-8")
-    raw = raw.replace("date: '2026-10-04'", "date: '%s'" % date)
-    raw = raw.replace("entry_count: 2", "entry_count: %d" % count)
-    # 成本行内的引用与 frontmatter 无关,保留;文件名与 date 同步(id 惯例)
-    (dig / ("%s.md" % date)).write_text(raw, encoding="utf-8")
+    for date, count in entries:
+        raw = FIXTURE.read_text(encoding="utf-8")
+        raw = raw.replace("date: '2026-10-04'", "date: '%s'" % date)
+        raw = raw.replace("entry_count: 2", "entry_count: %d" % count)
+        # 成本行内的引用与 frontmatter 无关,保留;文件名与 date 同步(id 惯例)
+        (dig / ("%s.md" % date)).write_text(raw, encoding="utf-8")
     try:
         r = subprocess.run(
             ["node", "node_modules/astro/astro.js", "build"],
@@ -129,8 +132,10 @@ def build_with_digest(date, count, tmp):
     return True
 
 
-def probe(pg, port, want_digest_json, want_li, want_blank):
-    """加载首页,断言 data-digest/data-site/页面层状态/空态/面板名。"""
+def probe(pg, port, want_digest_json, want_li, want_blank, want_sub):
+    """加载首页,断言 data-digest/data-site/页面层状态/空态/面板名/
+    订阅卡状态——同一份内容数据的派生口径(批次 C 文案轮:期数状态
+    从 digests 派生,不用「存在」推导「每日一期」)。"""
     pg.goto("http://127.0.0.1:%d/" % port, wait_until="domcontentloaded")
     st = pg.evaluate("""() => {
       const host = document.querySelector('#scene3d');
@@ -143,7 +148,13 @@ def probe(pg, port, want_digest_json, want_li, want_blank):
         liClass: li ? li.className : '',
         blank: !!document.querySelector('.digest-empty .bs-state'),
         tpName: (document.querySelector('#panel-digest .tp-name')
-                 || {textContent: ''}).textContent.trim()};}""")
+                 || {textContent: ''}).textContent.trim(),
+        tpDesc: (document.querySelector('#panel-digest .tp-desc')
+                 || {textContent: ''}).textContent.trim(),
+        sub: (document.querySelector(
+              '.sub-cards .sub-card:nth-of-type(2) .sc-type')
+              || {textContent: ''}).textContent.trim(),
+        perDay: document.body.innerText.includes('每日一期')};}""")
     ds = dd = None
     try:
         ds = json.loads(st["ds"]) if st["ds"] else None
@@ -153,16 +164,20 @@ def probe(pg, port, want_digest_json, want_li, want_blank):
         dd = json.loads(st["dd"]) if st["dd"] else None
     except ValueError:
         pass
-    # 同源断言:data-site 的 digest 层 state == 页面 li-state 文本
+    # 同源断言:data-site 的 digest 层 state == 页面 li-state 文本 ==
+    # 订阅卡状态(同一份 digests 派生);全站不出现频次推导词
     dig_layer = (ds or [None, None, {}])[1] or {}
     ok = (isinstance(ds, list) and len(ds) == 3
           and dig_layer.get("state") == st["liText"]
           and st["liText"] == want_li
           and st["blank"] is want_blank
+          and st["sub"] == want_sub
+          and not st["perDay"]
           and (want_digest_json is None or dd == want_digest_json))
     return ok, {"dd": st["dd"], "li": st["liText"], "liCls": st["liClass"],
                 "blank": st["blank"], "tp": st["tpName"],
-                "dsDig": dig_layer.get("state")}
+                "tpDesc": st["tpDesc"][:24], "sub": st["sub"],
+                "perDay": st["perDay"], "dsDig": dig_layer.get("state")}
 
 
 def main():
@@ -183,29 +198,34 @@ def main():
             # 态 1:零日报(现场 dist;data-digest 空串断言在
             # verify_browser.py I 段固化,这里不断言 dd 值)
             httpd = serve(SITE / "dist", PORT_BASE)
-            ok, d = probe(pg, PORT_BASE, None, "计划 · 引擎评审通过", True)
+            ok, d = probe(pg, PORT_BASE, None, "计划 · 暂无发布", True,
+                          "AI 日报 · 暂无发布")
             check("dstates/zero", ok, str(d))
             httpd.shutdown()
             httpd = None
 
-            # 态 2:有一期(date=2026-10-04,count=2)
-            if build_with_digest("2026-10-04", 2, tmp):
+            # 态 2:有一期(date=2026-10-04,count=2)——状态从 digests
+            # 派生为「已发 1 期」,不是「每日一期」频次推导
+            if build_with_digest([("2026-10-04", 2)], tmp):
                 httpd = serve(tmp / "dist", PORT_BASE + 1)
                 ok, d = probe(pg, PORT_BASE + 1,
                               {"latest": {"date": "2026-10-04", "count": 2}},
-                              "在线 · 每日一期", False)
+                              "在线 · 已发 1 期", False,
+                              "AI 日报 · 已发 1 期")
                 check("dstates/one", ok and "2026-10-04" in d["tp"], str(d))
                 httpd.shutdown()
                 httpd = None
             else:
                 check("dstates/one", False, "夹具构建失败")
 
-            # 态 3:更新(date=2026-10-05,count=5)
-            if build_with_digest("2026-10-05", 5, tmp):
+            # 态 3:更新=旧期保留+新一期(2026-10-05)——期数派生 2 期,
+            # 最新期跟随新值
+            if build_with_digest([("2026-10-04", 2), ("2026-10-05", 5)], tmp):
                 httpd = serve(tmp / "dist", PORT_BASE + 2)
                 ok, d = probe(pg, PORT_BASE + 2,
                               {"latest": {"date": "2026-10-05", "count": 5}},
-                              "在线 · 每日一期", False)
+                              "在线 · 已发 2 期", False,
+                              "AI 日报 · 已发 2 期")
                 check("dstates/updated", ok and "2026-10-05" in d["tp"],
                       str(d))
                 httpd.shutdown()

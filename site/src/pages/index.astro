@@ -45,9 +45,12 @@ const article = latest
 const digestInfo = digests[0]
   ? { latest: { date: digests[0].data.date, count: digests[0].data.entry_count } }
   : null;
+const digestState = digests.length
+  ? '在线 · 已发 ' + digests.length + ' 期'
+  : '计划 · 暂无发布';
 const siteLayers = [
   { name: '手写文章', state: '在线 · 博客本体', solid: true },
-  { name: 'AI 日报', state: digests.length ? '在线 · 每日一期' : '计划 · 暂无发布', solid: digests.length > 0 },
+  { name: 'AI 日报', state: digestState, solid: digests.length > 0 },
   { name: '个人检索', state: '计划 · 尚未开工', solid: false },
 ];
 
@@ -113,7 +116,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           {digests[0] ? (
             <>
               <p class="tp-name">{digests[0].data.date} 日报 <span class="tp-meta">{digests[0].data.entry_count} 条 · AI 生成</span></p>
-              <p class="tp-desc">引擎每日一期,自动挑题与摘要,注明模型与成本。</p>
+              <p class="tp-desc">自动挑题与摘要,每期注明模型与成本。</p>
               <a class="btn" href="/digest/">看日报栏目</a>
             </>
           ) : (
@@ -275,7 +278,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           </div>
         </div>
         <div class="sub-card">
-          <span class="sc-type">AI 日报 · 暂无发布</span>
+          <span class="sc-type">{digests.length ? 'AI 日报 · 已发 ' + digests.length + ' 期' : 'AI 日报 · 暂无发布'}</span>
           <h3><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>日报 RSS</h3>
           <div class="sc-addr">{digestUrl}</div>
           <div class="sc-row">

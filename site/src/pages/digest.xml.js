@@ -10,7 +10,7 @@ export async function GET(context) {
     .sort((a, b) => (a.data.date === b.data.date ? a.id.localeCompare(b.id) : a.data.date < b.data.date ? 1 : -1));
   return rss({
     title: `${SITE_TITLE} · AI 日报`,
-    description: 'AI 引擎自动生成与精选的每日日报',
+    description: 'AI 引擎自动生成与精选的日报栏目,每期注明模型与成本',
     site: context.site,
     items: digests.map((d) => ({
       title: `${d.data.date} 日报`,

@@ -62,7 +62,7 @@ async function fontsReady(article, digest, site){
     : '暂无文章第一篇正在写。';
   const dynDig = digest && digest.latest
     ? (String(digest.latest.date) + String(digest.latest.count) +
-       '最新一期已发布引擎每日发出后注明生成往期与正文见栏目在线每')
+       '最新一期已发布共条生成往期与正文见栏目在线每')
     : '';
   const dynSite = site && site.length
     ? site.map(x => String(x.name || '') + String(x.state || '')).join('')
@@ -220,7 +220,7 @@ function digestTex(dig){
   g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 27px "Noto Serif SC", serif';
   g.fillText(live
     ? (dig.latest.date + ' 已发布 · 共 ' + dig.latest.count + ' 条 · AI 生成')
-    : '计划每日一期 · 发出后注明 AI 生成', TM, 330);
+    : 'AI 生成 · 每期注明模型与成本', TM, 330);
   g.strokeStyle = 'rgba(29,31,36,0.4)'; g.lineWidth = 1.5;
   g.beginPath(); g.moveTo(TM, 376); g.lineTo(TW - 84, 376); g.stroke();
   /* 虚线行:待填的稿纸 */
