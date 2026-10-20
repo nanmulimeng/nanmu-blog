@@ -492,6 +492,9 @@ def main():
               h1: (document.querySelector('.hero-title h1')
                    || {textContent: ''}).textContent.trim(),
               posters: posters.length,
+              lightSrc: light ? light.getAttribute('src') : '',
+              darkSrc: (document.querySelector('img.poster-dark')
+                        || {getAttribute: () => ''}).getAttribute('src'),
               lightAlt: light ? light.alt : '(missing)',
               fp: light ? (light.getAttribute('fetchpriority') || '') : '',
               lazy: light ? (light.getAttribute('loading') || '') : '',
@@ -523,6 +526,10 @@ def main():
             site = st["site"] or []
             ok = (st["hero"] and "hero-full" in (st["heroClass"] or "")
                   and st["h1"] != "" and st["posters"] == 2
+                  # 批次 C 资产轮:poster 重拍为中性主视觉并换名缓存失效
+                  # (旧 poster-light/dark.png 含被撤文章,不得再被请求)
+                  and st["lightSrc"].endswith("/3d/poster-stack-light.png")
+                  and st["darkSrc"].endswith("/3d/poster-stack-dark.png")
                   and st["lightAlt"] != "" and st["fp"] == "high"
                   and st["lazy"] == "" and st["darkLazy"] == "lazy"
                   and st["tabs"] == 3 and st["panels"] == 3
@@ -547,13 +554,16 @@ def main():
                 # 残留(不保留指向已撤文章的任何入口),hero 大标题仍在
                 ok = ok and st["coverHref"] is None                     and st["readHref"] is None and st["cbTitle"] == ""
             check("home/static", ok,
-                  "hero=%s posters=%d fp=%s lazy=%s/%s tabs=%d/%d knots=%d"
-                  " copies=%d art.url=%s cover=%s read=%s dd=%s li=%s" %
-                  (st["hero"], st["posters"], st["fp"], st["lazy"],
-                   st["darkLazy"], st["tabs"],
-                   st["panels"], len(st["knots"]), st["copies"],
-                   (art or {}).get("url"), st["coverHref"], st["readHref"],
-                   st["ddRaw"], st["liDigest"]))
+                  "hero=%s posters=%d src=%s|%s fp=%s lazy=%s/%s tabs=%d/%d"
+                  " knots=%d copies=%d art.url=%s cover=%s read=%s dd=%s li=%s"
+                  % (st["hero"], st["posters"],
+                     st["lightSrc"].rsplit("/", 1)[-1],
+                     st["darkSrc"].rsplit("/", 1)[-1],
+                     st["fp"], st["lazy"],
+                     st["darkLazy"], st["tabs"],
+                     st["panels"], len(st["knots"]), st["copies"],
+                     (art or {}).get("url"), st["coverHref"], st["readHref"],
+                     st["ddRaw"], st["liDigest"]))
             # 无静态/残留挂名:封面卡与页头之外的元素不挂 latest-cover
             extra_vt = pg.evaluate(
                 "[...document.querySelectorAll('[style*=view-transition-name],"
@@ -798,14 +808,17 @@ def main():
                 # 不属场景资源;断言语义=WebGL 不可用时零 three/scene 请求
                 three = [u for u in reqs if "/3d/" in u
                          and "poster" not in u and "boot6" not in u]
-                poster = [u for u in reqs if "poster" in u]
+                # 中性 poster:请求的必须是新资产,旧图(含被撤文章)零请求
+                pnew = [u for u in reqs if "poster-stack" in u]
+                pold = [u for u in reqs if "poster-light" in u
+                        or "poster-dark" in u]
                 check("home3d/no-webgl", st["noWebgl"] and st["posters"] >= 1
-                      and not st["hud"] and tabok and not three and poster
-                      and not errs,
+                      and not st["hud"] and tabok and not three and pnew
+                      and not pold and not errs,
                       "no-webgl=%s posters=%d hud=%s tab=%s 3d-reqs=%d "
-                      "poster-reqs=%d errs=%s" %
+                      "poster new=%d old=%d errs=%s" %
                       (st["noWebgl"], st["posters"], st["hud"], tabok,
-                       len(three), len(poster), errs[:2]))
+                       len(three), len(pnew), len(pold), errs[:2]))
                 pg.close()
                 ctx.close()
             except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL

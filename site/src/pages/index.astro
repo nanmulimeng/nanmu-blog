@@ -67,12 +67,15 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     data-article={article ? JSON.stringify(article) : ''}
     data-digest={digestInfo ? JSON.stringify(digestInfo) : ''}
     data-site={JSON.stringify(siteLayers)}>
-    <img class="poster poster-light" src="/3d/poster-light.png"
+    <img class="poster poster-light" src="/3d/poster-stack-light.png"
       fetchpriority="high"
       alt="首页主视觉(静态图):一叠立着的稿纸,左缘朱砂线装订" />
     {/* dark 版 lazy:昼上下文 display:none + lazy 不发起请求(首访单张);
-       夜主题/系统深色下它可见,IO 触发即载 */}
-    <img class="poster poster-dark" src="/3d/poster-dark.png" alt="" loading="lazy" />
+       夜主题/系统深色下它可见,IO 触发即载。
+       poster-stack-*(批次 C 资产轮):中性栏目主视觉(不含具体文章),
+       由 scripts/poster_capture.py 从生产 scene6 重拍;换名使浏览器
+       缓存中的旧图(含被撤文章)不再被请求 */}
+    <img class="poster poster-dark" src="/3d/poster-stack-dark.png" alt="" loading="lazy" />
     {/* 左列:竖排标题组(上,随剩余高度居中)+ 页签目录(下,贴底)。
         同列 flex 布局让标题区底边锚定目录块顶边——目录面板高度随内容
         变化(文章/空态)都不与标题文字相叠(批次 C 修正:原 bottom:250px

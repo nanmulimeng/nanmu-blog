@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>poster 拍摄页(中性主视觉,非公开页)</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>html,body,#scene{margin:0;width:100%;height:100%;overflow:hidden}</style>
+<div id="scene" aria-label="纸叠场景,中性主视觉拍摄视图"></div>
+<script type="module">
+import {createScene} from './scene6.js';
+/* 中性主视觉数据(批次 C 资产轮):三页均排「栏目级」表达——
+   不含具体文章标题/正文/日期/期数,静态图不随内容状态过期。
+   文章页 = 站点定位语(与首页 v-title/v-sub 同源);日报页 =
+   intro 介绍态;站点页 = 三层结构性描述。运行时页面不走本页。 */
+const scene = await createScene(document.getElementById('scene'), {
+  article: {
+    title: '记录所想，留住所得。',
+    excerpt: '随笔、阅读记录与值得分享的内容,不定期更新。欢迎通过 RSS 订阅。'
+  },
+  digest: {intro: true},
+  site: [
+    {name: '手写文章', state: '博客本体', solid: true},
+    {name: 'AI 日报',  state: 'AI 生成 · 渐进添加', solid: false},
+    {name: '个人检索', state: '自用', solid: false}
+  ]
+});
+await scene.texReady;
+scene.setTheme(new URLSearchParams(location.search).get('theme') === 'dark', true);
+scene.setAmbient(false);
+window.__captureReady = true;
+</script>

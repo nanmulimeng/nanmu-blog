@@ -44,13 +44,14 @@ function rng(seed){ let s = seed >>> 0; return () => (s = s * 1664525 + 10139042
 /* ── 页面纹理(1024×1460),字体就绪后绘制;三页共用纸底 ──
    注意:fonts.load 必须带上实际要排印的汉字样本——默认文本是空格,
    空格不需字形,load 会立即 resolve,纹理将用系统回退字体排印 */
-/* 固定文案全集:三页 label/状态行/空态/落款(与 articleTex/digestTex/
-   aboutTex 内的字面量保持同步) */
+/* 固定文案全集:三页纹理(articleTex/digestTex/aboutTex)、pageHead
+   与 wrapLines 兜底('无题'/'…')的全部字面量字符。由
+   site/scripts/check_scene_sample.mjs 从函数体提取对账生成——
+   fonts.load 样本缺字不会报错,只会让该字静默回退系统字体,
+   故改任何排印文案后必须跑该脚本同步本串 */
 const FIXED_SAMPLE =
-  'AI日报这个站手写文章个人检索NANMU·nanmu.xyzdigest' +
-  '由成每注明模型与成本栏目渐进添加是本体计划中暂无发布' +
-  '三层各管任何挂掉博客照常在线已在服务器的自动发布链路上线随笔建站篇全文约字0123456789-·:;,。——/()「」' +
-  '无题第一写。文章最新往正文见';
+  '#(),.0123456789:ABCEFIMNSUabcdefgilmnoprstuxyz·…。' +
+  '一不与个人会体全共写出分划到加博印发同后在型字审客尚工已布开引往成手报擎文新无日时明是暂最期未本机条栏检模正每注添渐现生由目站章第篇索约线见计评达过这进通里题';
 async function fontsReady(article, digest, site){
   /* 样本 = 动态文本(文章四要素 + 日报最新期 + 三层名/状态)
      + 固定文案,覆盖三张纹理实际排印的全部字符 */
@@ -170,8 +171,12 @@ function articleTex(art){
   let y = 226;
   for (const ln of lines){ g.fillText(ln, TM, y); y += 104; }
   y -= 104;
+  /* 日期/标签行:字段缺省(如 poster 资产的中性数据)时整行跳过,
+     不拼出悬空分隔符 */
   g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 27px "Noto Serif SC", serif';
-  g.fillText(art ? (art.date + ' · ' + art.tags) : '第一篇正在写。', TM, y + 70);
+  const meta = art ? [art.date, art.tags].filter(Boolean).join(' · ')
+                   : '第一篇正在写。';
+  if (meta) g.fillText(meta, TM, y + 70);
   g.strokeStyle = 'rgba(29,31,36,0.4)'; g.lineWidth = 1.5;
   g.beginPath(); g.moveTo(TM, y + 110); g.lineTo(TW - 84, y + 110); g.stroke();
   /* 正文:摘要逐字排印,行数以落款上方为界(异常超长在此截断,
@@ -195,14 +200,19 @@ function articleTex(art){
   while (dy < TH - 160){ g.beginPath(); g.moveTo(TM, dy); g.lineTo(TW - 84, dy); g.stroke(); dy += 88; }
   g.setLineDash([]);
   g.fillStyle = 'rgba(29,31,36,0.45)'; g.font = '400 24px "Noto Serif SC", serif';
-  g.fillText(art ? ('第 ' + art.no + ' 篇 · 全文约 ' + art.words + ' 字 · nanmu.xyz')
-                 : '文章 · nanmu.xyz', TM, TH - 92);
+  g.fillText(art && art.no != null
+    ? ('第 ' + art.no + ' 篇 · 全文约 ' + art.words + ' 字 · nanmu.xyz')
+    : '文章 · nanmu.xyz', TM, TH - 92);
   return paperFinish(g);
 }
 /* 日报页:稿纸——栏目抬头 + 虚线行 + 状态(内容同源:dig 最新期来自
    data-digest,零期排空态,不虚构内容) */
 function digestTex(dig){
   const live = !!(dig && dig.latest);
+  /* intro:资产生产(poster 拍摄)用的栏目级介绍态——排稳定栏目
+     说明,不排期数状态,静态图不随「暂无/已有」过期;运行时
+     (boot6)不会传 intro */
+  const intro = !!(dig && dig.intro);
   const [, g] = paperBase(41);
   pageHead(g, '机', 'NANMU · AI 日报');
   g.fillStyle = '#14161A'; g.font = '900 88px "Noto Serif SC", serif';
@@ -227,6 +237,12 @@ function digestTex(dig){
     g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
     g.fillText('日报由 AI 生成,每期注明模型与成本。', TM, 986);
     g.fillText('往期与正文见日报栏目。', TM, 1040);
+  } else if (intro){
+    g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
+    g.fillText('每期日报发布后出现在这里', TM, 920);
+    g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
+    g.fillText('日报由 AI 生成,每期注明模型与成本。', TM, 986);
+    g.fillText('与手写文章分开,栏目印章不同。', TM, 1040);
   } else {
     g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
     g.fillText('暂无已发布日报', TM, 920);

@@ -275,13 +275,13 @@ def main():
             three_reqs = [(i, u) for i, u in enumerate(order)
                           if "/3d/" in u and "poster" not in u]
             print("E1 首页请求时间线(CDP 发起序;昼上下文,期望仅 "
-                  "poster-light 单张):")
+                  "poster-stack-light 单张):")
             for i, u in poster_reqs:
                 print("   poster  #%d %s" % (i, u.rsplit("/", 1)[-1]))
             for i, u in three_reqs:
                 print("   3d      #%d %s" % (i, u.rsplit("/", 1)[-1]))
             ok_order = (len(poster_reqs) == 1
-                        and "poster-light" in poster_reqs[0][1]
+                        and "poster-stack-light" in poster_reqs[0][1]
                         and len(three_reqs) >= 2
                         and poster_reqs[0][0] < min(i for i, _ in three_reqs))
             print("   poster 单张且先于 3D:%s%s"
