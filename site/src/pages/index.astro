@@ -73,11 +73,16 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     {/* dark 版 lazy:昼上下文 display:none + lazy 不发起请求(首访单张);
        夜主题/系统深色下它可见,IO 触发即载 */}
     <img class="poster poster-dark" src="/3d/poster-dark.png" alt="" loading="lazy" />
-    <div class="hero-title">
-      <p class="v-kicker">NANMU · 手写博客</p>
-      <h1 class="v-title">先把最小的东西做完</h1>
-      <p class="v-sub">上线,能用——手写为体,日报与检索在计划中</p>
-    </div>
+    {/* 左列:竖排标题组(上,随剩余高度居中)+ 页签目录(下,贴底)。
+        同列 flex 布局让标题区底边锚定目录块顶边——目录面板高度随内容
+        变化(文章/空态)都不与标题文字相叠(批次 C 修正:原 bottom:250px
+        硬编码预留与面板实际高度脱钩,矮视口文字压页签) */}
+    <div class="hero-left">
+      <div class="hero-title">
+        <p class="v-kicker">NANMU · 手写博客</p>
+        <h1 class="v-title">先把最小的东西做完</h1>
+        <p class="v-sub">上线,能用——手写为体,日报与检索在计划中</p>
+      </div>
 
     {/* 页签目录:与 3D 页叠双向联动;无 JS 时文章面板默认展开、链接可用 */}
     <div class="toc-block">
@@ -122,6 +127,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           <a class="btn" href="/about/">站点来历</a>
         </div>
       </div>
+    </div>
     </div>
     <span class="scroll-hint">向下读</span>
   </section>

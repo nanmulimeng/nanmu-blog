@@ -1193,6 +1193,75 @@ def main():
                     ctx.close()
                 except Exception as exc:  # noqa: BLE001 验收脚本:缺失即 FAIL
                     check("btn-contrast/%s" % theme, False, str(exc)[:80])
+            # ── T. 首页左侧 hero 几何(批次 C:矮视口不折列、竖排文字
+            # 不压目录块)── 复现(2026-10-20 线上反馈):hero-title
+            # bottom:250px 硬编码预留 < .toc-block 实际总高(实测
+            # ~311px),所有桌面视口容器交叠 51px,≤768 高文字压页签,
+            # ≤691 高折成两列。断言=几何不变式(不绑文案与面板内容):
+            # 竖排标题单列,kicker/标题/副题文字矩形与 .toc-block 零
+            # 相交;无 JS(poster 态)同样成立——修复为纯 CSS/结构,
+            # 不依赖脚本。
+            hero_js = """(() => {
+              const r = (el) => { if (!el) return null;
+                const b = el.getBoundingClientRect();
+                return {x: b.x, y: b.y, right: b.right, bottom: b.bottom}; };
+              const g = (s) => document.querySelector(s);
+              const vt = g('.v-title');
+              const fs = vt ? parseFloat(getComputedStyle(vt).fontSize) : 0;
+              const clear = (a, c) => !a || !c ? null
+                : !(a.right > c.x + 0.5 && a.bottom > c.y + 0.5
+                   && c.right > a.x + 0.5 && c.bottom > a.y + 0.5);
+              const toc = r(g('.toc-block')), tabs = r(g('.page-tabs'));
+              const vtR = r(vt), subR = r(g('.v-sub'));
+              return {
+                cols: (vt && fs)
+                  ? vt.getBoundingClientRect().width / (fs * 1.16) : null,
+                kickClear: clear(r(g('.v-kicker')), toc),
+                titleClear: clear(vtR, toc),
+                subClear: clear(subR, toc),
+                gap: (vtR && tabs) ? tabs.y - vtR.bottom : null,
+                subGap: (subR && tabs) ? tabs.y - subR.bottom : null,
+              };
+            })()"""
+            # 视口高 ≥680:可用高度按算式足以下单列 → 期望单列;
+            # 更矮(600):字号停在下限 24px,超出部分折两列(竖排多列),
+            # 折列数 ≤2 且仍不压目录块
+            for vw, vh, tag, max_cols in ((1280, 600, "low600", 2),
+                                          (1366, 768, "nb768", 1),
+                                          (1920, 1080, "full1080", 1)):
+                ctx = b.new_context(viewport={"width": vw, "height": vh})
+                pg = ctx.new_page()
+                pg.goto(base + "/", wait_until="domcontentloaded")
+                pg.wait_for_function("document.fonts.status === 'loaded'",
+                                     timeout=15000)
+                pg.wait_for_timeout(900)      # reveal/tpIn 进场后取常态
+                st = pg.evaluate(hero_js)
+                check("hero-geom/%s" % tag,
+                      st["cols"] is not None and st["cols"] <= max_cols + 0.3
+                      and st["kickClear"] and st["titleClear"]
+                      and st["subClear"] and st["gap"] >= -0.5
+                      and st["subGap"] >= -0.5,
+                      "cols=%.2f(max %d) gap=%s subGap=%s" %
+                      (st["cols"] or -1, max_cols, st["gap"], st["subGap"]))
+                pg.close()
+                ctx.close()
+            # 无 JS(最矮视口):poster 态同不变式
+            ctx = b.new_context(viewport={"width": 1280, "height": 600},
+                                java_script_enabled=False)
+            pg = ctx.new_page()
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            pg.wait_for_timeout(1500)
+            st = pg.evaluate(hero_js)
+            check("hero-geom/nojs600",
+                  st["cols"] is not None and st["cols"] <= 2.3
+                  and st["kickClear"] and st["titleClear"]
+                  and st["subClear"] and st["gap"] >= -0.5
+                  and st["subGap"] >= -0.5,
+                  "cols=%.2f gap=%s subGap=%s" %
+                  (st["cols"] or -1, st["gap"], st["subGap"]))
+            pg.close()
+            ctx.close()
+
             b.close()
     finally:
         httpd.shutdown()

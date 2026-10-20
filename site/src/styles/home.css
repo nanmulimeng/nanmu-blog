@@ -24,13 +24,21 @@ img.poster-dark{display:none}
 :root[data-theme="dark"] img.poster-light{display:none}
 :root[data-theme="dark"] img.poster-dark{display:block}
 
-/* 竖排标题组:与碑页左右对望;bottom 为左下目录块预留高度,避免标题尾部与页签相叠 */
-.hero-title{position:absolute; z-index:2; left:clamp(28px,6vw,96px); top:0; bottom:250px;
+/* 左列:标题组与页签目录同列锚定(批次 C 修正)——标题区底边即目录块
+   顶边,面板高度随内容(文章/空态)变化都不与竖排文字相叠;此前
+   .hero-title bottom:250px 硬编码预留与目录实际总高(~311px)脱钩,
+   全视口容器交叠 51px,矮视口文字直接压到页签 */
+.hero-left{position:absolute; z-index:2; left:clamp(28px,6vw,96px); top:0; bottom:30px;
+  display:flex; flex-direction:column; min-width:0}
+/* 竖排标题组:与碑页左右对望;占目录之上剩余高度,文字组垂直居中 */
+.hero-title{position:relative; flex:1 1 auto; min-height:0;
   display:flex; align-items:center; gap:clamp(18px,2.6vw,40px); pointer-events:none}
 .v-kicker{writing-mode:vertical-rl; font-family:var(--mono); font-size:12px;
   letter-spacing:.34em; color:var(--ink2); margin:0; padding-top:4px}
-/* 字号同时受宽度和可用高度约束:目录块占位后,矮视口也不能折列 */
-.v-title{writing-mode:vertical-rl; margin:0; font-size:clamp(38px, min(4.4vw, 5.4vh), 60px);
+/* 字号同时受宽度和可用高度约束:高度项按(视口-导航-目录块-底距)实扣,
+   保证目录之上单列放下标题;极矮视口(<~680)字号停在下限、折两列
+   (竖排多列自然排版),仍不与目录相叠 */
+.v-title{writing-mode:vertical-rl; margin:0; font-size:clamp(24px, min(4.4vw, calc((100vh - 410px)/12.6)), 60px);
   font-weight:900; line-height:1.16; letter-spacing:.08em; max-height:96%}
 .v-title .small{font-size:.42em; font-weight:600; letter-spacing:.22em;
   color:var(--ink2); margin-right:.6em}
@@ -158,9 +166,8 @@ html.js .thread{display:block; position:absolute; top:0; bottom:0; left:clamp(9p
    ═══════════════════════════════════════════════════════════ */
 
 /* ── 页签目录:与 3D 页叠双向联动的栏目书签。
-   定位在 hero 左下,不遮前景页文字 ── */
-.toc-block{position:absolute; z-index:2; left:clamp(28px,6vw,96px); bottom:30px;
-  max-width:330px; min-width:0}
+   左列底部(批次 C:由 absolute 改左列流式,贴列底=原 bottom:30px) ── */
+.toc-block{position:relative; max-width:330px; min-width:0}
 .page-tabs{display:flex; gap:8px; margin:0 0 10px}
 .ptab{display:inline-flex; align-items:center; gap:8px; font-family:var(--serif);
   font-size:14.5px; color:var(--ink2); background:color-mix(in srgb, var(--sheet) 78%, transparent);
@@ -256,6 +263,7 @@ html.js .layer-item:not(.on) .li-body{display:none}
 
 /* ── 手机端:场景作封面插图居上,标题横排居下,按钮不压文字 ── */
 @media (max-width:700px){
+  .hero-left{display:contents}  /* 手机恢复平铺:标题/目录直接参与 hero 流 */
   .hero-full{height:auto; min-height:100dvh; display:flex; flex-direction:column; overflow:visible}
   .hero-full .scene-host{position:relative; inset:auto; height:56dvh; flex:none; order:-2}
   .hero-full img.poster{position:relative; inset:auto; height:56dvh; object-fit:cover; flex:none; order:-2}
