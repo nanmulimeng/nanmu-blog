@@ -245,7 +245,9 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
               <span class="li-dot"></span><b>AI 日报</b><span class={`li-state ${siteLayers[1].solid ? 'ok' : 'plan'}`}>{siteLayers[1].state}</span>
             </button>
             <div class="li-body">
-              <p>AI 自动生成的日报:自动挑题、自动摘要,每期注明模型与成本,与手写文章分开。这一栏暂无已发布日报。</p>
+              {/* 层说明=稳定栏目介绍;是否已有日报/已发多少期由上方
+                  li-state 与 digest 区从 digests 派生,这里不复制状态 */}
+              <p>AI 自动生成的日报:自动挑题、自动摘要,每期注明模型与成本,与手写文章分开。</p>
             </div>
           </div>
           <div class="layer-item" data-layer="search">

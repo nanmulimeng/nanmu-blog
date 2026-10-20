@@ -132,11 +132,20 @@ def build_with_digest(entries, tmp):
     return True
 
 
-def probe(pg, port, want_digest_json, want_li, want_blank, want_sub):
+def probe(pg, port, want_digest_json, want_li, want_blank, want_sub,
+          want_latest=None):
     """加载首页,断言 data-digest/data-site/页面层状态/空态/面板名/
     订阅卡状态——同一份内容数据的派生口径(批次 C 文案轮:期数状态
-    从 digests 派生,不用「存在」推导「每日一期」)。"""
+    从 digests 派生,不用「存在」推导「每日一期」)。
+
+    收口轮新增:实际展开「这个站 → AI 日报」层,层说明正文必须是稳定
+    栏目介绍——含介绍、不含任何「暂无」空态宣称(是否已有/已发多少
+    期由 li-state 与 digest 区动态表达,固定正文不复制状态判断);
+    最新日报行/期数计数与状态派生同源(want_latest=None 为零期,
+    (最新期日期, 期数) 为有期)。"""
     pg.goto("http://127.0.0.1:%d/" % port, wait_until="domcontentloaded")
+    pg.click(".layer-item[data-layer=digest] .li-head")
+    pg.wait_for_timeout(150)
     st = pg.evaluate("""() => {
       const host = document.querySelector('#scene3d');
       const li = document.querySelector(
@@ -154,6 +163,15 @@ def probe(pg, port, want_digest_json, want_li, want_blank, want_sub):
         sub: (document.querySelector(
               '.sub-cards .sub-card:nth-of-type(2) .sc-type')
               || {textContent: ''}).textContent.trim(),
+        liBody: (document.querySelector(
+                 '.layer-item[data-layer=digest] .li-body p')
+                 || {textContent: ''}).textContent.trim(),
+        rows: [...document.querySelectorAll(
+          '.digest-empty .row-item h3')].map(x => x.textContent.trim()),
+        digCount: (document.querySelector('.digest-empty .count')
+                   || {textContent: ''}).textContent.trim(),
+        bsState: (document.querySelector('.digest-empty .bs-state')
+                  || {textContent: ''}).textContent.trim(),
         perDay: document.body.innerText.includes('每日一期')};}""")
     ds = dd = None
     try:
@@ -164,6 +182,18 @@ def probe(pg, port, want_digest_json, want_li, want_blank, want_sub):
         dd = json.loads(st["dd"]) if st["dd"] else None
     except ValueError:
         pass
+    # 层说明:稳定介绍可读,且不复制状态判断(任何态都不得宣称「暂无」)
+    intro_ok = ("AI 自动生成的日报" in st["liBody"]
+                and "暂无" not in st["liBody"])
+    # 最新日报内容与期数状态同源
+    if want_latest is None:
+        latest_ok = (not st["rows"] and st["bsState"] == "暂无已发布日报"
+                     and "AI 生成栏目" in st["digCount"])
+    else:
+        date, n = want_latest
+        latest_ok = (len(st["rows"]) == n
+                     and (date + " 日报") in st["rows"][0]
+                     and st["digCount"].startswith("%d 期" % n))
     # 同源断言:data-site 的 digest 层 state == 页面 li-state 文本 ==
     # 订阅卡状态(同一份 digests 派生);全站不出现频次推导词
     dig_layer = (ds or [None, None, {}])[1] or {}
@@ -173,10 +203,13 @@ def probe(pg, port, want_digest_json, want_li, want_blank, want_sub):
           and st["blank"] is want_blank
           and st["sub"] == want_sub
           and not st["perDay"]
+          and intro_ok and latest_ok
           and (want_digest_json is None or dd == want_digest_json))
     return ok, {"dd": st["dd"], "li": st["liText"], "liCls": st["liClass"],
                 "blank": st["blank"], "tp": st["tpName"],
                 "tpDesc": st["tpDesc"][:24], "sub": st["sub"],
+                "liBody": st["liBody"][:20], "rows": st["rows"][:2],
+                "cnt": st["digCount"], "bs": st["bsState"][:8],
                 "perDay": st["perDay"], "dsDig": dig_layer.get("state")}
 
 
@@ -199,7 +232,7 @@ def main():
             # verify_browser.py I 段固化,这里不断言 dd 值)
             httpd = serve(SITE / "dist", PORT_BASE)
             ok, d = probe(pg, PORT_BASE, None, "计划 · 暂无发布", True,
-                          "AI 日报 · 暂无发布")
+                          "AI 日报 · 暂无发布", None)
             check("dstates/zero", ok, str(d))
             httpd.shutdown()
             httpd = None
@@ -211,7 +244,7 @@ def main():
                 ok, d = probe(pg, PORT_BASE + 1,
                               {"latest": {"date": "2026-10-04", "count": 2}},
                               "在线 · 已发 1 期", False,
-                              "AI 日报 · 已发 1 期")
+                              "AI 日报 · 已发 1 期", ("2026-10-04", 1))
                 check("dstates/one", ok and "2026-10-04" in d["tp"], str(d))
                 httpd.shutdown()
                 httpd = None
@@ -225,7 +258,7 @@ def main():
                 ok, d = probe(pg, PORT_BASE + 2,
                               {"latest": {"date": "2026-10-05", "count": 5}},
                               "在线 · 已发 2 期", False,
-                              "AI 日报 · 已发 2 期")
+                              "AI 日报 · 已发 2 期", ("2026-10-05", 2))
                 check("dstates/updated", ok and "2026-10-05" in d["tp"],
                       str(d))
                 httpd.shutdown()
