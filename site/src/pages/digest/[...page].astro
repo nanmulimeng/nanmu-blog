@@ -18,7 +18,7 @@ const rssUrl = new URL('digest.xml', Astro.site).toString();
     <div class="list-head">
       <div class="crumb"><span class="seal-m">机</span><a href="/">首页</a><span>/</span><span>日报</span></div>
       <h1>AI 日报</h1>
-      <p class="sub">由引擎读采集数据、自动选题与摘要生成的日报,每日一期。本栏目全部内容为 AI 生成,每期标注所用模型与成本;与手写「文章」栏目分开。</p>
+      <p class="sub">AI 自动选题与摘要生成的日报栏目。全部内容为 AI 生成,每期标注所用模型与成本;与手写「文章」栏目分开。</p>
     </div>
 
     {page.data.length === 0 ? (
@@ -51,7 +51,7 @@ const rssUrl = new URL('digest.xml', Astro.site).toString();
       <span class="s-title"><span class="seal-m" style="width:18px;height:18px;font-size:10px;vertical-align:-3px">机</span> 日报 RSS</span>
       <span class="s-item"><code>{rssUrl}</code>
         <button class="copy-link" type="button" data-copy={rssUrl}>复制链接</button></span>
-      <p class="hint">AI 生成栏目,计划每日一期;第一期到了会送到你的阅读器。</p>
+      <p class="hint">AI 生成栏目;有新日报发布时会送达你的阅读器。</p>
     </div>
   </div>
 </Base>

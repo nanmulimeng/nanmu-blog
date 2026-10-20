@@ -9,12 +9,9 @@ const digestUrl = new URL('digest.xml', Astro.site).toString();
       <div>
         <h1>关于这个站</h1>
         <div class="prose">
-          <p>我叫 nanmu。这个站在 2026 年 10 月上线,是我第二次做博客:第一次做得太大,十二周半之后烂尾;这次只先做最小的东西——写完文章,推送,服务器自动构建上线。这条链路已经在跑。</p>
-          <p>站上分两个栏目,印章不同:<span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">文</span> <b>文章</b>是我手写的;<span class="seal-m" style="width:18px;height:18px;font-size:10px;vertical-align:-3px">机</span> <b>AI 日报</b>是引擎自动生成的,每期标注模型与成本,永远和我的文章分开。还有一个计划中的自用检索,做好了会先在站内小范围用。</p>
-          <p>八月底我上线过一个叫 topic-digest 的小爬取试点,这次日报的技术底子从那里来。设计时参考过 AIHOT 和 PowerContext 两个项目,各借了一点模式。</p>
+          <p>我叫 nanmu。我用这个博客记录想法，也整理阅读与生活中的发现。文章不定期更新，欢迎通过 RSS 订阅。这个站在 2026 年 10 月上线。</p>
+          <p>站上分两个栏目,印章不同:<span class="seal-w" style="width:18px;height:18px;font-size:11px;vertical-align:-3px">文</span> <b>文章</b>是我手写的;<span class="seal-m" style="width:18px;height:18px;font-size:10px;vertical-align:-3px">机</span> <b>AI 日报</b>是引擎自动生成的,每期标注模型与成本,永远和我的文章分开。还有一个计划中的自用检索。</p>
         </div>
-        <div class="todo-slot">待填:一段正式的自我介绍(作者供图/文字后替换)</div>
-        <div class="todo-slot">待填:联系方式或外链(目前无可核实条目,不编造)</div>
       </div>
 
       <figure class="vignette">
@@ -55,15 +52,14 @@ const digestUrl = new URL('digest.xml', Astro.site).toString();
           <rect x="24" y="24" width="30" height="30" fill="none" stroke="var(--seal)" stroke-width="2"/>
           <text x="39" y="46" text-anchor="middle" font-size="16" fill="var(--seal)" font-family="var(--serif)" font-weight="900">南</text>
         </svg>
-        <figcaption>这个站的样子:立起的页是文章,透着暖光的是最新一篇,虚线页是还在计划的日报。</figcaption>
+        <figcaption>这个站的样子:立起的页是文章,虚线页是计划中的日报。</figcaption>
       </figure>
     </div>
 
     <div class="facts">
       <h2 class="sect-bar">这个站的时间线</h2>
-      <div class="fact-row"><span class="when">2026 上半年</span><span class="what">第一个博客项目:功能铺得太大,十二周半后烂尾,成为这次的反面教材。</span></div>
-      <div class="fact-row"><span class="when">2026-08-31</span><span class="what">topic-digest 小爬取试点上线:定时采集 + 静态页面,验证最小闭环。</span></div>
-      <div class="fact-row"><span class="when">进行中</span><span class="what">AI 引擎:日报在前,检索在后。做好了会出现在「机」印章的栏目里。</span></div>
+      <div class="fact-row"><span class="when">2026-10</span><span class="what">这个站上线。</span></div>
+      <div class="fact-row"><span class="when">计划中</span><span class="what">AI 日报:自动生成,发布后会出现在「机」印章的栏目里。</span></div>
     </div>
 
     <div class="subscribe" data-reveal>

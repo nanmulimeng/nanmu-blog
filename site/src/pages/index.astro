@@ -47,7 +47,7 @@ const digestInfo = digests[0]
   : null;
 const siteLayers = [
   { name: '手写文章', state: '在线 · 博客本体', solid: true },
-  { name: 'AI 日报', state: digests.length ? '在线 · 每日一期' : '计划 · 引擎评审通过', solid: digests.length > 0 },
+  { name: 'AI 日报', state: digests.length ? '在线 · 每日一期' : '计划 · 暂无发布', solid: digests.length > 0 },
   { name: '个人检索', state: '计划 · 尚未开工', solid: false },
 ];
 
@@ -80,8 +80,8 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     <div class="hero-left">
       <div class="hero-title">
         <p class="v-kicker">NANMU · 手写博客</p>
-        <h1 class="v-title">先把最小的东西做完</h1>
-        <p class="v-sub">上线,能用——手写为体,日报与检索在计划中</p>
+        <h1 class="v-title">记录所想，留住所得。</h1>
+        <p class="v-sub">这里是 nanmu 的个人博客，收录随笔、阅读记录与值得分享的内容。</p>
       </div>
 
     {/* 页签目录:与 3D 页叠双向联动;无 JS 时文章面板默认展开、链接可用 */}
@@ -116,15 +116,15 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           ) : (
             <>
               <p class="tp-name">AI 日报 <span class="tp-meta">暂无已发布日报</span></p>
-              <p class="tp-desc">引擎已通过设计评审,正在做上线前核验。第一期到达时会出现在这个栏目,并注明 AI 生成。</p>
+              <p class="tp-desc">这一栏还没有发布过日报。日报由 AI 自动生成,每期注明模型与成本。</p>
               <a class="btn" href="/digest/">看日报栏目</a>
             </>
           )}
         </div>
         <div class="tpanel" role="tabpanel" id="panel-about" aria-labelledby="tab-about" hidden>
-          <p class="tp-name">这个站 <span class="tp-meta">三层,各管各的</span></p>
-          <p class="tp-desc">手写文章是在线本体;AI 日报与个人检索是计划中的两层,任何一层挂掉,博客照常在线。</p>
-          <a class="btn" href="/about/">站点来历</a>
+          <p class="tp-name">这个站 <span class="tp-meta">栏目与结构</span></p>
+          <p class="tp-desc">手写文章是本体;AI 日报与个人检索是渐进添加的栏目。</p>
+          <a class="btn" href="/about/">关于这个站</a>
         </div>
       </div>
     </div>
@@ -196,8 +196,8 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
         <div class="blank-sheet" data-reveal>
           <div class="bs-lines" aria-hidden="true"><i></i><i></i><i></i></div>
           <p class="bs-state">暂无已发布日报</p>
-          <p class="bs-desc">这一页还空着。日报将由一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。引擎已通过设计评审,还在做上线前最后的核验。</p>
-          <p class="bs-act"><a href="/digest/">查看日报栏目与样张 →</a></p>
+          <p class="bs-desc">这一栏还没有发布过日报。日报由 AI 自动生成,每期注明模型与成本,与手写文章分开。</p>
+          <p class="bs-act"><a href="/digest/">查看日报栏目 →</a></p>
         </div>
       ) : (
         <div data-reveal>
@@ -223,7 +223,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           <button class="ly ly-posts on" type="button" data-layer="posts" aria-pressed="true"><i>手写文章</i></button>
           <button class="ly ly-digest" type="button" data-layer="digest" aria-pressed="false"><i>AI 日报</i></button>
           <button class="ly ly-search" type="button" data-layer="search" aria-pressed="false"><i>个人检索</i></button>
-          <span class="ly-note">任何一层挂掉,其他层照常</span>
+          <span class="ly-note">文章是本体,AI 栏目渐进添加</span>
         </div>
         <div class="layers-list">
           <div class="layer-item on" data-layer="posts">
@@ -231,7 +231,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
               <span class="li-dot"></span><b>手写文章</b><span class={`li-state ${siteLayers[0].solid ? 'ok' : 'plan'}`}>{siteLayers[0].state}</span>
             </button>
             <div class="li-body">
-              <p>博客本身已经在 nanmu.xyz 上线:我手写 Markdown,推送后服务器自动构建、原子切换。这是这个站唯一"必须活着"的部分,目前一切正常。</p>
+              <p>我手写的文章与随笔,不定期更新,按时间倒序排列;可通过 RSS 订阅。</p>
             </div>
           </div>
           <div class="layer-item" data-layer="digest">
@@ -239,7 +239,7 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
               <span class="li-dot"></span><b>AI 日报</b><span class={`li-state ${siteLayers[1].solid ? 'ok' : 'plan'}`}>{siteLayers[1].state}</span>
             </button>
             <div class="li-body">
-              <p>一个独立的引擎读采集数据、自己挑题、自己写摘要,每日一期,发出后注明 AI 生成。设计已通过评审,正在做上线前核验。它挂掉,博客不受影响。</p>
+              <p>AI 自动生成的日报:自动挑题、自动摘要,每期注明模型与成本,与手写文章分开。这一栏暂无已发布日报。</p>
             </div>
           </div>
           <div class="layer-item" data-layer="search">
@@ -247,12 +247,12 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
               <span class="li-dot"></span><b>个人检索</b><span class={`li-state ${siteLayers[2].solid ? 'ok' : 'plan'}`}>{siteLayers[2].state}</span>
             </button>
             <div class="li-body">
-              <p>把我的文章和精选内容做成可问答的知识库,先自用。排在日报之后开工;它挂掉,博客和日报都不受影响。</p>
+              <p>把文章与收藏整理成可检索的知识库,自用为主,计划中。</p>
             </div>
           </div>
         </div>
       </div>
-      <p class="about-more" data-reveal>此前一个功能很多的博客烂尾在第十二周半;这一个是按它的教训重开的。<a class="more" href="/about/">完整的站点来历 →</a></p>
+      <p class="about-more" data-reveal>想多了解这个站?<a class="more" href="/about/">看关于页 →</a></p>
     </section>
 
     {/* 订阅:书签卡收尾;复制成功盖「已录」小印 */}
@@ -272,12 +272,12 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
           </div>
         </div>
         <div class="sub-card">
-          <span class="sc-type">AI 日报 · 计划每日一期</span>
+          <span class="sc-type">AI 日报 · 暂无发布</span>
           <h3><span class="seal-m" style="width:20px;height:20px;font-size:10px">机</span>日报 RSS</h3>
           <div class="sc-addr">{digestUrl}</div>
           <div class="sc-row">
             <button class="copy-link" type="button" data-copy={digestUrl}>复制链接</button>
-            <p class="hint">第一期到了会送到</p>
+            <p class="hint">有新日报时送达</p>
           </div>
         </div>
       </div>

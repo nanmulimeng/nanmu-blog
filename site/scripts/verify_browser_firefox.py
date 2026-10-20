@@ -75,7 +75,7 @@ def main():
             st = pg.evaluate("""() => ({
               grid: !!document.querySelector('.about-grid'),
               facts: document.querySelectorAll('.fact-row').length})""")
-            check("fx/about", st["grid"] and st["facts"] >= 3, str(st))
+            check("fx/about", st["grid"] and st["facts"] >= 2, str(st))
             pg.goto(base + "/", wait_until="domcontentloaded")
             st = pg.evaluate("""() => ({
               hero: !!document.querySelector('#scene3d'),

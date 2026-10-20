@@ -48,7 +48,7 @@ function rng(seed){ let s = seed >>> 0; return () => (s = s * 1664525 + 10139042
    aboutTex 内的字面量保持同步) */
 const FIXED_SAMPLE =
   'AI日报这个站手写文章个人检索NANMU·nanmu.xyzdigest' +
-  '计划每日一期发出后注明生成引擎已通过设计评审正在做上线前核验第到达时会出现在栏目暂无发布' +
+  '由成每注明模型与成本栏目渐进添加是本体计划中暂无发布' +
   '三层各管任何挂掉博客照常在线已在服务器的自动发布链路上线随笔建站篇全文约字0123456789-·:;,。——/()「」' +
   '无题第一写。文章最新往正文见';
 async function fontsReady(article, digest, site){
@@ -225,13 +225,13 @@ function digestTex(dig){
     g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
     g.fillText('最新一期:' + dig.latest.date, TM, 920);
     g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
-    g.fillText('引擎每日一期,发出后注明 AI 生成。', TM, 986);
+    g.fillText('日报由 AI 生成,每期注明模型与成本。', TM, 986);
     g.fillText('往期与正文见日报栏目。', TM, 1040);
   } else {
     g.fillStyle = 'rgba(29,31,36,0.72)'; g.font = '600 40px "Noto Serif SC", serif';
     g.fillText('暂无已发布日报', TM, 920);
     g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 28px "Noto Serif SC", serif';
-    g.fillText('引擎已通过设计评审,正在做上线前核验。', TM, 986);
+    g.fillText('日报由 AI 生成,每期注明模型与成本。', TM, 986);
     g.fillText('第一期到达时会出现在这个栏目。', TM, 1040);
   }
   g.fillStyle = 'rgba(29,31,36,0.45)'; g.font = '400 24px "Noto Serif SC", serif';
@@ -251,7 +251,7 @@ function aboutTex(layers){
   g.fillStyle = '#14161A'; g.font = '900 88px "Noto Serif SC", serif';
   g.fillText('这个站', TM, 240);
   g.fillStyle = 'rgba(29,31,36,0.5)'; g.font = '400 27px "Noto Serif SC", serif';
-  g.fillText('三层各管各的:任何一层挂掉,博客照常在线', TM, 330);
+  g.fillText('文章是本体,AI 栏目渐进添加', TM, 330);
   g.strokeStyle = 'rgba(29,31,36,0.4)'; g.lineWidth = 1.5;
   g.beginPath(); g.moveTo(TM, 376); g.lineTo(TW - 84, 376); g.stroke();
   const ys = [470, 680, 890];
@@ -272,7 +272,7 @@ function aboutTex(layers){
     g.fillText(state, TM + 34, y + 100);
   }
   g.fillStyle = 'rgba(29,31,36,0.45)'; g.font = '400 24px "Noto Serif SC", serif';
-  g.fillText('nanmu.xyz · 已在服务器的自动发布链路上线', TM, TH - 92);
+  g.fillText('nanmu.xyz · 个人博客', TM, TH - 92);
   return paperFinish(g);
 }
 function plainPaperTex(seed, tone){

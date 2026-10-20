@@ -271,14 +271,34 @@ def main():
               todo: document.querySelectorAll('.todo-slot').length,
               svg: !!document.querySelector('.vignette svg'),
               facts: document.querySelectorAll('.fact-row').length})""")
-            check("about/content", st["grid"] and st["todo"] >= 1 and st["svg"]
-                  and st["facts"] >= 3, str(st))
+            # 批次 C:待填占位全撤(缺的信息直接不展示),facts 精简
+            check("about/content", st["grid"] and st["todo"] == 0 and st["svg"]
+                  and st["facts"] >= 2, str(st))
             pg.goto(base + "/404.html", wait_until="domcontentloaded")
             st = pg.evaluate("""() => ({
               h1: (document.querySelector('.gate-wrap h1')||{textContent:''}).textContent,
               links: document.querySelectorAll('.gate-links a').length})""")
             check("404/gate", "没有" in st["h1"] or "不存在" in st["h1"]
                   or st["h1"] != "", st["h1"] + " links=%d" % st["links"])
+            # 批次 C 公开文案:个人博客定位,不向读者暴露内部信息——
+            # 烂尾经历/开发周数/实施流程/部署链路/借鉴项目/内部阶段/
+            # 待填占位,负面清单扫首页+关于页全文(含竖排标题/面板)
+            for path, key in (("/", "home"), ("/about/", "about")):
+                pg.goto(base + path, wait_until="domcontentloaded")
+                pg.wait_for_timeout(300)
+                txt = pg.evaluate("document.body.innerText")
+                bad = [w for w in ("烂尾", "周半", "评审", "核验",
+                                   "自动构建", "原子切换", "推送后",
+                                   "topic-digest", "AIHOT", "PowerContext",
+                                   "M0", "M1", "M2", "待填", "作者供图")
+                       if w in txt]
+                check("copy-clean/%s" % key, not bad,
+                      "命中:" + ",".join(bad) if bad else "干净")
+            # 站点定位词在(个人博客;副题承载)
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            vsub = pg.evaluate(
+                "(document.querySelector('.v-sub')||{textContent:''}).textContent")
+            check("copy/home-position", "个人博客" in vsub, vsub[:40])
             pg.close()
             ctx.close()
 
