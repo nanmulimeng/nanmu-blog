@@ -1312,6 +1312,33 @@ def main():
             pg.close()
             ctx.close()
 
+            # 页签切换+resize(批次 C 证据轮):矮窗逐一切换三页签
+            # (各面板内容高度不同),再调窗口尺寸——标题仍不压目录块
+            ctx = b.new_context(viewport={"width": 1280, "height": 600})
+            pg = ctx.new_page()
+            pg.goto(base + "/", wait_until="domcontentloaded")
+            pg.wait_for_function("document.fonts.status === 'loaded'",
+                                 timeout=15000)
+            pg.wait_for_timeout(900)
+            ok_all, seq = True, []
+            for pid in ("digest", "about", "posts"):
+                pg.click("#tab-" + pid)
+                pg.wait_for_timeout(400)
+                st = pg.evaluate(hero_js)
+                ok = (st["kickClear"] and st["titleClear"] and st["subClear"]
+                      and st["gap"] >= -0.5 and st["subGap"] >= -0.5)
+                seq.append("%s:%s" % (pid, "ok" if ok else "BAD"))
+                ok_all = ok_all and ok
+            pg.set_viewport_size({"width": 1366, "height": 768})
+            pg.wait_for_timeout(500)
+            st = pg.evaluate(hero_js)
+            ok_rs = (st["kickClear"] and st["titleClear"] and st["subClear"]
+                     and st["gap"] >= -0.5 and st["subGap"] >= -0.5)
+            seq.append("resize768:%s" % ("ok" if ok_rs else "BAD"))
+            check("hero-geom/tabs-resize", ok_all and ok_rs, " ".join(seq))
+            pg.close()
+            ctx.close()
+
             b.close()
     finally:
         httpd.shutdown()
