@@ -58,6 +58,7 @@ SESSIONS = set()                          # 活跃会话(内存)
 TOKENS = {}                               # token -> {"sid":..., "exp":...}
 TOKEN_TTL = 1800                          # 30 分钟
 REQLOG = []                               # 服务端请求记录(最小事实)
+PREVIEWS = {"p1", "p2"}                   # 存活预览(内存;删除=discard)
 DRAFTS = {                                # 内存写目标:非法请求后状态必须不变
     "probe-draft": {"title": "校对样文"},
     "probe-draft-2": {"title": "对照草稿"},
@@ -134,14 +135,17 @@ class H(BaseHTTPRequestHandler):
         return ("sid=probe-session" in (self.headers.get("Cookie") or "")
                 and "probe-session" in SESSIONS)   # 查会话表,非仅 cookie
 
-    def _token_ok(self):
+    def _token_ok(self, pid, kind):
         m = re.search(r"[?&]t=([0-9a-f]+)", self.path)
         if not m:
             return False
         rec = TOKENS.get(m.group(1))
-        # token 有效性=未过期 且 绑定的会话仍活跃
+        # 有效=未过期 且 绑定会话仍活跃 且 预览仍存活
+        # 且 凭证所属预览=请求的预览 且 资源类别在允许范围内
         return bool(rec and rec["exp"] > time.time()
-                    and rec["sid"] in SESSIONS)
+                    and rec["sid"] in SESSIONS
+                    and rec["pid"] == pid and pid in PREVIEWS
+                    and kind in rec["kinds"])
 
     def _font_file(self, rest):
         # 只读映射 /preview/p1/fonts/<rest> -> site/public/fonts/<rest>
@@ -154,6 +158,8 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         p = self.path.split("?")[0]
         origin = self.headers.get("Origin")
+        mres = re.match(r"^/preview/(p[12])/(fonts|img)/(.+)$", p)
+        pid = mres.group(1) if mres else None
         if p == "/api/drafts":
             ok = self._sess()
             slog("GET", p, origin, "session" if ok else "none",
@@ -163,14 +169,17 @@ class H(BaseHTTPRequestHandler):
                                   "application/json")
             return self._send(200, json.dumps(
                 {"drafts": sorted(DRAFTS)}).encode(), "application/json")
-        if p == "/preview/p1/fonts/fonts.css":
+        if pid and p == "/preview/%s/fonts/fonts.css" % pid:
             # 资源只走 token 校验(opaque origin 子资源不带 cookie,
             # 全局会话检查会先把它拒掉——这正是 v1 失败的机制)
             if MODE == "cookie-only" or BLOCK_CSS:
                 # cookie-only=模拟当前失败:opaque 子资源不带 cookie
                 slog("GET", p, origin, "none", 401)
                 return self._send(401)
-            if not self._token_ok():
+            if pid not in PREVIEWS:
+                slog("GET", p, origin, "preview-gone", 410)
+                return self._send(410)
+            if not self._token_ok(pid, "css"):
                 slog("GET", p, origin, "bad-or-expired-token", 401)
                 return self._send(401)
             slog("GET", p, origin, "token", 200)
@@ -184,14 +193,17 @@ class H(BaseHTTPRequestHandler):
             css += "\nbody{--probe-ext-css:applied}"
             return self._send(200, css.encode("utf-8"),
                               "text/css; charset=utf-8")
-        if p.startswith("/preview/p1/fonts/shards/"):
+        if pid and p.startswith("/preview/%s/fonts/shards/" % pid):
             if MODE == "cookie-only":
                 slog("GET", p, origin, "none", 401)
                 return self._send(401)
-            if not self._token_ok():
+            if pid not in PREVIEWS:
+                slog("GET", p, origin, "preview-gone", 410)
+                return self._send(410)
+            if not self._token_ok(pid, "font"):
                 slog("GET", p, origin, "bad-or-expired-token", 401)
                 return self._send(401)
-            f = self._font_file(p[len("/preview/p1/fonts/"):])
+            f = self._font_file(p[len("/preview/%s/fonts/" % pid):])
             if f is None:
                 slog("GET", p, origin, "token", 404)
                 return self._send(404)
@@ -202,11 +214,14 @@ class H(BaseHTTPRequestHandler):
             # ACAO:* 只作用于公开字体文件,不涉及草稿内容。
             return self._send(200, f.read_bytes(), "font/woff2", extra=[
                 ("Access-Control-Allow-Origin", "*")])
-        if p == "/preview/p1/img/fig.png":
+        if pid and p == "/preview/%s/img/fig.png" % pid:
             if MODE == "cookie-only":
                 slog("GET", p, origin, "none", 401)
                 return self._send(401)
-            if not self._token_ok():
+            if pid not in PREVIEWS:
+                slog("GET", p, origin, "preview-gone", 410)
+                return self._send(410)
+            if not self._token_ok(pid, "img"):
                 slog("GET", p, origin, "bad-or-expired-token", 401)
                 return self._send(401)
             slog("GET", p, origin, "token", 200)
@@ -217,11 +232,15 @@ class H(BaseHTTPRequestHandler):
         if p == "/admin.html":
             slog("GET", p, origin, "session", 200)
             return self._send(200, ADMIN_HTML.encode("utf-8"))
-        if p == "/preview/p1/index.html":
+        if p in ("/preview/p1/index.html", "/preview/p2/index.html"):
+            hpid = p.split("/")[2]
             slog("GET", p, origin, "session", 200)
             tok = secrets.token_hex(8)
-            TOKENS[tok] = {"sid": "probe-session",
-                           "exp": time.time() + TOKEN_TTL}
+            # 最小记录范围:所属会话/所属预览/有效期/允许类别
+            # (bearer 凭证,子资源请求不要求登录 cookie)
+            TOKENS[tok] = {"sid": "probe-session", "pid": hpid,
+                           "exp": time.time() + TOKEN_TTL,
+                           "kinds": ("css", "font", "img")}
             body = PREVIEW_HTML.replace("{TOKEN}", tok).encode("utf-8")
             return self._send(200, body, extra=[
                 ("Content-Security-Policy", "sandbox"),  # 无 allow-scripts
@@ -459,6 +478,54 @@ def run_browser(res):
               % (c1.status, c2.status, c3.status, c4.status,
                  snap == snap2,
                  [(e["auth"], e["status"]) for e in log4]))
+
+        # ---- 组 T:资源 token 边界(短期 bearer 资源凭证)----
+        # 无会话上下文验证:token 是独立凭证,子资源不要求登录 cookie
+        noku = b.new_context()
+        base_u = "http://127.0.0.1:%d" % PORT
+
+        def tget(u):
+            return noku.request.get(base_u + u).status
+        r_html = ctx.request.get(base_u + "/preview/p1/index.html")
+        tokA = re.search(r"[?&]t=([0-9a-f]+)", r_html.text()).group(1)
+        t1 = tget("/preview/p1/fonts/fonts.css?t=" + tokA)
+        check(res, "T", "t1-token-loads-own-css", t1 == 200,
+              "无 cookie 上下文+token=%d(bearer 凭证独立起作用)" % t1)
+        t2 = tget("/preview/p2/fonts/fonts.css?t=" + tokA)
+        check(res, "T", "t2-cross-preview-denied", t2 in (401, 403),
+              "A 的 token 访问 B 预览资源=%d(须拒,token 绑定预览)"
+              % t2)
+        t3a = tget("/preview/p1/index.html?t=" + tokA)
+        t3b = tget("/api/drafts?t=" + tokA)
+        check(res, "T", "t3-token-not-for-html-api",
+              t3a == 401 and t3b == 401,
+              "HTML=%d API=%d(token 不替代会话;HTML 只走登录路径,"
+              "管理 API 永不接受资源 token)" % (t3a, t3b))
+        # 到期:可控时钟=直接修改临时记录,不实际等待 30 分钟
+        TOKENS[tokA]["exp"] = time.time() - 1
+        t4 = tget("/preview/p1/fonts/shards/"
+                  "noto-serif-sc-400-000.woff2?t=" + tokA)
+        check(res, "T", "t4-expiry-denied", t4 == 401,
+              "到期后=%d(会话失效拒绝见 S2,此条只验凭证自身到期)"
+              % t4)
+        TOKENS[tokA]["exp"] = time.time() + TOKEN_TTL
+        # 预览被删除:未过期 token 也不得继续访问
+        PREVIEWS.discard("p1")
+        t5 = tget("/preview/p1/fonts/fonts.css?t=" + tokA)
+        check(res, "T", "t5-preview-deleted-denied", t5 in (401, 410),
+              "预览删除后=%d(24h 保留期与 30min 凭证相互独立,"
+              "预览没了凭证随之失效)" % t5)
+        # 有效会话重开保留期内预览:获得新凭证(与旧凭证不同且可用)
+        PREVIEWS.add("p1")
+        r_html2 = ctx.request.get(base_u + "/preview/p1/index.html")
+        m6 = re.search(r"[?&]t=([0-9a-f]+)", r_html2.text())
+        tokB = m6.group(1) if m6 else ""
+        t6 = tget("/preview/p1/fonts/fonts.css?t=" + tokB) if tokB else 0
+        check(res, "T", "t6-reopen-issues-new-token",
+              bool(tokB) and tokB != tokA and t6 == 200,
+              "新凭证≠旧且可用=%s(token 值不入日志与交接)"
+              % (bool(tokB) and tokB != tokA and t6 == 200))
+        noku.close()
 
         # ---- 组 2:S2 会话失效:HTML/CSS/字体/图片重请求全拒 ----
         # 先取已签发 token 的资源 URL(expire 之前 HTML 可取),
