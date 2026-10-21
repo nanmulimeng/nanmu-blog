@@ -37,7 +37,7 @@
 ## Git 与部署状态
 
 - 固定发布对象:**17d008c2966f024bbfb0c3db0030c4b511b002a8**
-- origin/main:17d008c(发布版本,第一推 rev-parse 实读);⚠️本 session 相关交接/证据文档提交(d06041a 起,最终以 `git log origin/main..main` 实读为准)因 github.com 连接失败(连续四次 Connection reset/443 不通,环境抖动)暂未推 origin——发布版本已在 origin 保存,不阻塞;待网络恢复补推
+- origin/main:17d008c(发布版本,第一推 rev-parse 实读);交接/证据文档提交曾因 github.com 连接抖动暂缓,同日网络恢复后已补推(origin/main 含至 4d6afa0,此后以 `git log origin/main..main` 实况为准)
 - server/main:17d008c(push 输出 9120bf3..17d008c)
 - 线上 release.txt:17d008c(轮询确认+验收断言第 1 项)
 - 恢复操作:无;旧版 9120bf3 及更早**含被撤文章,不作回滚目标**(⚠️回滚到 9120bf3 及更早会重新公开被撤文章;9120bf3 为发布前线上版本,现已被替换)
