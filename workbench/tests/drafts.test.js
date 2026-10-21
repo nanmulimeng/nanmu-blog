@@ -253,6 +253,48 @@ test('回归:列表读取不得干扰进行中的保存(并发 list 删活动 tm
   }
 });
 
+test('句柄释放:保存全程打开的句柄在正常路径与 sync 异常路径下均显式关闭', async () => {
+  const ctx = await makeCtx();
+  const fsp = fs.promises;
+  const dirPath = path.join(ctx.draftsDir, 'handle-check');
+  const origOpen = fsp.open;
+  const handles = [];
+  let injectFileSync = false;
+  fsp.open = async (...a) => {
+    const h = await origOpen(...a);
+    handles.push(h);
+    // 注入一:目录句柄 sync 抛错(Windows 实况复现;Linux 上模拟不支持)
+    if (String(a[0]) === dirPath) {
+      h.sync = async () => { throw new Error('EINJ: directory fsync unsupported'); };
+    }
+    // 注入二(段3开启):tmp 文件句柄 sync 抛错 → 保存失败路径
+    if (injectFileSync && String(a[0]).endsWith('draft.json.tmp') && a[1] === 'r+') {
+      h.sync = async () => { throw new Error('EINJ: file fsync fail'); };
+    }
+    return h;
+  };
+  try {
+    // 段1/2:目录 fsync 异常被「尽力而为」吞掉,保存仍成功
+    assert.equal((await put(ctx, 'handle-check', { ...fields({ body: 'v1' }), rev: 0 })).statusCode, 200);
+    assert.equal((await put(ctx, 'handle-check', { ...fields({ body: 'v2' }), rev: 1 })).statusCode, 200);
+    const got = await ctx.app.inject({ method: 'GET', url: '/api/drafts/handle-check', headers: { cookie: ctx.cookie } });
+    assert.equal(JSON.parse(got.payload).draft.body, 'v2');
+    // 段3:文件 sync 异常 → 保存 500(失败如实),既有记录不破坏
+    injectFileSync = true;
+    const r3 = await put(ctx, 'handle-check', { ...fields({ body: 'v3' }), rev: 2 });
+    injectFileSync = false;
+    assert.equal(r3.statusCode, 500);
+    const after = await ctx.app.inject({ method: 'GET', url: '/api/drafts/handle-check', headers: { cookie: ctx.cookie } });
+    assert.equal(JSON.parse(after.payload).draft.body, 'v2');
+    // 核心断言:成功与失败路径打开过的每个句柄都已显式 close。
+    // Node 22 的 FileHandle 无 closed 属性,判据=close() 完成后 fd 置 -1
+    const leaked = handles.filter((h) => h.fd !== -1);
+    assert.equal(leaked.length, 0, `有句柄未关闭:fd=${leaked.map((h) => h.fd).join(',')}`);
+  } finally {
+    fsp.open = origOpen;
+  }
+});
+
 test('列表:返回全部草稿摘要(按 savedAt 倒序),未登录 401(任务 1.4)', async () => {
   const ctx = await makeCtx();
   const noAuth = await ctx.app.inject({ method: 'GET', url: '/api/drafts' });

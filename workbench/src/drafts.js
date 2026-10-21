@@ -142,23 +142,33 @@ export class DraftStore {
     const prevTmp = path.join(dir, 'draft.prev.json.tmp');
     const data = Buffer.from(`${JSON.stringify(record, null, 2)}\n`, 'utf8');
     await fs.writeFile(tmp, data);
-    let fd = await fs.open(tmp, 'r+');
-    await fd.sync();
-    await fd.close();
+    const fd = await fs.open(tmp, 'r+');
+    try {
+      await fd.sync();
+    } finally {
+      await fd.close().catch(() => {}); // 成功与异常路径都显式释放,不等 GC(DEP0137)
+    }
     await fs.rename(tmp, finalPath);
-    // rename 后尽力 fsync 目录(Linux 生产有效;Windows 目录句柄不支持时静默跳过)
+    // rename 后尽力 fsync 目录(Linux 生产有效;Windows 目录句柄不支持时静默
+    // 跳过——异常也必须走 finally 释放句柄,这是本文件 DEP0137 的主来源)
     try {
       const dfd = await fs.open(dir, 'r');
-      await dfd.sync();
-      await dfd.close();
+      try {
+        await dfd.sync();
+      } finally {
+        await dfd.close().catch(() => {});
+      }
     } catch { /* 尽力而为 */ }
     // 上一版兜底:替换成功后写 prev(仅一份,失败不影响保存结果)
     if (oldRaw) {
       try {
         await fs.writeFile(prevTmp, oldRaw);
         const pfd = await fs.open(prevTmp, 'r+');
-        await pfd.sync();
-        await pfd.close();
+        try {
+          await pfd.sync();
+        } finally {
+          await pfd.close().catch(() => {});
+        }
         await fs.rename(prevTmp, prevPath);
       } catch { /* 兜底文件尽力而为 */ }
     }
