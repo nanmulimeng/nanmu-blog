@@ -16,6 +16,7 @@
   "private": "true",
   "type": "module",
   "dependencies": {
+    "@node-rs/argon2": "^2.2.2",
     "fastify": "^4.29.1"
   }
 }
