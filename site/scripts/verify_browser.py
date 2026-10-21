@@ -507,8 +507,7 @@ def main():
               panels: document.querySelectorAll('.tpanel').length,
               panelPostsOn: !(document.getElementById('panel-posts')
                   || {hasAttribute: () => true}).hasAttribute('hidden'),
-              knots: Array.from(document.querySelectorAll('.thread .knot'))
-                  .map(k => k.dataset.for),
+              threadN: document.querySelectorAll('.thread,.thread-drop').length,
               coverHref: cover ? cover.getAttribute('href') : null,
               coverVT: cover ? cover.style.viewTransitionName : '(missing)',
               cbTitle: (document.querySelector('.cb-title')
@@ -534,7 +533,9 @@ def main():
                   and st["lazy"] == "" and st["darkLazy"] == "lazy"
                   and st["tabs"] == 3 and st["panels"] == 3
                   and st["panelPostsOn"]
-                  and st["knots"] == ["#posts", "#digest", "#about", "#subscribe"]
+                  # 朱砂装订线装饰整体删除(hero 3D 线装/落线/正文 thread):
+                  # 首页不得再有 .thread/.thread-drop 残留
+                  and st["threadN"] == 0
                   and st["copies"] == 2
                   and "暂无" in st["digestState"])
             # 日报状态/站点说明同源:data-digest 空串(零期现状)、
@@ -555,13 +556,13 @@ def main():
                 ok = ok and st["coverHref"] is None                     and st["readHref"] is None and st["cbTitle"] == ""
             check("home/static", ok,
                   "hero=%s posters=%d src=%s|%s fp=%s lazy=%s/%s tabs=%d/%d"
-                  " knots=%d copies=%d art.url=%s cover=%s read=%s dd=%s li=%s"
+                  " threadN=%d copies=%d art.url=%s cover=%s read=%s dd=%s li=%s"
                   % (st["hero"], st["posters"],
                      st["lightSrc"].rsplit("/", 1)[-1],
                      st["darkSrc"].rsplit("/", 1)[-1],
                      st["fp"], st["lazy"],
                      st["darkLazy"], st["tabs"],
-                     st["panels"], len(st["knots"]), st["copies"],
+                     st["panels"], st["threadN"], st["copies"],
                      (art or {}).get("url"), st["coverHref"], st["readHref"],
                      st["ddRaw"], st["liDigest"]))
             # 无静态/残留挂名:封面卡与页头之外的元素不挂 latest-cover
@@ -671,18 +672,17 @@ def main():
             st = pg.evaluate("""(() => {
               const s = window.__bookscene;
               if (!s) return {boot: false};
-              const pbb = s.projectBindingBottom();
               return {boot: true,
                       tris: s.stats().triangles,
                       posters: document.querySelectorAll('#scene3d img.poster').length,
-                      hud: document.querySelectorAll('.scene-hud button').length,
-                      pbb: pbb ? [pbb.x, pbb.y] : null};})()""")
+                      hud: document.querySelectorAll('.scene-hud button').length};})()""")
+            # 装订线删除:scene 不再提供 projectBindingBottom(落线已撤)
             check("home3d/boot", bool(boot) and st.get("boot")
                   and st.get("tris", 0) > 0 and st.get("posters") == 0
-                  and st.get("hud") == 2 and st.get("pbb"),
-                  "book=%s tris=%s posters=%s hud=%s pbb=%s" %
+                  and st.get("hud") == 2,
+                  "book=%s tris=%s posters=%s hud=%s" %
                   (bool(boot), st.get("tris"), st.get("posters"),
-                   st.get("hud"), st.get("pbb")))
+                   st.get("hud")))
             if not boot:
                 for lbl in ("home3d/tab-to-scene", "home3d/scene-to-tab",
                             "home3d/fast-select", "home3d/reselect",
@@ -765,18 +765,16 @@ def main():
                   const s = window.__bookscene;
                   s.resetView();
                   s.setAmbient(true);
-                  const pbb = s.projectBindingBottom();
                   return {amb: s.isAmbientOn(), cur: s.current(),
-                          tris: s.stats().triangles,
-                          pbb: pbb ? [pbb.x, pbb.y] : null};})()""")
+                          tris: s.stats().triangles};})()""")
                 check("home3d/pause-combo", st["paused"] is False
                       and curOk and st["cur"] == "digest"
                       and st2["amb"] is True
                       and st2["cur"] == "digest" and st2["tris"] > 0
-                      and st2["pbb"] and not errs,
-                      "paused=%s cur=%s amb=%s cur2=%s tris=%s pbb=%s errs=%s"
+                      and not errs,
+                      "paused=%s cur=%s amb=%s cur2=%s tris=%s errs=%s"
                       % (st["paused"], st["cur"], st2["amb"], st2["cur"],
-                         st2["tris"], st2["pbb"], errs[:2]))
+                         st2["tris"], errs[:2]))
             pg.close()
             ctx.close()
 

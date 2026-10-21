@@ -102,47 +102,6 @@
         if (curTab && curTab.dataset.pid && curTab.dataset.pid !== scene.current()){
           scene.select(curTab.dataset.pid);
         }
-
-        /* 落线:碑页装订线底部 → 正文朱砂线的可见转接(装饰,无它内容完整)。
-           直角两段(竖落 + 沿 main.flow 顶横走),取线装走线的工艺语义;
-           斜线会横穿 hero 按钮区,故不取。仅 hero 在视口内时随帧更新。 */
-        var threadEl = document.querySelector('.thread');
-        if (threadEl && scene.projectBindingBottom){
-          var dropV = document.createElement('div');
-          dropV.className = 'thread-drop v'; dropV.setAttribute('aria-hidden', 'true');
-          var dropH = document.createElement('div');
-          dropH.className = 'thread-drop h'; dropH.setAttribute('aria-hidden', 'true');
-          document.body.appendChild(dropV); document.body.appendChild(dropH);
-          var heroVisible = true, dropTicking = false;
-          function updDrop(){
-            if (!heroVisible){ dropTicking = false; dropV.style.opacity = '0'; dropH.style.opacity = '0'; return; }
-            dropTicking = true;
-            var p = scene.projectBindingBottom();
-            if (!p){ dropV.style.opacity = '0'; dropH.style.opacity = '0'; }
-            else {
-              var r = host.getBoundingClientRect();
-              var ax = r.left + window.scrollX + p.x, ay = r.top + window.scrollY + p.y;
-              var tr = threadEl.getBoundingClientRect();
-              var bx = tr.left + window.scrollX + 1.5, by = tr.top + window.scrollY;
-              if (by > ay + 8){
-                dropV.style.opacity = '0.9'; dropH.style.opacity = '0.9';
-                dropV.style.left = (ax - 1.5) + 'px'; dropV.style.top = ay + 'px';
-                dropV.style.height = (by - ay) + 'px';
-                dropH.style.left = bx + 'px'; dropH.style.top = (by - 1.5) + 'px';
-                dropH.style.width = (ax - bx) + 'px';
-              } else { dropV.style.opacity = '0'; dropH.style.opacity = '0'; }
-            }
-            requestAnimationFrame(updDrop);
-          }
-          if ('IntersectionObserver' in window){
-            new IntersectionObserver(function(en){
-              var vis = en[0].isIntersecting;
-              if (vis && !dropTicking){ heroVisible = true; requestAnimationFrame(updDrop); }
-              heroVisible = vis;
-            }, {threshold: 0.05}).observe(box);
-          }
-          requestAnimationFrame(updDrop);
-        }
       });
     });
     }).catch(function(err){

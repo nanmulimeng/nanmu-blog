@@ -73,29 +73,6 @@ img.poster-dark{display:none}
 .scroll-hint::after{content:""; display:block; width:1px; height:34px; margin:10px auto 0;
   background:var(--ink2); opacity:.6}
 
-/* ── 朱砂装订线:从碑页落进正文,随滚动延伸(仅 .js 且非 reduced-motion 做动画) ── */
-main.flow{position:relative}
-.thread{display:none}
-html.js .thread{display:block; position:absolute; top:0; bottom:0; left:clamp(9px,1.6vw,22px);
-  width:2px; pointer-events:none; z-index:1}
-.thread .line{position:absolute; top:0; left:0; width:3px; height:100%;
-  background:var(--seal); transform-origin:top; transform:scaleY(0); opacity:.9}
-.thread .knot{position:absolute; left:-5.5px; width:13px; height:13px; border-radius:50%;
-  border:3px solid var(--seal); background:var(--paper);
-  transition:background-color var(--t-med) var(--ease-soft)}
-.thread .knot.lit{background:var(--seal)}
-@media (prefers-reduced-motion:reduce){
-  html.js .thread .line{transform:scaleY(1)}
-}
-@media (max-width:900px){ html.js .thread{display:none} }  /* 窄屏把宽度还给正文 */
-
-/* ── 落线:碑页装订线底部 → 正文 thread 的可见转接(JS 创建,装饰性);
-   直角两段:竖段自底孔落下,横段沿 main.flow 顶走到正文线起点 ── */
-.thread-drop{position:absolute; background:var(--seal); opacity:.9; pointer-events:none; z-index:2}
-.thread-drop.v{width:3px; border-radius:2px}
-.thread-drop.h{height:3px; border-radius:2px}
-@media (max-width:900px){ .thread-drop{display:none} }
-
 /* ── 节标:印章 + 题名 + 状态 ── */
 .sect-head{display:flex; align-items:baseline; gap:12px; margin:0 0 1.1em}
 .sect-head h2{font-size:clamp(22px,2.2vw,27px); font-weight:900; margin:0}

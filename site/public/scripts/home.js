@@ -95,49 +95,7 @@ if(coverCard){
   });
 }
 
-/* ── W7. 朱砂装订线:前景页装订线落入正文,随滚动延伸;节点对应各节 ──
-   reduced-motion:线全显、节点全亮,不做滚动动画;节点定位两种模式都执行。 */
-var thread=document.querySelector('.thread');
-if(thread){
-  var line=thread.querySelector('.line');
-  var knots=[].slice.call(thread.querySelectorAll('.knot'));
-  var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var flow=document.querySelector('main.flow');
-  /* 各 knot 纵向定位到对应节标题;初始、resize、字体就绪(版式重排)后都要重算 */
-  function layoutKnots(){
-    if(!flow)return;
-    knots.forEach(function(k){
-      var target=document.querySelector(k.dataset.for);
-      if(target){
-        k.style.top=(target.getBoundingClientRect().top+scrollY-flow.offsetTop+8)+'px';
-      }
-    });
-  }
-  var onScroll=function(){
-    var r=flow.getBoundingClientRect();
-    var total=r.height-innerHeight*0.4;
-    var done=Math.min(Math.max(-r.top+innerHeight*0.55,0),Math.max(total,1));
-    var p=total>0?done/total:1;
-    line.style.transform='scaleY('+p+')';
-    knots.forEach(function(k){
-      var ky=parseFloat(k.style.top)||0;
-      k.classList.toggle('lit', p*r.height>=ky);
-    });
-  };
-  layoutKnots();
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(layoutKnots);
-  if(reduced){
-    line.style.transform='scaleY(1)';
-    knots.forEach(function(k){k.classList.add('lit');});
-    addEventListener('resize',layoutKnots);
-  }else{
-    addEventListener('scroll',onScroll,{passive:true});
-    addEventListener('resize',function(){layoutKnots();onScroll();});
-    onScroll();
-  }
-}
-
-/* ── W8. 「这个站」三层展开:手风琴 + 分层图联动;键盘可操作 ──
+/* ── W7. 「这个站」三层展开:手风琴 + 分层图联动;键盘可操作 ──
    初始不隐藏非选中层以外的东西:home.css 在 html.js 下隐藏非选中 .li-body,
    openLayer 统一用 hidden 属性管理(两机制一致,无 JS 时全展开)。 */
 var layerItems=[].slice.call(document.querySelectorAll('.layer-item'));
