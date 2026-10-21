@@ -45,6 +45,8 @@ function hhmm(d = new Date()) {
 }
 
 function setStatus(kind, text) {
+  state.statusKind = kind;
+  els.status.dataset.state = kind; // 机器可判状态(避免文案子串歧义)
   els.status.className = `wb-status ${kind === 'error' || kind === 'conflict' ? 'err' : kind === 'clean' ? 'ok' : ''}`;
   els.status.textContent = text;
 }
@@ -53,13 +55,12 @@ function renderStatus() {
   if (state.conflicted) return; // 冲突态由冲突框呈现
   if (state.saving) { setStatus('saving', '保存中…'); return; }
   if (state.dirty) {
-    setStatus('dirty', `未保存(基于 rev ${state.rev})`);
+    setStatus('dirty', `未保存(已保存至 rev ${state.rev})`);
   } else if (state.lastSavedAt) {
     setStatus('clean', `已保存 ${hhmm(state.lastSavedAt)}(rev ${state.rev})`);
   } else {
     setStatus('idle', state.mode === 'open' ? `已载入 rev ${state.rev}` : '新草稿,尚未保存');
-  }
-}
+  }}
 
 // ---------- localStorage 补救位(不属保存契约,只救「忘点保存关了页」) ----------
 let lsTimer = null;
@@ -106,9 +107,9 @@ function markDirty() {
   state.dirty = true;
   renderStatus();
   scheduleLocalSave();
-  if (!debounceTimer) {
-    debounceTimer = setTimeout(() => { debounceTimer = null; void save('debounce'); }, DEBOUNCE_MS);
-  }
+  // 停顿 30s 防抖:以最后一次输入为起点重置(持续输入不触发,由 60s 周期兜底)
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => { debounceTimer = null; void save('debounce'); }, DEBOUNCE_MS);
 }
 
 async function save(_trigger) {
@@ -142,10 +143,8 @@ async function save(_trigger) {
       lastSaveOrLoad = Date.now();
       state.dirty = !sameFields(snap, collectFields());
       if (!state.dirty) clearLocal();
-      renderStatus();
-      if (state.dirty) {
-        setStatus('dirty', `已保存到 rev ${state.rev},但其后有新的未保存输入`);
-      }
+      // 成功后由 finally 统一渲染:dirty 时显示「未保存(已保存至 rev N)」,
+      // 即旧请求成功后仍有新输入时不会误标为已保存
     } else if (res.status === 409) {
       const data = await res.json();
       enterConflict(data.currentRev);
@@ -153,12 +152,14 @@ async function save(_trigger) {
       setStatus('error', '字段校验未通过(标题/日期/tags/slug),未保存。');
     } else {
       setStatus('error', `保存失败 ${hhmm()} · 可重试(${res.status})`);
-    }
-  } catch {
+    }  } catch {
     setStatus('error', `保存失败 ${hhmm()}(网络) · 可重试`);
   } finally {
     state.saving = false;
     els.saveBtn.disabled = false;
+    // 成功分支的渲染发生在 saving=true 期间,复位后需重渲染;
+    // 但 error/conflict 的如实文案不得被常规渲染覆盖(e2e 抓出)
+    if (!state.conflicted && state.statusKind !== 'error') renderStatus();
     if (state.dirty && !state.conflicted) scheduleLocalSave();
   }
 }
