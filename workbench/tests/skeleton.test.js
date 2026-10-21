@@ -52,3 +52,20 @@ test('处理异常返回 500 且不向客户端泄漏内部信息', async () => 
   assert.ok(!res.payload.includes('secret internals'));
   assert.ok(!res.payload.includes('\n    at '));
 });
+
+// 编辑器页面路由(任务 1.3)
+test('GET /edit/:slug 未登录 302 登录页;登录后合法 slug 200、非法 slug 404', async () => {
+  const app = buildApp({ devPassword: 'pw', baseUrl: 'http://127.0.0.1:8790' });
+  const r = await app.inject({ method: 'GET', url: '/edit/some-slug' });
+  assert.equal(r.statusCode, 302);
+  assert.equal(r.headers.location, '/login');
+  const login = await app.inject({ method: 'POST', url: '/api/login', payload: { password: 'pw' } });
+  const sc = login.headers['set-cookie'];
+  const cookie = (Array.isArray(sc) ? sc[0] : sc).split(';')[0];
+  const ok = await app.inject({ method: 'GET', url: '/edit/new', headers: { cookie } });
+  assert.equal(ok.statusCode, 200);
+  assert.match(ok.headers['content-type'], /text\/html/);
+  assert.match(ok.payload, /f-body/);
+  const bad = await app.inject({ method: 'GET', url: '/edit/UPPER', headers: { cookie } });
+  assert.equal(bad.statusCode, 404);
+});

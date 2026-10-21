@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>编辑草稿 · nanmu 写作台</title>
+<link rel="stylesheet" href="/static/workbench.css">
+</head>
+<body class="wb-page">
+<main class="wb-card wb-editor">
+  <header class="wb-editor-head">
+    <a href="/">← 返回列表</a>
+    <h1 id="page-title">编辑草稿</h1>
+  </header>
+
+  <form id="editor-form">
+    <div class="wb-row">
+      <label for="f-slug">slug(小写英文数字短横线,发布后即文章文件名)</label>
+      <input type="text" id="f-slug" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="wb-row">
+      <label for="f-title">标题</label>
+      <input type="text" id="f-title" autocomplete="off" required>
+    </div>
+    <div class="wb-row wb-row-2col">
+      <div>
+        <label for="f-date">日期</label>
+        <input type="date" id="f-date" required>
+      </div>
+      <div>
+        <label for="f-tags">tags(逗号分隔)</label>
+        <input type="text" id="f-tags" autocomplete="off">
+      </div>
+    </div>
+    <div class="wb-row">
+      <label for="f-body">正文(Markdown)</label>
+      <textarea id="f-body" spellcheck="false"></textarea>
+    </div>
+  </form>
+
+  <div class="wb-statusbar">
+    <span id="status" class="wb-status" role="status" aria-live="polite">加载中…</span>
+    <span class="wb-actions">
+      <button type="button" id="save-btn">保存(Ctrl+S)</button>
+    </span>
+  </div>
+
+  <section id="conflict-box" class="wb-conflict" hidden>
+    <h2>版本冲突</h2>
+    <p id="conflict-msg"></p>
+    <p>本窗口未保存的内容(供手动取舍,已同时存入浏览器本地):</p>
+    <textarea id="conflict-local" readonly></textarea>
+    <button type="button" id="conflict-refresh">刷新,加载另一窗口已保存的版本</button>
+  </section>
+</main>
+<script src="/static/editor.js"></script>
+</body>
+</html>

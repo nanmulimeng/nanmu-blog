@@ -75,3 +75,28 @@ a { color: var(--accent); }
 .wb-status { min-height: 1.4em; font-size: 0.9rem; color: var(--muted); }
 .wb-status.err { color: var(--err); }
 .wb-status.ok { color: var(--ok); }
+
+/* 编辑器 */
+main.wb-editor { max-width: 56rem; margin: 4vh auto; }
+.wb-editor-head { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
+.wb-editor-head h1 { flex: 1; margin: 0; }
+.wb-row { margin-bottom: 0.9rem; }
+.wb-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.wb-statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; border-top: 1px solid var(--line); padding-top: 0.9rem; margin-top: 1.2rem;
+}
+.wb-conflict { border: 1px solid var(--err); border-radius: 6px; padding: 1rem; margin-top: 1rem; }
+.wb-conflict h2 { font-size: 1.05rem; margin: 0 0 0.6rem; color: var(--err); }
+.wb-conflict textarea { min-height: 10rem; }
+.wb-conflict button { display: block; }
+
+/* 列表页(任务 1.4) */
+main.wb-list { max-width: 48rem; }
+.wb-list-head { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.2rem; }
+.wb-list-head h1 { flex: 1; margin: 0; }
+table.wb-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.wb-table th, .wb-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line); }
+.wb-table th { color: var(--muted); font-weight: 600; }
+.wb-table tbody tr:hover { background: var(--paper); }
+.wb-note { color: var(--muted); font-size: 0.85rem; margin-top: 1.4rem; }

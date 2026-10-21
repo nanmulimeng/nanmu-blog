@@ -119,6 +119,19 @@ export function buildApp(opts = {}) {
     return fs.readFile(path.join(PUBLIC_DIR, 'login.html'), 'utf8');
   });
 
+  // 编辑器页面(slug 段已过 validateSlug;页面 JS 以 'new' 进入新建模式)
+  app.get('/edit/:slug', async (req, reply) => {
+    if (!readSession(req)) {
+      return reply.redirect('/login');
+    }
+    if (!validateSlug(req.params.slug)) {
+      reply.type('text/html; charset=utf-8');
+      return reply.code(404).send(errorPage(404));
+    }
+    reply.type('text/html; charset=utf-8');
+    return fs.readFile(path.join(PUBLIC_DIR, 'editor.html'), 'utf8');
+  });
+
   app.post('/api/login', async (req, reply) => {
     const ip = req.ip;
     if (limiter.locked(ip)) {
