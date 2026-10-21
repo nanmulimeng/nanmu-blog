@@ -204,3 +204,20 @@ test('重复保存:prev 只留一份,rev 单调递增', async () => {
   assert.equal(prev.body, 'v3', 'prev 仅保留上一版,不是历史');
   assert.ok(!fs.existsSync(path.join(dir, 'draft.prev.1.json')));
 });
+
+test('列表:返回全部草稿摘要(按 savedAt 倒序),未登录 401(任务 1.4)', async () => {
+  const ctx = await makeCtx();
+  const noAuth = await ctx.app.inject({ method: 'GET', url: '/api/drafts' });
+  assert.equal(noAuth.statusCode, 401);
+  await put(ctx, 'list-a', { ...fields({ title: 'A', body: 'aaa' }), rev: 0 });
+  ctx.tick(5_000);
+  await put(ctx, 'list-b', { ...fields({ title: 'B', body: 'bbbb' }), rev: 0 });
+  const res = await ctx.app.inject({ method: 'GET', url: '/api/drafts', headers: { cookie: ctx.cookie } });
+  assert.equal(res.statusCode, 200);
+  const { drafts } = JSON.parse(res.payload);
+  assert.equal(drafts.length, 2);
+  assert.equal(drafts[0].slug, 'list-b', '最近保存在前');
+  assert.equal(drafts[1].title, 'A');
+  assert.equal(drafts[1].charCount, 3);
+  assert.ok(Number.isInteger(drafts[0].rev));
+});

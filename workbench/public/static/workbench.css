@@ -100,3 +100,5 @@ table.wb-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 .wb-table th { color: var(--muted); font-weight: 600; }
 .wb-table tbody tr:hover { background: var(--paper); }
 .wb-note { color: var(--muted); font-size: 0.85rem; margin-top: 1.4rem; }
+main.wb-list h2 { font-size: 1.05rem; margin: 1.8rem 0 0.4rem; }
+button.wb-inline-btn { margin-top: 0; padding: 0.15rem 0.6rem; font-size: 0.85rem; }
