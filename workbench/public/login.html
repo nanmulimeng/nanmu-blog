@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · nanmu 写作台</title>
+<link rel="stylesheet" href="/static/workbench.css">
+</head>
+<body class="wb-page">
+<main class="wb-card wb-login">
+  <h1>nanmu 写作台</h1>
+  <p class="wb-sub">作者工作台 · 仅本人使用</p>
+  <form id="login-form" method="post" action="/api/login">
+    <label for="password">口令</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" autofocus required>
+    <button type="submit" id="login-btn">登录</button>
+  </form>
+  <p id="login-status" class="wb-status" role="status" aria-live="polite"></p>
+</main>
+<script src="/static/login.js"></script>
+</body>
+</html>
