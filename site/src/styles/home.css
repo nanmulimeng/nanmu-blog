@@ -157,11 +157,9 @@ img.poster-dark{display:none}
   color:var(--seal); border:1.5px solid var(--seal);
   transition:color var(--t-fast),background-color var(--t-fast),border-color var(--t-fast)}
 .ptab:hover{color:var(--ink); border-color:var(--seal); transform:translateY(-2px)}
-/* 选中:朱砂书签——挂牌上色、顶部垂一段线绳,与 3D 前景页同步 */
+/* 选中:朱砂书签——挂牌上色,与 3D 前景页同步 */
 .ptab.on{color:var(--sheet); background:var(--seal); border-color:var(--seal)}
 .ptab.on .pt-seal{color:var(--seal); background:var(--sheet); border-color:var(--sheet)}
-.ptab.on::before{content:""; position:absolute; left:50%; top:-9px; width:2px; height:9px;
-  margin-left:-1px; background:var(--seal)}
 .ptab.on:hover{transform:none}
 
 /* 面板:选中栏目的纸上预览;切换小幅浮现(日常反馈,轻) */

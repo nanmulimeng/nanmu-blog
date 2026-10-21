@@ -504,6 +504,8 @@ def main():
               ddRaw: host ? host.getAttribute('data-digest') : null,
               site: site,
               tabs: document.querySelectorAll('.ptab').length,
+              ptOnBefore: getComputedStyle(document.querySelector('.ptab.on'),
+                                           '::before').content,
               panels: document.querySelectorAll('.tpanel').length,
               panelPostsOn: !(document.getElementById('panel-posts')
                   || {hasAttribute: () => true}).hasAttribute('hidden'),
@@ -532,6 +534,9 @@ def main():
                   and st["lightAlt"] != "" and st["fp"] == "high"
                   and st["lazy"] == "" and st["darkLazy"] == "lazy"
                   and st["tabs"] == 3 and st["panels"] == 3
+                  # 选中页签顶部线绳装饰已删(用户指令):
+                  # 选中态不得再带 ::before 装饰
+                  and st["ptOnBefore"] == "none"
                   and st["panelPostsOn"]
                   # 朱砂装订线装饰整体删除(hero 3D 线装/落线/正文 thread):
                   # 首页不得再有 .thread/.thread-drop 残留
@@ -556,13 +561,15 @@ def main():
                 ok = ok and st["coverHref"] is None                     and st["readHref"] is None and st["cbTitle"] == ""
             check("home/static", ok,
                   "hero=%s posters=%d src=%s|%s fp=%s lazy=%s/%s tabs=%d/%d"
-                  " threadN=%d copies=%d art.url=%s cover=%s read=%s dd=%s li=%s"
+                  " threadN=%d ptOnBefore=%s copies=%d art.url=%s cover=%s"
+                  " read=%s dd=%s li=%s"
                   % (st["hero"], st["posters"],
                      st["lightSrc"].rsplit("/", 1)[-1],
                      st["darkSrc"].rsplit("/", 1)[-1],
                      st["fp"], st["lazy"],
                      st["darkLazy"], st["tabs"],
-                     st["panels"], st["threadN"], st["copies"],
+                     st["panels"], st["threadN"], st["ptOnBefore"],
+                     st["copies"],
                      (art or {}).get("url"), st["coverHref"], st["readHref"],
                      st["ddRaw"], st["liDigest"]))
             # 无静态/残留挂名:封面卡与页头之外的元素不挂 latest-cover
