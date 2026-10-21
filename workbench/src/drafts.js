@@ -190,7 +190,9 @@ export class DraftStore {
     const out = [];
     for (const ent of entries) {
       if (!ent.isDirectory() || !validateSlug(ent.name)) continue;
-      const cur = await this.#readCurrent(ent.name);
+      // 与保存/删除同一队列:列表读取不得在活动写入的 rename 前清理其 tmp
+      // (回归:直接 #readCurrent 会删掉保存中的 draft.json.tmp → rename ENOENT)
+      const cur = await this.enqueue(ent.name, () => this.#readCurrent(ent.name));
       if (cur?.record) {
         const { record, recovered } = cur;
         out.push({

@@ -205,6 +205,54 @@ test('重复保存:prev 只留一份,rev 单调递增', async () => {
   assert.ok(!fs.existsSync(path.join(dir, 'draft.prev.1.json')));
 });
 
+test('回归:列表读取不得干扰进行中的保存(并发 list 删活动 tmp → ENOENT 缺陷)', async () => {
+  const ctx = await makeCtx();
+  await put(ctx, 'race-list', { ...fields({ body: 'v1' }), rev: 0 });
+  const tmp = path.join(ctx.draftsDir, 'race-list', 'draft.json.tmp');
+
+  // 同步屏障一:拦截 rename,把 save 停在「tmp 已写完+fsync、rename 未执行」处
+  // 同步屏障二:监听 rm 对该 tmp 的删除(旧实现 list 不排队,会在 rename 前删掉它)
+  const fsp = fs.promises;
+  const origRename = fsp.rename;
+  const origRm = fsp.rm;
+  let releaseRename;
+  const atRename = new Promise((r) => { releaseRename = r; });
+  let renameArrived = false;
+  let rmTmpDone;
+  const rmTmpSignal = new Promise((r) => { rmTmpDone = r; });
+  fsp.rename = async (...a) => { renameArrived = true; await atRename; return origRename(...a); };
+  fsp.rm = async (p, o) => {
+    const r_ = await origRm(p, o);
+    // 仅统计 rename 屏障期间的 tmp 删除(=list 干扰);save 自身在写 tmp 前的
+    // 残留清理 rm(此时 tmp 尚不存在)不得误触发信号
+    if (String(p) === tmp && renameArrived) rmTmpDone();
+    return r_;
+  };
+  try {
+    // save(rev 2)发起,推进到 rename 屏障(拦截器同步置位,setImmediate 轮询等待)
+    const saving = put(ctx, 'race-list', { ...fields({ body: 'v2-新' }), rev: 1 });
+    await new Promise((r) => setImmediate(function poll() { renameArrived ? r() : setImmediate(poll); }));
+    // 并发发起列表读取:旧实现直接 #readCurrent(先 rm tmp);修正后应排队等 save 完成
+    const listing = ctx.app.inject({ method: 'GET', url: '/api/drafts', headers: { cookie: ctx.cookie } });
+    // 观测窗:等「tmp 已被删」信号,或 1s 确认无并发删除(修正后语义上不可能在 save 完成前删)
+    await Promise.race([rmTmpSignal, new Promise((r) => setTimeout(r, 1000))]);
+    releaseRename();
+    const [saveRes, listRes] = await Promise.all([saving, listing]);
+    assert.equal(saveRes.statusCode, 200, `保存应成功,得 ${saveRes.statusCode} ${saveRes.payload}`);
+    assert.equal(JSON.parse(saveRes.payload).rev, 2);
+    const got = await ctx.app.inject({ method: 'GET', url: '/api/drafts/race-list', headers: { cookie: ctx.cookie } });
+    const { draft } = JSON.parse(got.payload);
+    assert.equal(draft.body, 'v2-新');
+    assert.equal(draft.rev, 2);
+    assert.equal(listRes.statusCode, 200);
+    const row = JSON.parse(listRes.payload).drafts.find((d) => d.slug === 'race-list');
+    assert.ok(row && row.rev === 2, `列表应反映保存后状态:${JSON.stringify(row)}`);
+  } finally {
+    fsp.rename = origRename;
+    fsp.rm = origRm;
+  }
+});
+
 test('列表:返回全部草稿摘要(按 savedAt 倒序),未登录 401(任务 1.4)', async () => {
   const ctx = await makeCtx();
   const noAuth = await ctx.app.inject({ method: 'GET', url: '/api/drafts' });
