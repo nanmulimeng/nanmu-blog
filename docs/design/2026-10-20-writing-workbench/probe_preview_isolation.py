@@ -597,10 +597,37 @@ RED_EXPECT = {"r2-fonts-css-200", "r3-woff2-shard-200", "r3b-img-200",
 BLOCK_EXPECT = {"r2-fonts-css-200", "r3-woff2-shard-200",
                 "r4-fontface-loaded", "r6-external-css-applied"}
 
+# 必需断言集:结果里缺任何一条=「结果缺项」,该阶段判不符——
+# 防止阶段中途异常后残缺结果被当成符合预期(加固轮)。
+R_LABELS = {"r1-preview-html-200", "r1b-csp-no-scripts",
+            "r2-fonts-css-200", "r3-woff2-shard-200", "r3b-img-200",
+            "r4-fontface-loaded",
+            "r5-check-no-discriminating-power-recorded",
+            "r6-external-css-applied", "r6b-sample-text"}
+S_LABELS = {"anon-401-html-css-font-img",
+            "s3-preview-script-blocked-server-side",
+            "s3b-iframe-entry-same-doc", "s4-write-guard-4-ways",
+            "s2-expired-session-resources-401"}
+L_LABELS = {"l1-admin-top-fetch-200", "l2-legal-delete-mutates"}
+N_LABELS = {"n12-links-no-nav", "n3-anchor-same-doc"}
+T_LABELS = {"t1-token-loads-own-css", "t2-cross-preview-denied",
+            "t3-token-not-for-html-api", "t4-expiry-denied",
+            "t5-preview-deleted-denied", "t6-reopen-issues-new-token"}
+RED_REQUIRED = R_LABELS | S_LABELS | L_LABELS | N_LABELS
+GREEN_REQUIRED = RED_REQUIRED | T_LABELS
+BLOCK_REQUIRED = R_LABELS | S_LABELS | L_LABELS
 
-def phase_verdict(res, expect_fail):
-    """逐断言比对阶段预期,返回不符项列表(空=符合预期)。"""
+
+def phase_verdict(res, expect_fail, required=frozenset(), aborted=False):
+    """逐断言比对阶段预期,返回不符项列表(空=符合预期)。
+    加固:阶段中途异常(aborted)与必需断言缺失都直接判不符,
+    不允许残缺/中断的结果错误返回 0。"""
     bad = []
+    if aborted:
+        bad.append("阶段中途异常")
+    have = {l for _, l, _, _ in res}
+    for l in sorted(required - have):
+        bad.append("%s(缺必需断言)" % l)
     for g, l, ok, d in res:
         want = (not ok) if l in expect_fail else ok
         if not want:
@@ -610,22 +637,28 @@ def phase_verdict(res, expect_fail):
 
 
 def selftest_verdict():
-    """汇总判定自身的小范围反例:三条构造结果验证判定方向,
+    """汇总判定自身的小范围反例:五条构造结果验证判定方向,
     不为此增加产品代码。全部 OK 才允许后续阶段以此为判据。"""
     cases = [
         ("RED 预期 r2 FAIL,资源意外通过 → 必须判不符(退出 1)",
          [("R", "r2-fonts-css-200", True, "")],
-         {"r2-fonts-css-200"}, 1),
+         {"r2-fonts-css-200"}, frozenset(), False, 1),
         ("RED 预期 r2 FAIL,实际失败且其余过 → 符合预期(退出 0)",
          [("R", "r2-fonts-css-200", False, ""),
           ("R", "r1-preview-html-200", True, "")],
-         {"r2-fonts-css-200"}, 0),
+         {"r2-fonts-css-200"}, frozenset(), False, 0),
         ("GREEN 预期全过,安全组意外失败 → 必须判不符(退出 1)",
-         [("S", "s1-x", False, "")], frozenset(), 1),
+         [("S", "s1-x", False, "")], frozenset(), frozenset(), False, 1),
+        ("阶段中途异常(结果看似完整)→ 必须判不符(退出 1)",
+         [("R", "r1-preview-html-200", True, "")],
+         frozenset(), frozenset(), True, 1),
+        ("结果缺项:必需断言未出现 → 必须判不符(退出 1)",
+         [("R", "r1-preview-html-200", True, "")],
+         frozenset(), {"r2-fonts-css-200"}, False, 1),
     ]
     allok = True
-    for name, res, exp, want_rc in cases:
-        rc = 1 if phase_verdict(res, exp) else 0
+    for name, res, exp, req, abt, want_rc in cases:
+        rc = 1 if phase_verdict(res, exp, req, abt) else 0
         good = rc == want_rc
         allok = allok and good
         print("[selftest] %s => %s(rc=%d,应为 %d)"
@@ -633,7 +666,8 @@ def selftest_verdict():
     return allok
 
 
-def summary(res, phase, expect_fail=frozenset()):
+def summary(res, phase, expect_fail=frozenset(), required=frozenset(),
+            aborted=False):
     fails = [(g, l) for g, l, ok, _ in res if not ok]
     groups = {}
     for g, l, ok, d in res:
@@ -642,7 +676,7 @@ def summary(res, phase, expect_fail=frozenset()):
     print("\n== %s: %d/%d PASS ==" % (phase, len(res) - len(fails), len(res)))
     for g, (ok_c, bad_c) in sorted(groups.items()):
         print("   组%s:%d 通过 / %d 失败" % (g, ok_c, bad_c))
-    bad = phase_verdict(res, expect_fail)
+    bad = phase_verdict(res, expect_fail, required, aborted)
     if bad:
         print("   ** 不符合阶段预期:%s" % "; ".join(bad))
         return 1
@@ -684,23 +718,25 @@ def main():
             phase_setup("cookie-only")
             res = []
             run_browser(res, with_token=False)   # 旧方案无 token 机制
-            rc |= summary(res, "RED", RED_EXPECT)
+            rc |= summary(res, "RED", RED_EXPECT, RED_REQUIRED)
         if args.phase in ("green", "all"):
             print("---- 阶段 GREEN:token 方案(静态预览+签名资源)----")
             phase_setup("token")
             res = []
             run_browser(res)
-            rc |= summary(res, "GREEN")
+            rc |= summary(res, "GREEN", frozenset(), GREEN_REQUIRED)
         if args.phase in ("block", "all"):
             print("---- 阶段 BLOCK:token 方案但 fonts.css 恒 401(反向自检)----")
             phase_setup("token", block_css=True)
             res = []
+            aborted = False
             try:
                 run_browser(res, with_token=False, with_nav=False)
-            except Exception as e:      # 反向阶段允许浏览器步骤报错,
-                print("(block 阶段浏览器步骤异常,继续汇总:%s)"
-                      % str(e)[:120])   # 只看资源组判据是否转红
-            rc |= summary(res, "BLOCK", BLOCK_EXPECT)
+            except Exception as e:      # 加固:未预期异常=该阶段失败,
+                aborted = True           # 不再「继续汇总」放过残缺结果
+                print("(block 阶段浏览器步骤异常:%s)" % str(e)[:120])
+            rc |= summary(res, "BLOCK", BLOCK_EXPECT, BLOCK_REQUIRED,
+                          aborted=aborted)
     finally:
         httpd.shutdown()
     return rc
