@@ -12,9 +12,11 @@ import {
   readSessionCookie,
   serializeSessionCookie,
 } from './auth.js';
+import { DraftStore, validateDraftFields, validateSlug } from './drafts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PUBLIC_DIR = path.resolve(__dirname, '../public');
+export const DEFAULT_DRAFTS_DIR = path.resolve(__dirname, '../data/drafts');
 
 // 静态资源 MIME 白名单(工作台自有界面资源;不服务任意类型)
 const MIME = {
@@ -55,6 +57,7 @@ export function buildApp(opts = {}) {
   const app = Fastify({ logger: opts.logger ?? false });
   const sessions = new SessionStore(now);
   const limiter = new LoginRateLimiter(now);
+  const drafts = new DraftStore(opts.draftsDir ?? DEFAULT_DRAFTS_DIR, { now });
 
   // 错误兜底:404/500 一律兜底;API 返回 JSON,页面返回 HTML;500 不向客户端回传内部信息
   app.setErrorHandler((err, req, reply) => {
@@ -64,7 +67,8 @@ export function buildApp(opts = {}) {
       app.log.error({ status, url: req.raw.url, type: err.constructor?.name }, 'request error');
     }
     if (req.raw.url?.startsWith('/api/')) {
-      return reply.code(status).send({ error: status === 500 ? 'internal' : 'request_failed' });
+      const payload = err.wbPayload ?? { error: status === 500 ? 'internal' : 'request_failed' };
+      return reply.code(status).send(payload);
     }
     reply.type('text/html; charset=utf-8');
     return reply.code(status).send(errorPage(status));
@@ -147,6 +151,41 @@ export function buildApp(opts = {}) {
     const sid = readSessionCookie(req.headers.cookie);
     sessions.delete(sid);
     reply.header('set-cookie', serializeSessionCookie('', { secure: cookieSecure, clear: true }));
+    return { ok: true };
+  });
+
+  // 草稿 API(DESIGN §4.2/§5):全部会话后;写操作叠加 CSRF
+  app.get('/api/drafts', { preHandler: requireSessionApi }, async () => ({
+    drafts: await drafts.list(),
+  }));
+
+  app.get('/api/drafts/:slug', { preHandler: requireSessionApi }, async (req, reply) => {
+    const { slug } = req.params;
+    if (!validateSlug(slug)) return reply.code(400).send({ error: 'bad_slug' });
+    const res = await drafts.get(slug);
+    if (!res) return reply.code(404).send({ error: 'not_found' });
+    if (res.corrupted) return reply.code(404).send({ error: 'corrupted' });
+    return { draft: res.record, recovered: res.recovered };
+  });
+
+  app.put('/api/drafts/:slug', { preHandler: [requireSessionApi, requireCsrf] }, async (req, reply) => {
+    const { slug } = req.params;
+    if (!validateSlug(slug)) return reply.code(400).send({ error: 'bad_slug' });
+    const rev = req.body?.rev;
+    if (!Number.isInteger(rev) || rev < 0) {
+      return reply.code(400).send({ error: 'bad_rev' });
+    }
+    const v = validateDraftFields(req.body);
+    if (!v.ok) return reply.code(400).send({ error: 'bad_fields', detail: v.detail });
+    const out = await drafts.save(slug, v.fields, rev); // 冲突走 409(wbPayload)
+    return out;
+  });
+
+  app.delete('/api/drafts/:slug', { preHandler: [requireSessionApi, requireCsrf] }, async (req, reply) => {
+    const { slug } = req.params;
+    if (!validateSlug(slug)) return reply.code(400).send({ error: 'bad_slug' });
+    const removed = await drafts.remove(slug);
+    if (!removed) return reply.code(404).send({ error: 'not_found' });
     return { ok: true };
   });
 
