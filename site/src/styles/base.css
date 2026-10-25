@@ -211,7 +211,7 @@ dialog.lightbox .lb-close{position:absolute; top:-2px; right:-2px; font-family:v
 .prev-next .lab{font-family:var(--mono); font-size:.72rem; color:var(--ink2); letter-spacing:.12em}
 .prev-next .t{font-weight:600; margin-top:4px}
 .prev-next .next{text-align:right}
-.prev-next .none{border-style:dashed; color:var(--ink2)}
+.prev-next .none{border-style:dashed; color:var(--ink2); padding:14px 18px}
 @media (max-width:640px){ .prev-next{grid-template-columns:1fr} }
 
 /* ── 日报正文(1:1 对齐 assemble.py Markdown 结构;来源识别为中心) ── */
