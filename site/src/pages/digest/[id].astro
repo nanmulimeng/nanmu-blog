@@ -47,14 +47,14 @@ const { Content } = await render(digest);
             <span class="lab mono">← 上一期</span><div class="t">{older.data.date} 日报</div>
           </a>
         ) : (
-          <span class="none"><span class="lab mono">← 上一期</span><div class="t">已是最早一期</div></span>
+          <span class="none"><span class="lab mono">上一期</span><div class="t">已是最早一期</div></span>
         )}
         {newer ? (
           <a class="next" href={`/digest/${newer.id}/`}>
             <span class="lab mono">下一期 →</span><div class="t">{newer.data.date} 日报</div>
           </a>
         ) : (
-          <span class="none next"><span class="lab mono">下一期 →</span><div class="t">已是最新一期</div></span>
+          <span class="none next"><span class="lab mono">下一期</span><div class="t">已是最新一期</div></span>
         )}
       </nav>
     </div>

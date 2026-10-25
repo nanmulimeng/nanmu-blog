@@ -212,11 +212,11 @@ dialog.lightbox .lb-close{position:absolute; top:-2px; right:-2px; font-family:v
 .prev-next .lab{display:block; font-family:var(--mono); font-size:.72rem;
   color:var(--ink2); letter-spacing:.15em}
 .prev-next .t{font-weight:600; font-size:1.02rem; margin-top:6px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   transition:color var(--t-fast)}
 .prev-next a:hover .t{color:var(--seal)}
 .prev-next .next{text-align:right}
-.prev-next .none .lab{opacity:.55}
-.prev-next .none .t{font-weight:400; opacity:.55}
+.prev-next .none{opacity:.5}  /* 空态整簇降半:无方向箭头、无点击暗示 */
 @media (max-width:640px){ .prev-next{grid-template-columns:1fr; gap:10px}
   .prev-next .next{text-align:left} }
 
