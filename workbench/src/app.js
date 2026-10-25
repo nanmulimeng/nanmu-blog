@@ -13,10 +13,13 @@ import {
   serializeSessionCookie,
 } from './auth.js';
 import { DraftStore, validateDraftFields, validateSlug } from './drafts.js';
+import { rewriteHtml, rewriteCss } from './rewriter.js';
+import { createPreviewStore } from './previews.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PUBLIC_DIR = path.resolve(__dirname, '../public');
 export const DEFAULT_DRAFTS_DIR = path.resolve(__dirname, '../data/drafts');
+export const DEFAULT_PREVIEWS_DIR = path.resolve(__dirname, '../data/previews');
 
 // 静态资源 MIME 白名单(工作台自有界面资源;不服务任意类型)
 const MIME = {
@@ -58,6 +61,7 @@ export function buildApp(opts = {}) {
   const sessions = new SessionStore(now);
   const limiter = new LoginRateLimiter(now);
   const drafts = new DraftStore(opts.draftsDir ?? DEFAULT_DRAFTS_DIR, { now });
+  const previews = opts.previewsStore ?? createPreviewStore({ previewsDir: opts.previewsDir ?? DEFAULT_PREVIEWS_DIR, now });
 
   // 错误兜底:404/500 一律兜底;API 返回 JSON,页面返回 HTML;500 不向客户端回传内部信息
   app.setErrorHandler((err, req, reply) => {
@@ -200,6 +204,80 @@ export function buildApp(opts = {}) {
     const removed = await drafts.remove(slug);
     if (!removed) return reply.code(404).send({ error: 'not_found' });
     return { ok: true };
+  });
+
+  // ── 预览(任务 2.3,DESIGN §4.3):HTML 走会话鉴权(401,预览不重定向)
+  // + CSP sandbox + noindex + no-referrer + 横幅;子资源走短期 bearer token
+  // (无 cookie;四项校验=有效/预览匹配/类别/绑定会话活跃);字体分片 ACAO:*;
+  // 过期/删除/被清理一律 410(不区分,不泄露存在性)。 ──
+  const PV_MIME = {
+    '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml',
+    '.webp': 'image/webp', '.avif': 'image/avif', '.ico': 'image/x-icon',
+    '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf',
+  };
+  app.get('/preview/:opId/*', async (req, reply) => {
+    const { opId } = req.params;
+    const sub = req.params['*'] ?? '';
+    if (!previews.get(opId)) {
+      return reply.code(410).type('text/html; charset=utf-8')
+        .send(errorPage(410, '预览已过期或被清理,请重新生成'));
+    }
+    const root = path.resolve(previews.dirOf(opId));
+    const rel = sub === '' || sub.endsWith('/') ? `${sub}index.html` : sub;
+    const target = path.resolve(root, rel);
+    const relFromRoot = path.relative(root, target);
+    if (rel.startsWith('/') || rel.includes('\\') || relFromRoot.startsWith('..') || path.isAbsolute(relFromRoot)) {
+      return reply.code(404).type('text/html; charset=utf-8').send(errorPage(404));
+    }
+    const ext = path.extname(target).toLowerCase();
+    if (ext === '.html' || ext === '.htm') {
+      const sid = readSessionCookie(req.headers.cookie);
+      if (!sessions.get(sid)) {
+        return reply.code(401).type('text/html; charset=utf-8').send(errorPage(401, '请先登录'));
+      }
+      let html;
+      try { html = await fs.readFile(target, 'utf8'); } catch {
+        return reply.code(404).type('text/html; charset=utf-8').send(errorPage(404));
+      }
+      const token = previews.issueToken({ sid, opId });
+      html = rewriteHtml(html, { prefix: `/preview/${opId}`, token });
+      const banner = '<div style="position:sticky;top:0;z-index:2147483000;background:#C2402A;'
+        + 'color:#fff;font:13px/1.6 system-ui,sans-serif;padding:6px 12px;text-align:center">'
+        + '草稿预览:不执行脚本、不可导航</div>';
+      html = /<body[^>]*>/i.test(html)
+        ? html.replace(/<body[^>]*>/i, (m) => m + banner)
+        : banner + html;
+      return reply.code(200).type('text/html; charset=utf-8')
+        .header('content-security-policy', 'sandbox')
+        .header('x-robots-tag', 'noindex')
+        .header('referrer-policy', 'no-referrer')
+        .send(html);
+    }
+    // 子资源:token 即 bearer(不带会话 cookie 是常态,opaque origin 语义)
+    const t = req.query?.t;
+    if (!t || typeof t !== 'string') return reply.code(401).send({ error: 'unauthorized' });
+    if (previews.checkToken({ t, opId, kind: ext.slice(1) }) !== 'ok') {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+    if (!sessions.get(previews.tokenSid(t))) {
+      return reply.code(401).send({ error: 'unauthorized' });
+    }
+    if (!PV_MIME[ext]) return reply.code(404).send({ error: 'not_found' });
+    try {
+      const body = await fs.readFile(target);
+      if (ext === '.css') {
+        const css = rewriteCss(body.toString('utf8'), { prefix: `/preview/${opId}`, token: t });
+        return reply.type(PV_MIME['.css']).send(css);
+      }
+      reply.type(PV_MIME[ext]);
+      if (['.woff', '.woff2', '.ttf', '.otf'].includes(ext)) {
+        reply.header('access-control-allow-origin', '*');
+      }
+      return body;
+    } catch {
+      return reply.code(404).send({ error: 'not_found' });
+    }
   });
 
   // 静态资源:仅 /static/*、MIME 白名单、路径不越出 public/static/
