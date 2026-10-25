@@ -58,6 +58,15 @@ export function createGitOps({ repoPath, wtPath, opsDir, remotes, now = Date.now
     try { return (await git(['rev-parse', name], repoPath)).stdout.trim(); }
     catch { return null; }
   }
+  /* 当前 release:优先注入的 getRelease(生产=HTTP release.txt);
+     未配置/失败时退化为 deploy main(开发/演练默认,与测试同口径) */
+  async function currentRelease() {
+    if (getRelease) {
+      try { const r = await getRelease(); if (r && r.sha) return r; } catch { /* 落到兜底 */ }
+    }
+    await git(['fetch', remotes.deploy, 'main:refs/remotes/deploy/main'], repoPath);
+    return { sha: await ref('refs/remotes/deploy/main') };
+  }
 
   /* ── 闸门(a):未终态存在→拒;闸门(b):github 领先/分叉→转人工 ── */
   function gateA() {
@@ -196,7 +205,7 @@ export function createGitOps({ repoPath, wtPath, opsDir, remotes, now = Date.now
     if (!rec) throw new Error('op_not_found');
     if (!rec.commit_sha) return rec;
     const rel = `${POSTS}/${rec.slug}.md`;
-    const release = await getRelease();
+    const release = await currentRelease();
     if (!release || !release.sha) return rec;
     const okNow = rec.kind === 'publish'
       ? await treeHasBlob(release.sha, rel, rec.content ?? undefined)
@@ -241,8 +250,7 @@ export function createGitOps({ repoPath, wtPath, opsDir, remotes, now = Date.now
   /* 界面态:confirmed 的 publish 动态复核当前 release——内容不一致(被改写/
      撤下)=superseded(§4.4 替代判定),不静态缓存 */
   async function listView() {
-    let release = null;
-    try { release = await getRelease(); } catch { release = null; }
+    const release = await currentRelease();
     const out = [];
     for (const o of readAll()) {
       const v = { ...o, state: o.status };
