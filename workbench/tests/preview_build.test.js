@@ -98,3 +98,17 @@ test('2.1 半成品中断:产物拷贝前失败 → previews/<op-id> 不得存�
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+import { wrapLock } from '../src/preview_build.js';
+
+test('2.1b 构建锁包裹(§2.2:预览与 hook 共用 build.lock)', async () => {
+  const cmd = 'npm ci --no-audit --no-fund && npm run build';
+  assert.equal(wrapLock(cmd, null), cmd, '无锁=原样(本地/测试)');
+  const wrapped = wrapLock(cmd, '/var/www/nanmu-blog/build.lock');
+  assert.ok(wrapped.startsWith("flock -w 900 '/var/www/nanmu-blog/build.lock' "), wrapped);
+  assert.ok(wrapped.includes("sh -c 'npm ci --no-audit --no-fund && npm run build'"), wrapped);
+  // 含单引号的命令正确转义,不破坏外层
+  const tricky = "node -e 'x && 1'";
+  const w2 = wrapLock(tricky, '/L');
+  assert.ok(w2.includes("'\''"), w2);
+});

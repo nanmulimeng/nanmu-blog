@@ -234,6 +234,7 @@ export function buildApp(opts = {}) {
       opId,
       previewsDir: previews.previewsDir,
       buildCmd: previewCfg.buildCmd ?? 'npm ci --no-audit --no-fund && npm run build',
+      lockFile: previewCfg.lockFile ?? null,
       draft: { slug, content: d.record.body ?? '' },
     });
     if (!r.ok) {

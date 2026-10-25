@@ -14,6 +14,15 @@ const execFileP = promisify(execFile);
 
 const BUILD_TIMEOUT_MS = 20 * 60 * 1000;
 
+/* ── 构建锁(§2.2:与部署 hook 共用同一把 build.lock;lockFile 空=直跑,
+   本地/测试用)——生产由 WB_BUILD_LOCK 注入。等待 900s 对齐 hook 上限,
+   排队期间即「部署构建进行中」语义;超时按构建失败处理。 ── */
+export function wrapLock(buildCmd, lockFile) {
+  if (!lockFile) return buildCmd;
+  const q = (s) => `'${s.replace(/'/g, "'\\''")}'`;
+  return `flock -w 900 ${q(lockFile)} sh -c ${q(buildCmd)}`;
+}
+
 function git(cwd, args) {
   return execFileP('git', args, { cwd });
 }
@@ -34,7 +43,7 @@ async function removeWorktree(repoPath, wt) {
   }
 }
 
-export async function buildPreview({ repoPath, branch = 'main', draft, opId, previewsDir, buildCmd }) {
+export async function buildPreview({ repoPath, branch = 'main', draft, opId, previewsDir, buildCmd, lockFile = null }) {
   const repoAbs = path.resolve(repoPath);
   const wt = path.join(path.dirname(repoAbs), `wt-${opId}`);
   fs.mkdirSync(previewsDir, { recursive: true });
@@ -46,7 +55,7 @@ export async function buildPreview({ repoPath, branch = 'main', draft, opId, pre
     fs.mkdirSync(postsDir, { recursive: true });
     fs.writeFileSync(path.join(postsDir, `${draft.slug}.md`), draft.content, 'utf8');
 
-    const r = await runShell(buildCmd, path.join(wt, 'site'));
+    const r = await runShell(wrapLock(buildCmd, lockFile), path.join(wt, 'site'));
     out = `# buildCmd: ${buildCmd}\n# exit: ${r.err ? (r.err.code ?? 'killed') : 0}\n` +
       `--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}`;
     if (r.err) {

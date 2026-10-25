@@ -16,7 +16,8 @@ const app = buildApp({
   draftsDir: process.env.WB_DRAFTS_DIR, // 缺省 workbench/data/drafts;测试/e2e 指向独立临时目录
   previewsDir: process.env.WB_PREVIEWS_DIR, // 缺省 workbench/data/previews;同上
   preview: process.env.WB_PREVIEW_REPO
-    ? { repoPath: process.env.WB_PREVIEW_REPO, branch: process.env.WB_PREVIEW_BRANCH }
+    ? { repoPath: process.env.WB_PREVIEW_REPO, branch: process.env.WB_PREVIEW_BRANCH,
+        lockFile: process.env.WB_BUILD_LOCK || undefined }
     : undefined, // 未配置则 POST /api/preview 503(预览构建需裸克隆地址)
   operations: process.env.WB_GIT_REPO && process.env.WB_REMOTE_DEPLOY
     ? (() => {
