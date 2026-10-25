@@ -204,15 +204,21 @@ dialog.lightbox .lb-close{position:absolute; top:-2px; right:-2px; font-family:v
 .colophon .fin{width:34px; height:34px; border:2px solid var(--seal); color:var(--seal);
   display:grid; place-items:center; font-weight:900; font-size:17px}
 .colophon .line{flex:1; border-top:1px solid var(--line)}
-.prev-next{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:48px}
-.prev-next a{border:1px solid var(--line); padding:14px 18px; text-decoration:none;
-  transition:border-color var(--t-fast),background-color var(--t-fast)}
-.prev-next a:hover{border-color:var(--seal); background:var(--seal-wash)}
-.prev-next .lab{font-family:var(--mono); font-size:.72rem; color:var(--ink2); letter-spacing:.12em}
-.prev-next .t{font-weight:600; margin-top:4px}
+/* ── 上下文导航:书页页脚式——上下细线与 colophon(完—线—日期)同族;
+   两端文字,标题衬线可 hover 落朱砂;空态降透明度不加点击暗示 ── */
+.prev-next{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:48px;
+  padding:14px 2px; border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+.prev-next a{text-decoration:none}
+.prev-next .lab{display:block; font-family:var(--mono); font-size:.72rem;
+  color:var(--ink2); letter-spacing:.15em}
+.prev-next .t{font-weight:600; font-size:1.02rem; margin-top:6px;
+  transition:color var(--t-fast)}
+.prev-next a:hover .t{color:var(--seal)}
 .prev-next .next{text-align:right}
-.prev-next .none{border-style:dashed; color:var(--ink2); padding:14px 18px}
-@media (max-width:640px){ .prev-next{grid-template-columns:1fr} }
+.prev-next .none .lab{opacity:.55}
+.prev-next .none .t{font-weight:400; opacity:.55}
+@media (max-width:640px){ .prev-next{grid-template-columns:1fr; gap:10px}
+  .prev-next .next{text-align:left} }
 
 /* ── 日报正文(1:1 对齐 assemble.py Markdown 结构;来源识别为中心) ── */
 .issue-wrap{padding:clamp(28px,5vw,56px) 0 0}

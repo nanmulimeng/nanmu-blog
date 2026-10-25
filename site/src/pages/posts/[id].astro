@@ -51,17 +51,17 @@ const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
       <nav class="prev-next" aria-label="上下文文章">
         {older ? (
           <a class="prev" href={`/posts/${older.id}/`}>
-            <span class="lab mono">上一篇</span><div class="t">{older.data.title}</div>
+            <span class="lab mono">← 上一篇</span><div class="t">{older.data.title}</div>
           </a>
         ) : (
-          <span class="none"><span class="lab mono">上一篇</span><div class="t">这是最早的一篇</div></span>
+          <span class="none"><span class="lab mono">← 上一篇</span><div class="t">已是最早一篇</div></span>
         )}
         {newer ? (
           <a class="next" href={`/posts/${newer.id}/`}>
-            <span class="lab mono">下一篇</span><div class="t">{newer.data.title}</div>
+            <span class="lab mono">下一篇 →</span><div class="t">{newer.data.title}</div>
           </a>
         ) : (
-          <span class="none next"><span class="lab mono">下一篇</span><div class="t">还没有</div></span>
+          <span class="none next"><span class="lab mono">下一篇 →</span><div class="t">已是最新一篇</div></span>
         )}
       </nav>
     </div>
