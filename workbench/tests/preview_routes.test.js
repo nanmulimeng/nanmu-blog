@@ -212,8 +212,8 @@ test('POST /api/preview:鉴权链→保存草稿→触发构建→注册可访�
   const fx = fixture();
   try {
     const bare = makeBare(fx.dir);
-    const buildCmd = 'node -e "const fs=require(\'fs\');fs.mkdirSync(\'dist\',{recursive:true});' +
-      'fs.copyFileSync(\'src/content/posts/prev-api.md\',\'dist/index.html\')"';
+    const buildCmd = 'node -e "const fs=require(\'fs\');fs.mkdirSync(\'dist/posts/prev-api\',{recursive:true});' +
+      'fs.copyFileSync(\'src/content/posts/prev-api.md\',\'dist/posts/prev-api/index.html\')"';
     const mk = makeApp(fx, { preview: { repoPath: bare, buildCmd } });
     const { app } = mk;
     const cookie = await loginCookie(app);
@@ -226,9 +226,10 @@ test('POST /api/preview:鉴权链→保存草稿→触发构建→注册可访�
     assert.equal(put.statusCode, 200);
     const res = await app.inject({ method: 'POST', url: '/api/preview', headers: { cookie, ...CSRF }, payload: { slug: 'prev-api' } });
     assert.equal(res.statusCode, 200, res.payload);
-    const { opId } = JSON.parse(res.payload);
+    const { opId, url } = JSON.parse(res.payload);
     assert.ok(opId, '返回 opId');
-    const html = await app.inject({ method: 'GET', url: `/preview/${opId}/`, headers: { cookie } });
+    assert.equal(url, `/preview/${opId}/posts/prev-api/`, '直达文章详情页');
+    const html = await app.inject({ method: 'GET', url, headers: { cookie } });
     assert.equal(html.statusCode, 200);
     assert.ok(html.payload.includes('API-SENTINEL-9'), '注册后预览可访问且含草稿哨兵');
   } finally { fs.rmSync(fx.dir, { recursive: true, force: true }); }

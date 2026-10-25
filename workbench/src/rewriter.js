@@ -20,11 +20,19 @@ function withToken(u, token) {
   return u.includes('?') ? `${u}&t=${token}` : `${u}?t=${token}`;
 }
 
-/** 单个资源 URL 变换:根路径→前缀;css/font/img 附 token;其余原样。 */
+/** 单个资源 URL 变换(HTML 语境):根路径→前缀;css/font/img 附 token;其余原样。 */
 function transformUrl(u, { prefix, token }) {
   if (!u.startsWith('/') || u.startsWith('//') || u.startsWith('/api/')) return u;
   const abs = prefix + u;
   return TOKEN_KINDS.has(kindOf(u)) ? withToken(abs, token) : abs;
+}
+
+/** CSS 语境:相对分片(真实产物形态 url('shards/x.woff2'))位置在预览内已正确,
+   只补 token 不改路径——不补则子资源 401,字体链路断(2026-10-25 e2e 发现)。 */
+function cssUrl(u, opts) {
+  if (u.startsWith('/')) return transformUrl(u, opts);
+  if (!u || u.startsWith('data:') || u.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(u)) return u;
+  return TOKEN_KINDS.has(kindOf(u)) ? withToken(u, opts.token) : u;
 }
 
 function transformSrcset(v, opts) {
@@ -58,7 +66,7 @@ export function rewriteCss(css, opts) {
   return css.replace(
     /url\(\s*(['"]?)([^'")]+)\1\s*\)/g,
     (m, q, u) => {
-      const nv = transformUrl(u, opts);
+      const nv = cssUrl(u, opts);
       return nv === u ? m : `url(${q}${nv}${q})`;
     },
   );

@@ -231,7 +231,8 @@ export function buildApp(opts = {}) {
       return reply.code(500).send({ error: 'build_failed', reason: r.reason });
     }
     previews.register(opId);
-    return { opId, url: `/preview/${opId}/` };
+    // 预览直达该草稿的文章详情页(站点根是整站首页,作者校对对象是这篇文章)
+    return { opId, url: `/preview/${opId}/posts/${slug}/` };
   });
 
   // ── 预览(任务 2.3,DESIGN §4.3):HTML 走会话鉴权(401,预览不重定向)

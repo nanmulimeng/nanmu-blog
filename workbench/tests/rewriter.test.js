@@ -49,14 +49,14 @@ test('2.2 已带 query 的根路径:token 追加不破坏原 query', () => {
   assert.ok(h.includes('href="/preview/op-9/fonts/f.css?v=1&t=TOK"'), h);
 });
 
-test('2.2 CSS:根路径 url() 前缀改写+token;相对/data: 不动;已有 query 追加', () => {
+test('2.2 CSS:根路径前缀+token;相对路径位置已对只补 token(DESIGN:分片补同 token);data: 不动;query 追加', () => {
   const c = rewriteCss(
     '@font-face{src:url(/fonts/f1.woff2)}' +
     'a{background:url(../img/rel.png)}' +
     'b{background:url(data:image/svg+xml,%3Csvg%3E)}' +
     'c{background:url(/img/q.png?v=2)}', P);
   assert.ok(c.includes('url(/preview/op-9/fonts/f1.woff2?t=TOK)'), c);
-  assert.ok(c.includes('url(../img/rel.png)'), c);
+  assert.ok(c.includes('url(../img/rel.png?t=TOK)'), c);
   assert.ok(c.includes('url(data:image/svg+xml,%3Csvg%3E)'), c);
   assert.ok(c.includes('url(/preview/op-9/img/q.png?v=2&t=TOK)'), c);
 });
@@ -64,4 +64,11 @@ test('2.2 CSS:根路径 url() 前缀改写+token;相对/data: 不动;已有 quer
 test('2.2 单引号属性同样改写', () => {
   const h = rewriteHtml("<link rel='stylesheet' href='/fonts/fonts.css'>", P);
   assert.ok(h.includes("/preview/op-9/fonts/fonts.css?t=TOK"), h);
+});
+
+test('2.2 CSS 相对分片(真实产物形态 url(\'shards/x.woff2\')):补 token 不改路径', () => {
+  const c = rewriteCss("src:url('shards/noto-400-000.woff2') format('woff2')", P);
+  assert.ok(c.includes("url('shards/noto-400-000.woff2?t=TOK')"), c);
+  const c2 = rewriteCss('src:url(shards/a.woff2) format("woff2")', P);
+  assert.ok(c2.includes('url(shards/a.woff2?t=TOK)'), c2);
 });
