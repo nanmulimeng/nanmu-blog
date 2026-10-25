@@ -250,6 +250,8 @@ export function createGitOps({ repoPath, wtPath, opsDir, remotes, now = Date.now
   /* 界面态:confirmed 的 publish 动态复核当前 release——内容不一致(被改写/
      撤下)=superseded(§4.4 替代判定),不静态缓存 */
   async function listView() {
+    const all0 = readAll();
+    if (!all0.length) return [];  // 无操作不触发 git(repo 未初始化时不 500)
     const release = await currentRelease();
     const out = [];
     for (const o of readAll()) {

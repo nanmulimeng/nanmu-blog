@@ -261,3 +261,72 @@ setInterval(() => {
   }
   maybeOfferLocalRecovery(draft.rev, draft);
 })();
+
+
+/* ── 批 2/3:预览与发布(编辑器动作) ── */
+const previewBtn = document.getElementById('preview-btn');
+const publishBtn = document.getElementById('publish-btn');
+
+previewBtn.addEventListener('click', async () => {
+  if (!els.slug.value || state.mode !== 'open') { setStatus('error', '请先保存草稿再预览。'); return; }
+  previewBtn.disabled = true; previewBtn.textContent = '构建中…';
+  try {
+    const res = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ slug: els.slug.value }),
+    });
+    if (res.status === 401) { window.location.assign('/login'); return; }
+    const data = await res.json();
+    if (res.ok && data.url) window.open(data.url, '_blank');
+    else setStatus('error', `预览失败:${data.error || res.status}(构建约 15-20 秒)`);
+  } catch { setStatus('error', '预览失败(网络)'); }
+  finally { previewBtn.disabled = false; previewBtn.textContent = '预览'; }
+});
+
+publishBtn.addEventListener('click', async () => {
+  if (!els.slug.value || state.mode !== 'open') { setStatus('error', '请先保存草稿再发布。'); return; }
+  if (state.dirty || state.saving) { setStatus('error', '有未保存修改,先保存(Ctrl+S)再发布。'); return; }
+  const title = els.title.value.trim() || els.slug.value;
+  if (!confirm(`发布《${title}》?\n\nslug:${els.slug.value}\n将提交 Git 并推送 github 与部署端,约 1-3 分钟后线上可见。`)) return;
+  publishBtn.disabled = true;
+  try {
+    setStatus('saving', '发布中:提交并推送…');
+    const res = await fetch('/api/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ slug: els.slug.value, idemKey: crypto.randomUUID() }),
+    });
+    if (res.status === 401) { window.location.assign('/login'); return; }
+    const data = await res.json();
+    if (!res.ok) {
+      const msgs = {
+        operation_open: '上一次发布/撤下尚未终态,先在列表页处理(恢复/重查)。',
+        remotes_diverged: '远端不一致(github 领先或分叉),需人工处理,暂不能发布。',
+        slug_taken: '该 slug 已被其他文章占用,请修改 slug。',
+        draft_not_found: '草稿不存在(可能已在别处删除),刷新后重试。',
+      };
+      setStatus('error', msgs[data.error] || `发布失败:${data.error || res.status}`);
+      return;
+    }
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const c = await fetch(`/api/operations/${data.id}/confirm`, {
+        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if (!c.ok) continue;
+      const cr = await c.json();
+      if (cr.status === 'confirmed') {
+        setStatus('clean', `已上线 ${hhmm()} · /posts/${els.slug.value}/`);
+        return;
+      }
+      if (cr.status === 'pending_confirm') {
+        setStatus('error', '推送完成但 180 秒内未确认上线。回列表页「重查」。');
+        return;
+      }
+      setStatus('saving', `确认中(${i + 1}/10)…`);
+    }
+    setStatus('error', '确认超时:推送已完成,回列表页「重查」确认。');
+  } catch { setStatus('error', '发布失败(网络),回列表页查看操作状态。'); }
+  finally { publishBtn.disabled = false; }
+});

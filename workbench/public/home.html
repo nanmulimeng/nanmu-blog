@@ -25,15 +25,15 @@
     </tbody>
   </table>
 
-  <h2>已发布</h2>
+  <h2>已发布与操作</h2>
   <p class="wb-note">
-    已发布列表需要读取 Git 仓库(批 3 接入),当前不可用——本批为本地批,未接 Git。
+    状态按内容身份核对动态显示:已上线 / 已被替代 / 已撤下 / 未确认(可重查)。
+    撤下会 404 正文 URL 并从列表/RSS 移除;回滚到含该文的旧版本会重新公开它。
   </p>
-
-  <h2>尚未提供的能力(如实标注,不做假按钮)</h2>
-  <p class="wb-note">
-    预览(批 2)、发布 / 撤下(批 3)、域名上线(批 4)。列表中的「预览 / 发布」入口届时启用。
-  </p>
+  <table class="wb-table">
+    <thead><tr><th>文章</th><th>操作</th><th>状态</th><th></th></tr></thead>
+    <tbody id="ops-tbody"><tr><td colspan="4" class="wb-status">加载中…</td></tr></tbody>
+  </table>
 
   <p id="home-status" class="wb-status" role="status" aria-live="polite"></p>
 </main>
