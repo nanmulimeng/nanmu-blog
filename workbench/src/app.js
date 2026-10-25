@@ -15,6 +15,8 @@ import {
 import { DraftStore, validateDraftFields, validateSlug } from './drafts.js';
 import { rewriteHtml, rewriteCss } from './rewriter.js';
 import { createPreviewStore } from './previews.js';
+import { buildPreview } from './preview_build.js';
+import crypto from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PUBLIC_DIR = path.resolve(__dirname, '../public');
@@ -204,6 +206,32 @@ export function buildApp(opts = {}) {
     const removed = await drafts.remove(slug);
     if (!removed) return reply.code(404).send({ error: 'not_found' });
     return { ok: true };
+  });
+
+  // ── POST /api/preview:触发真实构建并注册预览(会话+CSRF;
+  // 构建配置由部署方注入 opts.preview={repoPath,branch?,buildCmd?},
+  // 未配置=本服务未开预览,503)。失败不注册(预览 URL 保持 410 语义)。 ──
+  const previewCfg = opts.preview ?? null;
+  app.post('/api/preview', { preHandler: [requireSessionApi, requireCsrf] }, async (req, reply) => {
+    if (!previewCfg) return reply.code(503).send({ error: 'preview_not_configured' });
+    const { slug } = req.body ?? {};
+    if (!validateSlug(slug)) return reply.code(400).send({ error: 'bad_slug' });
+    const d = await drafts.get(slug);
+    if (!d || d.corrupted) return reply.code(404).send({ error: 'draft_not_found' });
+    const opId = `op-${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
+    const r = await buildPreview({
+      repoPath: previewCfg.repoPath,
+      branch: previewCfg.branch ?? 'main',
+      opId,
+      previewsDir: previews.previewsDir,
+      buildCmd: previewCfg.buildCmd ?? 'npm ci --no-audit --no-fund && npm run build',
+      draft: { slug, content: d.record.body ?? '' },
+    });
+    if (!r.ok) {
+      return reply.code(500).send({ error: 'build_failed', reason: r.reason });
+    }
+    previews.register(opId);
+    return { opId, url: `/preview/${opId}/` };
   });
 
   // ── 预览(任务 2.3,DESIGN §4.3):HTML 走会话鉴权(401,预览不重定向)

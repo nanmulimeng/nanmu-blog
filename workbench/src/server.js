@@ -13,6 +13,10 @@ const app = buildApp({
   devPassword: process.env.WB_DEV_PASSWORD, // 缺省用进程内占位符 'dev-placeholder',非真实凭据
   baseUrl: process.env.WB_BASE_URL || `http://127.0.0.1:${PORT}`,
   draftsDir: process.env.WB_DRAFTS_DIR, // 缺省 workbench/data/drafts;测试/e2e 指向独立临时目录
+  previewsDir: process.env.WB_PREVIEWS_DIR, // 缺省 workbench/data/previews;同上
+  preview: process.env.WB_PREVIEW_REPO
+    ? { repoPath: process.env.WB_PREVIEW_REPO, branch: process.env.WB_PREVIEW_BRANCH }
+    : undefined, // 未配置则 POST /api/preview 503(预览构建需裸克隆地址)
   // 生产(Caddy TLS)必须 Secure;本地 http://127.0.0.1 下浏览器不存 Secure cookie,默认关闭、env 可强制
   cookieSecure: process.env.WB_COOKIE_SECURE === '1' || production,
   now: Date.now,

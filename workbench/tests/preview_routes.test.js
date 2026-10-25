@@ -37,7 +37,9 @@ function makeApp(fx, over = {}) {
   const now = over.now ?? (() => t);
   const store = over.store ?? createPreviewStore({ previewsDir: fx.previewsDir, now });
   store.register('op-1');
-  const app = buildApp({ devPassword: PW, baseUrl: BASE, now, previewsStore: store, ...over });
+  fs.mkdirSync(path.join(fx.dir, 'drafts'), { recursive: true });
+  const app = buildApp({ devPassword: PW, baseUrl: BASE, now, previewsStore: store,
+    draftsDir: path.join(fx.dir, 'drafts'), ...over });
   return { app, store, tick: (ms) => { t += ms; } };
 }
 
@@ -186,5 +188,71 @@ test('2.3 路径穿越被拒绝', async () => {
       const res = await app.inject({ method: 'GET', url: u });
       assert.ok([400, 404].includes(res.statusCode), `${u} 不应 200,得 ${res.statusCode}`);
     }
+  } finally { fs.rmSync(fx.dir, { recursive: true, force: true }); }
+});
+
+/* ── POST /api/preview(触发构建+注册;e2e 首跑暴露的缺口) ── */
+import { execFileSync } from 'node:child_process';
+
+function makeBare(dir) {
+  const bare = path.join(dir, 'api-bare.git');
+  const seed = path.join(dir, 'api-seed');
+  execFileSync('git', ['init', '--bare', '-b', 'main', bare]);
+  execFileSync('git', ['clone', bare, seed]);
+  fs.mkdirSync(path.join(seed, 'site', 'src', 'content', 'posts'), { recursive: true });
+  fs.writeFileSync(path.join(seed, 'site', 'README'), 'x');
+  const g = (a) => execFileSync('git', a, { cwd: seed, env: { ...process.env, HOME: dir, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  g(['add', '-A']); g(['commit', '-m', 's']); g(['push', 'origin', 'HEAD:main']);
+  return bare;
+}
+
+const CSRF = { origin: 'http://127.0.0.1:8790', 'x-requested-with': 'XMLHttpRequest' };
+
+test('POST /api/preview:鉴权链→保存草稿→触发构建→注册可访问(注入式构建)', async () => {
+  const fx = fixture();
+  try {
+    const bare = makeBare(fx.dir);
+    const buildCmd = 'node -e "const fs=require(\'fs\');fs.mkdirSync(\'dist\',{recursive:true});' +
+      'fs.copyFileSync(\'src/content/posts/prev-api.md\',\'dist/index.html\')"';
+    const mk = makeApp(fx, { preview: { repoPath: bare, buildCmd } });
+    const { app } = mk;
+    const cookie = await loginCookie(app);
+    // 未登录 401 / 登录无 CSRF 403
+    assert.equal((await app.inject({ method: 'POST', url: '/api/preview', payload: { slug: 'prev-api' } })).statusCode, 401);
+    assert.equal((await app.inject({ method: 'POST', url: '/api/preview', headers: { cookie }, payload: { slug: 'prev-api' } })).statusCode, 403);
+    // 保存草稿 → 触发
+    const put = await app.inject({ method: 'PUT', url: '/api/drafts/prev-api', headers: { cookie, ...CSRF },
+      payload: { title: '预览API', date: '2026-10-25', tags: [], body: 'API-SENTINEL-9', rev: 0 } });
+    assert.equal(put.statusCode, 200);
+    const res = await app.inject({ method: 'POST', url: '/api/preview', headers: { cookie, ...CSRF }, payload: { slug: 'prev-api' } });
+    assert.equal(res.statusCode, 200, res.payload);
+    const { opId } = JSON.parse(res.payload);
+    assert.ok(opId, '返回 opId');
+    const html = await app.inject({ method: 'GET', url: `/preview/${opId}/`, headers: { cookie } });
+    assert.equal(html.statusCode, 200);
+    assert.ok(html.payload.includes('API-SENTINEL-9'), '注册后预览可访问且含草稿哨兵');
+  } finally { fs.rmSync(fx.dir, { recursive: true, force: true }); }
+});
+
+test('POST /api/preview:草稿不存在 404;构建失败 500 不注册;未配置 503', async () => {
+  const fx = fixture();
+  try {
+    const mk = makeApp(fx); // 未配置 preview
+    const { app } = mk;
+    const cookie = await loginCookie(app);
+    const res1 = await app.inject({ method: 'POST', url: '/api/preview', headers: { cookie, ...CSRF }, payload: { slug: 'ghost' } });
+    assert.equal(res1.statusCode, 503, '未配置应 503(先于草稿检查)');
+    const bare = makeBare(fx.dir);
+    const mk2 = makeApp(fx, { preview: { repoPath: bare, buildCmd: 'node -e "process.exit(1)"' } });
+    const cookie2 = await loginCookie(mk2.app);
+    await mk2.app.inject({ method: 'PUT', url: '/api/drafts/will-fail', headers: { cookie: cookie2, ...CSRF },
+      payload: { title: 'x', date: '2026-10-25', tags: [], body: 'y', rev: 0 } });
+    const res2 = await mk2.app.inject({ method: 'POST', url: '/api/preview', headers: { cookie: cookie2, ...CSRF }, payload: { slug: 'will-fail' } });
+    assert.equal(res2.statusCode, 500);
+    const body2 = JSON.parse(res2.payload);
+    const gone = await mk2.app.inject({ method: 'GET', url: `/preview/${body2.opId ?? 'x'}/`, headers: { cookie: cookie2 } });
+    assert.equal(gone.statusCode, 410, '失败不注册(410)');
+    const res3 = await mk2.app.inject({ method: 'POST', url: '/api/preview', headers: { cookie: cookie2, ...CSRF }, payload: { slug: 'ghost' } });
+    assert.equal(res3.statusCode, 404);
   } finally { fs.rmSync(fx.dir, { recursive: true, force: true }); }
 });
