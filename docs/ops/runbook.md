@@ -57,3 +57,13 @@ M0部署完成后的带锁手动重跑使用[部署手册](deploy.md)§8,再按�
 - 手动触发一次运行(替代 timer;需在 `/etc/nanmu-blog.env` 有真实 key 才会付费,当前空 key=闸门拒绝新增):`sudo systemctl start nanmu-blog-engine.service`——**timer 保持 disabled 直到 Task 26 Step 5**。
 - 失败告警:service `OnFailure=nanmu-blog-engine-fail.service`(journal tag `nanmu-blog-engine`;webhook 配置见 `/etc/nanmu-blog.env` 的 `NANMU_NOTIFY_WEBHOOK`,空=仅 journal)。
 - 日志:`journalctl -u nanmu-blog-engine.service`;结构化行 `stage=… event=…` 与 design.md 日志观测节对应。
+
+## 写作工作台(write.nanmu.xyz,批 4)
+
+目录布局(`/opt/nanmu-workbench`):`app/`(仓库部署副本,服务工作目录=app/workbench)、`drafts/`(草稿)、`previews/`(预览独立副本,24h/10 份自清理)、`ops/`(操作记录)、`repo.git`(发布裸克隆)+`repo.wt`(固定 worktree)。凭据:`/etc/nanmu-workbench.env`(见 `deploy/nanmu-workbench.env.example` 结构说明,argon2id 哈希只进该文件);GitHub 写权限=服务器 `~/.ssh/` deploy key(丢失在服务器与 GitHub 两侧重置)。
+
+部署步骤(每步在服务器):①`git clone /opt/git/nanmu-blog.git /opt/nanmu-workbench/app && cd app/workbench && npm ci --omit=dev`;②写 `/etc/nanmu-workbench.env`(root:nanmu 0640,按 example);③`install -m 644 deploy/nanmu-workbench.service ~/.config/systemd/user/… 或 sudo cp 到 /etc/systemd/system && systemctl daemon-reload && systemctl enable --now nanmu-workbench`;④Caddyfile 追加 `deploy/Caddyfile.snippet` 的 write 段+`caddy validate && systemctl reload caddy`;⑤DNS write.nanmu.xyz A 记录指向本机。
+
+备份与恢复:drafts+ops 目录纳入每日备份(与 engine SQLite 同批);恢复=还原两目录+重启服务(会话内存表即清空属预期)。发布中断恢复按 DESIGN §2.1 恢复表(工作台界面「重查」;未决操作阻止新发布;github 领先/分叉转人工,绝不 force push)。
+
+资源实测回填(4.3,未验证假设不得以估计代替):空闲内存 systemd MemoryCurrent 24h 采样 P50/P95;预览构建耗时真实草稿×20 的 P50/P95;预览构建窗口内公开站首页 GET×20 失败数与延迟;数据回填 DESIGN §2.2,不达标回资源方案。

@@ -1,0 +1,24 @@
+# nanmu 写作工作台(write.nanmu.xyz,批 4 部署工件;安装后 enable+start)
+# 认证:口令 argon2id 哈希只在 /etc/nanmu-workbench.env(见 env.example
+# 结构说明);仓库/日志/文档不落任何口令材料。
+[Unit]
+Description=nanmu writing workbench (write.nanmu.xyz)
+Documentation=file:///opt/nanmu-workbench/app/docs/ops/runbook.md
+After=network.target
+
+[Service]
+Type=simple
+User=nanmu
+Group=nanmu
+WorkingDirectory=/opt/nanmu-workbench/app/workbench
+EnvironmentFile=/etc/nanmu-workbench.env
+ExecStart=/usr/bin/env node src/server.js
+Restart=on-failure
+RestartSec=3
+# 与 engine 同档防御上限(实测前保守;4.3 资源回填后复核)
+MemoryMax=300M
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

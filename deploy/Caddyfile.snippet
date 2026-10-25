@@ -7,3 +7,15 @@ nanmu.xyz {
         file_server
     }
 }
+
+# 写作工作台(批 4;独立分面,见 ADR-0011):仅反代本机 8790,
+# TLS 由 Caddy 托管;cookie Secure 由应用侧启用(WB_COOKIE_SECURE=1)。
+write.nanmu.xyz {
+    reverse_proxy 127.0.0.1:8790
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+}
