@@ -138,15 +138,6 @@ const fLabel = posts.length === 1 ? '目前唯一的一篇 · 也是第一篇' :
     <span class="scroll-hint">向下读</span>
   </section>
 
-  {/* 朱砂装订线:前景页装订线落入正文,随滚动延伸;节点对应各节(JS 增强,无 JS 不影响内容) */}
-  <div class="thread" aria-hidden="true">
-    <span class="line"></span>
-    <span class="knot" data-for="#posts"></span>
-    <span class="knot" data-for="#digest"></span>
-    <span class="knot" data-for="#about"></span>
-    <span class="knot" data-for="#subscribe"></span>
-  </div>
-
   <div class="frame">
     {/* 精选文章:前景页上那篇,落到纸上 */}
     <section class="featured" id="posts">

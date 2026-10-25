@@ -5,8 +5,7 @@
    页签选择 → 对应页弧出换到前景,3D 参与内容组织。
    夜览:背光透纸,纸暖字沉。
    接口:createScene(host, opts) → Promise<{setTheme, resetView, replay,
-     setAmbient, isAmbientOn, start, stop, texReady, select, current, stats,
-     projectBindingBottom}>
+     setAmbient, isAmbientOn, start, stop, texReady, select, current, stats}>
    生产适配(批次 2):文章页内容参数化——opts.article 由 boot6 从
    #scene3d data-article(构建期生成)解析传入,场景侧零内容副本
    (内容同源契约);null = 无公开文章,文章页排空态。
@@ -17,7 +16,7 @@ import * as THREE from './three.module.min.js';
 /* ── 参数表(可编辑源;改这里即可重建/调整场景) ── */
 export const PARAMS = {
   cam: {fov: 34, r: 16.4, az: 0.30, el: 0.17, azSpan: 0.18, elMin: 0.10, elMax: 0.38, ty: 3.55,
-        txM: 1.55, zoomMax: 2.1},   /* txM:竖屏 lookAt 目标右移,保住右缘与装订线同框 */
+        txM: 1.55, zoomMax: 2.1},   /* txM:竖屏 lookAt 目标右移,保住右缘同框 */
   page: {w: 5.2, h: 7.4, curve: 0.14, x: 2.1, y: 0, z: 0, ry: -0.16},
   /* 槽位:0=前景中央;1/2=后左错层。换页=页面在槽位间迁移 */
   slots: [
@@ -25,7 +24,6 @@ export const PARAMS = {
     {dx: -1.25, dy: -0.28, dz: -1.15, ry: -0.05, tone: 0.93},
     {dx: -2.3,  dy: -0.52, dz: -2.3,  ry: 0.05,  tone: 0.86},
   ],
-  binding: {x: 0.075, holes: 4},            /* 订眼位置(页宽比例,左缘内) */
   ghost: {w: 2.0, h: 2.85, x: 5.1, y: 1.6, z: -0.7, ry: -0.5},
   entrance: 2.8, sweepAt: 1.0,
   swapDur: 0.95,                            /* 换页时长(s) */
@@ -79,7 +77,7 @@ async function fontsReady(article, digest, site){
     document.fonts.load('600 40px "Noto Serif SC"', SAMPLE),
   ]); } catch(e){ /* 字体缺失回退系统衬线,仍可读 */ }
 }
-const TW = 1024, TH = 1460, TM = 152;   /* 文字左边距:装订线在 0.075W≈77px */
+const TW = 1024, TH = 1460, TM = 152;   /* 文字左边距(原避让装订线,保留版式) */
 function paperBase(seed){
   const c = document.createElement('canvas'); c.width = TW; c.height = TH;
   const g = c.getContext('2d'), r = rng(seed);
@@ -95,7 +93,7 @@ function paperBase(seed){
 function paperFinish(g){
   /* 弓面明暗:页面两边向 +z 弯出,横向明带让曲面可读。
      夜间透光以 emissiveMap 为主,纸面层次全部来自这张纹理;
-     装订线侧(左)亮、向右渐暗,模拟背光自左后透出 */
+     左侧亮、向右渐暗,模拟背光自左后透出 */
   const bow = g.createLinearGradient(0, 0, TW, 0);
   bow.addColorStop(0, 'rgba(58,48,34,0.20)'); bow.addColorStop(0.10, 'rgba(255,246,226,0.13)');
   bow.addColorStop(0.22, 'rgba(58,48,34,0.05)'); bow.addColorStop(0.42, 'rgba(255,252,244,0.10)');
@@ -106,27 +104,13 @@ function paperFinish(g){
   wash.addColorStop(0, 'rgba(255,244,218,0.16)'); wash.addColorStop(0.45, 'rgba(255,244,218,0.05)');
   wash.addColorStop(1, 'rgba(46,36,24,0.20)');
   g.fillStyle = wash; g.fillRect(0, 0, TW, TH);
-  /* 页缘切面:右缘受光边 + 左缘装订侧厚度 */
+  /* 页缘切面:右缘受光边 + 左缘厚度 */
   const eg = g.createLinearGradient(TW - 34, 0, TW, 0);
   eg.addColorStop(0, 'rgba(90,80,60,0)'); eg.addColorStop(1, 'rgba(90,80,60,0.42)');
   g.fillStyle = eg; g.fillRect(TW - 34, 0, 34, TH);
   const lg = g.createLinearGradient(0, 0, 26, 0);
   lg.addColorStop(0, 'rgba(70,60,44,0.34)'); lg.addColorStop(1, 'rgba(70,60,44,0)');
   g.fillStyle = lg; g.fillRect(0, 0, 26, TH);
-  /* 订眼:孔内径向渐变 + 纸壁亮边,做出穿透纸面的厚度 */
-  const holeX = TW * PARAMS.binding.x;
-  for (let i = 0; i < PARAMS.binding.holes; i++){
-    const hy = TH * (0.18 + i * 0.213);
-    const hg = g.createRadialGradient(holeX - 3, hy - 3, 2, holeX, hy, 13);
-    hg.addColorStop(0, 'rgba(8,7,5,0.62)'); hg.addColorStop(0.62, 'rgba(20,18,14,0.48)');
-    hg.addColorStop(1, 'rgba(20,18,14,0)');
-    g.fillStyle = hg;
-    g.beginPath(); g.arc(holeX, hy, 13, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = 'rgba(247,244,235,0.9)'; g.lineWidth = 2.5;
-    g.beginPath(); g.arc(holeX, hy, 14.5, -0.5, 1.8); g.stroke();
-    g.strokeStyle = 'rgba(70,60,44,0.5)'; g.lineWidth = 2;
-    g.beginPath(); g.arc(holeX, hy, 16, 2.2, 4.6); g.stroke();
-  }
   const t = new THREE.CanvasTexture(g.canvas);
   t.anisotropy = 8;
   return t;
@@ -376,7 +360,6 @@ export async function createScene(host, opts = {}){
   addEventListener('resize', resize);
 
   const M = {
-    seal: new THREE.MeshStandardMaterial({color: 0xC2402A, roughness: 0.5, metalness: 0.1}),
     shadow: new THREE.MeshBasicMaterial({map: shadowTex(), transparent: true, depthWrite: false,
       opacity: 0.18, color: 0x14120E}),
   };
@@ -389,32 +372,6 @@ export async function createScene(host, opts = {}){
     const s = P.page, sl = P.slots[i];
     return {x: s.x + sl.dx, y: s.h / 2 + s.y + sl.dy, z: s.z + sl.dz, ry: s.ry + sl.ry, tone: sl.tone};
   }
-  /* 线装:朱砂线环穿过订眼,沿左缘走线(每页一份,贴在弯曲页面局部坐标) */
-  function addBinding(page){
-    const s = P.page;
-    const holeU = P.binding.x, R2 = s.w / s.curve;
-    const lx = (holeU - 0.5) * s.w;
-    const a = lx / R2;
-    const px = Math.sin(a) * R2, pz = (1 - Math.cos(a)) * R2 - (1 - Math.cos(s.w / 2 / R2)) * R2 * 0.5;
-    const grp = new THREE.Group();
-    for (let i = 0; i < P.binding.holes; i++){
-      const v = 0.18 + i * 0.213;
-      const hy = (v - 0.5) * s.h;
-      const loop = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.026, 8, 20), M.seal);
-      loop.position.set(px, hy, pz + 0.045);
-      grp.add(loop);
-      if (i < P.binding.holes - 1){
-        const nv = 0.18 + (i + 1) * 0.213;
-        const segLen = (nv - v) * s.h - 0.11;
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, segLen, 6), M.seal);
-        seg.position.set(px, (hy + (nv - 0.5) * s.h) / 2, pz + 0.045);
-        grp.add(seg);
-      }
-    }
-    page.add(grp);
-    return grp;
-  }
-
   /* 三张内容页:先素纸占位,字体就绪后换正式纹理 */
   const PAGES = [
     {pid: 'posts',  label: '文章',   link: links.post,   tex: () => articleTex(article)},
@@ -430,11 +387,6 @@ export async function createScene(host, opts = {}){
     const pose = slotPose(i);
     m.position.set(pose.x, pose.y, pose.z); m.rotation.y = pose.ry;
     m.userData.pid = def.pid; m.userData.slot = i; m.userData.lift = true; m.userData.baseY = pose.y;
-    /* 一叠稿纸共用一组线装:只有前景页露得出装订面,后排页的线装藏起,
-       否则三串订环悬在纸缘外;换页时随前景身份移交 */
-    const binding = addBinding(m);
-    binding.visible = (i === 0);
-    m.userData.binding = binding;
     root.add(m); reg(m, 0.35 + i * 0.18, 1.9 + i * 0.18, 'rise');
     return m;
   });
@@ -472,7 +424,7 @@ export async function createScene(host, opts = {}){
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({opacity: 0.2}));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-  /* 灯光:夜览背光点在页叠后方偏装订线侧,纸透光、左亮右暗 */
+  /* 灯光:夜览背光点在页叠后方偏左,纸透光、左亮右暗 */
   const hemi = new THREE.HemisphereLight(0xE9E5D9, 0x8F8A7B, 0.9); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xFFEFD4, 2.5);
   sun.castShadow = renderer.shadowMap.enabled;
@@ -506,7 +458,6 @@ export async function createScene(host, opts = {}){
     fill.intensity = D.fillI + (N.fillI - D.fillI) * t;
     back.intensity = D.backI + (N.backI - D.backI) * t;
     M.shadow.opacity = D.shadowI + (N.shadowI - D.shadowI) * t;
-    lerpC(M.seal.emissive, 0x000000, 0x8A2E18, t);
     floor.material.opacity = 0.2 + 0.1 * t;
     /* 透光:emissiveMap 字处暗、纸处亮 → 夜间纸透暖光、字沉为剪影 */
     pageMats.forEach(m => { m.emissiveIntensity = D.pageEmI + (N.pageEmI - D.pageEmI) * t; });
@@ -585,9 +536,6 @@ export async function createScene(host, opts = {}){
     target.userData.slot = 0;
     out.userData.slot = tSlot;
     out.userData.baseY = poseIn.y; target.userData.baseY = poseOut.y;
-    /* 线装随前景身份移交(后退页藏、前景页露) */
-    out.userData.binding.visible = false;
-    target.userData.binding.visible = true;
     if (onSelect) onSelect(pid);
     if (reduced()){ swap.k = 1; stepSwap(0); renderOnce(); }
     else start();
@@ -733,20 +681,6 @@ export async function createScene(host, opts = {}){
     /* 换页:pid ∈ posts/digest/about;返回是否受理 */
     select,
     current(){ const f = frontPage(); return f ? f.userData.pid : null; },
-    /* 前景页装订线底部孔投影为 host 内 CSS 像素,供 2D「落线」衔接正文 thread;
-       相机/布局/换页后需重新取值(由调用方驱动) */
-    projectBindingBottom(){
-      const fp2 = frontPage();
-      if (!fp2) return null;
-      const s = P.page;
-      const R2 = s.w / s.curve, lx = (P.binding.x - 0.5) * s.w, a = lx / R2;
-      /* 纹理 canvas y 向下 → 视觉最下方的孔是 v=0.18(局部 y 最小) */
-      const local = new THREE.Vector3(Math.sin(a) * R2, (0.18 - 0.5) * s.h,
-        (1 - Math.cos(a)) * R2 - (1 - Math.cos(s.w / 2 / R2)) * R2 * 0.5);
-      const ndc = fp2.localToWorld(local).project(camera);
-      if (ndc.z > 1) return null;
-      return {x: (ndc.x + 1) / 2 * host.clientWidth, y: (1 - ndc.y) / 2 * host.clientHeight};
-    },
     stats(){
       let tris = 0, objs = 0;
       scene.traverse(o => { if (o.geometry){ objs++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; }});

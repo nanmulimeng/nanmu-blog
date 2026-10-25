@@ -16,6 +16,9 @@ const pageTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
     <meta name="description" content={description} />
     <title>{pageTitle}</title>
     <link rel="stylesheet" href="/fonts/fonts.css" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" sizes="32x32" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- W1 首帧主题(ADR-0010):防夜览闪白;js 类同帧加——base.css 的
          html.js 移动端 nav 折叠原先等 body 尾 site.js 才生效,首帧渲染
          展开目录再塌成按钮,main 上移 261px(批次 3 CLS 0.288 归因)。
