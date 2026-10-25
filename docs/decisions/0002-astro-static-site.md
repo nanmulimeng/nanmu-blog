@@ -34,3 +34,5 @@
 1. Vue 3 + 管理后台 + 数据库——nanmuli-blog 老路,否决
 2. WordPress——运维重,与 AI 管线集成别扭,否决
 3. Hugo——可行,但 Astro 与 topic-digest 技术栈统一且组件模型更合适
+
+> 注(2026-10-25):作者工作台为独立分面(`write.nanmu.xyz`,不混入公开站构建产物),本文「无后台无数据库」对公开站继续成立,见 [ADR-0011](0011-workbench-separate-facet.md)。

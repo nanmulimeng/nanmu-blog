@@ -1,6 +1,6 @@
 # AGENTS.md — nanmu-blog
 
-**一句话**:极简静态博客(手写文章)+ AI 引擎自动日报(读 topic-digest 数据)+ 自用 RAG。博客先上线,AI 是渐进叠加层,**任何一层挂掉博客都在线**。
+**一句话**:极简静态博客(手写文章)+ AI 引擎自动日报(读 topic-digest 数据)+ 自用 RAG。博客先上线,AI 是渐进叠加层,**任何一层挂掉博客都在线**。作者工作台为独立分面 `write.nanmu.xyz`(不混入公开站构建产物,公开站无后台约束不变,见 [ADR-0011](docs/decisions/0011-workbench-separate-facet.md));工作台发布动作仍待逐项授权。
 
 ## 项目状态快照(2026-10-06)
 
