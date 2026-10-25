@@ -16,8 +16,8 @@ import { DraftStore, validateDraftFields, validateSlug } from './drafts.js';
 import { rewriteHtml, rewriteCss } from './rewriter.js';
 import { createPreviewStore } from './previews.js';
 import { buildPreview } from './preview_build.js';
+import { createGitOps } from './operations.js';
 import crypto from 'node:crypto';
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PUBLIC_DIR = path.resolve(__dirname, '../public');
 export const DEFAULT_DRAFTS_DIR = path.resolve(__dirname, '../data/drafts');
@@ -64,6 +64,15 @@ export function buildApp(opts = {}) {
   const limiter = new LoginRateLimiter(now);
   const drafts = new DraftStore(opts.draftsDir ?? DEFAULT_DRAFTS_DIR, { now });
   const previews = opts.previewsStore ?? createPreviewStore({ previewsDir: opts.previewsDir ?? DEFAULT_PREVIEWS_DIR, now });
+  // 发布/撤下操作(批 3):git 双远端环境由部署方注入,未注入=503
+  const ops = opts.operations ?? null;
+  const opErr = (reply, e) => {
+    if (e.code === 'OPERATION_OPEN') return reply.code(409).send({ error: 'operation_open', detail: e.message });
+    if (e.code === 'REMOTES_DIVERGED') return reply.code(409).send({ error: 'remotes_diverged', detail: e.detail });
+    if (e.code === 'SLUG_TAKEN') return reply.code(400).send({ error: 'slug_taken', detail: e.message });
+    if (e.code === 'NOT_FOUND') return reply.code(404).send({ error: 'not_found' });
+    throw e;
+  };
 
   // 错误兜底:404/500 一律兜底;API 返回 JSON,页面返回 HTML;500 不向客户端回传内部信息
   app.setErrorHandler((err, req, reply) => {
@@ -306,6 +315,46 @@ export function buildApp(opts = {}) {
       return body;
     } catch {
       return reply.code(404).send({ error: 'not_found' });
+    }
+  });
+
+  // ── 发布/撤下/操作查询(批 3,DESIGN §4.4/§4.5)──
+  app.post('/api/publish', { preHandler: [requireSessionApi, requireCsrf] }, async (req, reply) => {
+    if (!ops) return reply.code(503).send({ error: 'operations_not_configured' });
+    const { slug, idemKey } = req.body ?? {};
+    if (!validateSlug(slug)) return reply.code(400).send({ error: 'bad_slug' });
+    if (!idemKey || typeof idemKey !== 'string') return reply.code(400).send({ error: 'bad_idem_key' });
+    const d = await drafts.get(slug);
+    if (!d || d.corrupted) return reply.code(404).send({ error: 'draft_not_found' });
+    try {
+      const rec = await ops.publish({ slug, idemKey, content: d.record.body ?? '', draftRev: d.record.rev ?? null });
+      return { ...rec, url: `/posts/${slug}/` };
+    } catch (e) { return opErr(reply, e); }
+  });
+
+  app.post('/api/withdraw', { preHandler: [requireSessionApi, requireCsrf] }, async (req, reply) => {
+    if (!ops) return reply.code(503).send({ error: 'operations_not_configured' });
+    const { slug, idemKey } = req.body ?? {};
+    if (!validateSlug(slug)) return reply.code(400).send({ error: 'bad_slug' });
+    if (!idemKey || typeof idemKey !== 'string') return reply.code(400).send({ error: 'bad_idem_key' });
+    try {
+      const rec = await ops.withdraw({ slug, idemKey });
+      return { ...rec, url: null };
+    } catch (e) { return opErr(reply, e); }
+  });
+
+  app.get('/api/operations', { preHandler: requireSessionApi }, async () => {
+    if (!ops) return { operations: [] };
+    return { operations: await ops.listView() };
+  });
+
+  app.post('/api/operations/:id/confirm', { preHandler: [requireSessionApi, requireCsrf] }, async (req, reply) => {
+    if (!ops) return reply.code(503).send({ error: 'operations_not_configured' });
+    try {
+      return await ops.confirm(req.params.id);
+    } catch (e) {
+      if (String(e.message).includes('op_not_found')) return reply.code(404).send({ error: 'not_found' });
+      throw e;
     }
   });
 
