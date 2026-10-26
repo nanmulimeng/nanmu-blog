@@ -1,7 +1,8 @@
 ---
-import { getCollection, render } from 'astro:content';
+import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import { assertDigestIds } from '../../lib/content';
+import { parseDigestCards } from '../../lib/digest-card.mjs';
 
 export async function getStaticPaths() {
   const all = await getCollection('digest');
@@ -15,7 +16,13 @@ export async function getStaticPaths() {
   }));
 }
 const { digest, older, newer } = Astro.props;
-const { Content } = await render(digest);
+// 渲染层结构化(ADR-0013 aihot 式卡片流):解析产物 markdown,不再整篇
+// render()——板块/条目/评分/来源成为可样式化单元;产物与引擎零改动。
+const cards = parseDigestCards(digest.body ?? '');
+const sections = [...new Set(cards.map((c) => c.section))].map((name) => ({
+  name,
+  items: cards.filter((c) => c.section === name),
+}));
 ---
 <Base title={`${digest.data.date} 日报`} description={`AI 生成 · ${digest.data.entry_count} 条`}>
   <div class="frame">
@@ -33,8 +40,34 @@ const { Content } = await render(digest);
         <div class="tb-row"><span class="k">成本</span><span class="v">¥{digest.data.cost_cny}{digest.data.cost_pending && <span class="pending"> 含未决预占,为保守上界</span>}</span></div>
       </div>
 
-      <div class="issue-body">
-        <Content />
+      <div class="dg-flow" data-count={cards.length}>
+        {sections.map(({ name, items }) => (
+          <section class="dg-sec" aria-label={name}>
+            <header class="dg-sec-head">
+              <span class="dg-node" aria-hidden="true"></span>
+              <span class="dg-sec-name">{name}</span>
+              <span class="dg-count mono">{items.length} 条</span>
+            </header>
+            {items.map((c) => (
+              <article class="dg-card">
+                <div class="dg-meta">
+                  <span class="dg-source mono">{c.source}</span>
+                  <span class="dg-score" aria-label={`AI 评分 ${c.score} 分`}>
+                    <span class="dg-score-k">AI 评分</span><b class="mono">{c.score}</b>
+                  </span>
+                </div>
+                <h3 class="dg-title">
+                  <a href={c.url} target="_blank" rel="noopener">{c.title}<span class="dg-ext" aria-hidden="true">↗</span></a>
+                </h3>
+                <p class="dg-summary">{c.summary}</p>
+                {c.reason && (
+                  <p class="dg-reason"><span class="dg-reason-tag">理由</span>{c.reason}</p>
+                )}
+              </article>
+            ))}
+          </section>
+        ))}
+        {cards.length === 0 && <div class="issue-body"><em>本期无结构化条目(渲染层解析为空)。</em></div>}
       </div>
 
       <div class="issue-foot">
