@@ -126,8 +126,12 @@ class TestIngest(unittest.TestCase):
             cfg = _config()
             with mock.patch.object(ingest, "_fetch_feed", return_value=FEED):
                 r1 = ingest.ingest_once(c, cfg, "2026-10-26", NOW)
+                self.assertEqual(r1.item_total, 2)
+                self.assertFalse(c.in_transaction,
+                                 "单次 ingest_once 不得留悬挂事务(collect_once 的"
+                                 " BEGIN/COMMIT 包裹语义,freeze_issue 自身不提交;"
+                                 "悬挂会炸后续 ledger.authorize 的 BEGIN IMMEDIATE)")
                 r2 = ingest.ingest_once(c, cfg, "2026-10-26", NOW + timedelta(hours=1))
-        self.assertEqual(r1.item_total, 2)
         self.assertEqual(r2.item_total, 2, "已冻结幂等返回")
         import json
         m = json.loads(c.execute(

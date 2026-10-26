@@ -178,10 +178,24 @@ def _eligible_manifest(engine_conn: sqlite3.Connection,
 
 def ingest_once(engine_conn: sqlite3.Connection, config, issue_date: str,
                 now_utc: datetime) -> CollectResult:
-    """每日 run 入口:落库 → 冻结资格 manifest;已冻结幂等返回。"""
+    """每日 run 入口:落库 → 冻结资格 manifest;已冻结幂等返回。
+
+    冻结段用 BEGIN IMMEDIATE…COMMIT 包裹(collect_once 同语义)——
+    freeze_issue 在调用方事务内写且自身不提交,不包裹会留悬挂事务,
+    炸后续 ledger.authorize 的 BEGIN IMMEDIATE。
+    """
     ingest_entries(engine_conn, now_utc, config=config)
     manifest = _eligible_manifest(engine_conn, now_utc)
-    frozen_utc = freeze_issue(engine_conn, issue_date, manifest, now_utc)
+    try:
+        engine_conn.execute("BEGIN IMMEDIATE")
+        frozen_utc = freeze_issue(engine_conn, issue_date, manifest, now_utc)
+        engine_conn.execute("COMMIT")   # 冻结确认事件在此刻发生
+    except Exception:
+        try:
+            engine_conn.execute("ROLLBACK")
+        except sqlite3.Error:
+            pass
+        raise
     status = "frozen" if frozen_utc == _iso_z(now_utc) else "already_frozen"
     return CollectResult(status=status, manifest=manifest,
                          item_total=len(manifest))
