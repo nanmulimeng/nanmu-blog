@@ -1,6 +1,6 @@
 version: 1
 default_model: 'deepseek-flash'
-rate_limits: {per_minute: 120, per_hour: 100, per_day: 400}   # 2026-10-26:10→120;首期实测评分阶段即打满 10/min,摘要阶段全被窗口拒→zero_qualified 落死;每秒 2 笔仍保守(DeepSeek 限额远高于此),月/期金额上限不变
+rate_limits: {per_minute: 120, per_hour: 200, per_day: 400}   # 2026-10-26:hour 100→200;评分批量与摘要共享窗口池,100/h 被评分挤占致摘要全拒;day 400 与月/期金额闸门不变
 money_micro_cny:
   monthly: 50000000                      # ¥50
   per_issue: 1000000                     # ¥1
