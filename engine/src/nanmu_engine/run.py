@@ -35,6 +35,7 @@ from nanmu_engine.prescreen import prescreen
 from nanmu_engine.publish import (ManualIntervention, PublishContext,
                                   publish_issue, recover_issue,
                                   stale_cost_issues)
+from nanmu_engine.stream import build_stream_pages
 from nanmu_engine.score import (_truncate_user, build_score_ctx,
                                  check_prompt_fits, score_entry,
                                  score_reuse_ctx)
@@ -320,6 +321,22 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
         path = ctx.workdir / ctx.digest_dir / f"{issue_date}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         write_draft(conn, draft, path)
+        # ADR-0014 板块页:同 manifest 同评分产出精选/全部动态/热点榜,
+        # 随日报同一 commit 发布(publish._commit_digest 并入 pathspec)
+        stream_pages = build_stream_pages(
+            issue_date, config.selection.sections,
+            selected=[{**member_by_key[v.identity_key],
+                       "display_score": v.display_score}
+                      for v in result.selected],
+            rejected=[{**member_by_key[v.identity_key],
+                       "display_score": v.display_score}
+                      for v in result.rejected],
+            summaries=summaries)
+        stream_dir = ctx.workdir / ctx.stream_dir
+        stream_dir.mkdir(parents=True, exist_ok=True)
+        for kind, markdown in stream_pages.items():
+            (stream_dir / f"{kind}-{issue_date}.md").write_text(
+                markdown, encoding="utf-8", newline="\n")
         # 清算口径=最终产物成员(交界 B-缝B):与恢复路径 entry_ids 口径
         # 一致——组装剔除的 safety_excluded 成员不进产物,不得置 used
         res = publish_issue(conn, issue_date, ctx,

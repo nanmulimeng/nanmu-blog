@@ -1,11 +1,12 @@
 """ledger 授权闸门测试(种子=model-calls §3 规则 1 + 验收 6 + budget.md 预占公式)。"""
 
+import dataclasses
 import itertools
 from pathlib import Path
 
 import pytest
 
-from nanmu_engine.config import load_config
+from nanmu_engine.config import RateLimits, load_config
 from nanmu_engine.db import connect_db, migrate
 from nanmu_engine.ledger import (authorize, sync_budget_limits,
                                  write_calibration_record)
@@ -89,7 +90,13 @@ def test_pay_paused_gate(env):
 
 def test_hour_window_full_rejects_without_writing_attempt(env):
     conn, config = env
-    for _ in range(100):  # per_hour=100(真配置)
+    # 限值锚定固定值不随真配置漂移(budget.yaml 已于 2026-10-26 运维调整
+    # 为 120/200,见 docs/decisions/0012 与 session 交接;测试语义=窗口打满)
+    config = dataclasses.replace(
+        config, budget=dataclasses.replace(
+            config.budget, rate_limits=RateLimits(10, 100, 400)))
+    sync_budget_limits(conn, config)
+    for _ in range(100):  # per_hour=100(锚定)
         _seed_attempt(conn, minutes_ago=10)
     before = conn.execute("SELECT COUNT(*) FROM receipt_attempt").fetchone()[0]
     result = _authorize(conn, config)
@@ -217,7 +224,8 @@ def test_sync_budget_limits_writes_rows(tmp_path):
     row = conn.execute(
         "SELECT per_minute, per_hour, per_day FROM budget WHERE service='llm'"
     ).fetchone()
-    assert row == (10, 100, 400)
+    r = config.budget.rate_limits    # 断言与真配置一致(值随运维可调)
+    assert row == (r.per_minute, r.per_hour, r.per_day)
     conn.close()
 
 
@@ -713,7 +721,8 @@ def test_compute_n_new_zero_price_unbounded_by_money(env):
     conn, config = env
     zero = dataclasses.replace(
         config.budget,
-        pricing=(PricingRow("z", "deepseek-flash", 0, 0, 0),))
+        pricing=(PricingRow("z", "deepseek-flash", 0, 0, 0),),
+        rate_limits=RateLimits(10, 100, 400))   # 锚定限值,N_hour=40 不漂移
     # W=0 且期可用扣预留 ≥0 → 金额不设限,N 取次数项 40
     assert compute_n_new(conn, dataclasses.replace(config, budget=zero),
                          issue_date="2026-10-06") == 40
@@ -729,7 +738,9 @@ def test_compute_n_new_disabled_limit_is_zero(env):
 
 def test_compute_n_new_retry_reserve_zero(env):
     conn, config = env
-    odd = dataclasses.replace(config.budget, retry_reserve_micro_cny=0)
+    odd = dataclasses.replace(
+        config.budget, retry_reserve_micro_cny=0,
+        rate_limits=RateLimits(10, 100, 400))   # 锚定限值,N_hour=40 不漂移
     # N_money=44,仍受 N_hour=40 限制
     assert compute_n_new(conn, dataclasses.replace(config, budget=odd),
                          issue_date="2026-10-06") == 40

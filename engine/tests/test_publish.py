@@ -30,6 +30,7 @@ from nanmu_engine.publish import (
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
 DIGEST_DIR = "site/src/content/digest"
+STREAM_DIR = "site/src/content/stream"
 
 
 def _run(args, cwd, check=True, binary=False):
@@ -754,3 +755,62 @@ def test_ff_merge_overlapping_staged_goes_manual(env, tmp_path):
 
     with pytest.raises(ManualIntervention, match="同步|sync|工作副本"):
         publish_issue(conn, "2026-10-06", ctx, final_keys=["in1"])
+
+
+# ---------- ADR-0014 板块集成:stream 文件随日报同 commit 发布 ----------
+
+def _stream_path(work, issue_date, kind):
+    p = work / STREAM_DIR / f"{kind}-{issue_date}.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _write_streams(work, issue_date, tag="v1"):
+    nl = chr(10)
+    for kind in ("featured", "all", "hot"):
+        md = nl.join(["---", f"kind: '{kind}'", f"date: '{issue_date}'",
+                      "count: 1", "---", "", tag, ""])
+        _stream_path(work, issue_date, kind).write_text(md,
+                                                        encoding="utf-8")
+
+def test_publish_commits_stream_files_with_digest(env):
+    conn, config, ctx, work, state = env
+    _make_draft(conn, work)
+    _write_streams(work, "2026-10-06")
+    res = publish_issue(conn, "2026-10-06", ctx, final_keys=[])
+    assert res.status == "published"
+    # 同一提交包含 digest 与三份 stream 文件
+    files = _run(
+        ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
+        work).splitlines()
+    assert "site/src/content/digest/2026-10-06.md" in files
+    for kind in ("featured", "all", "hot"):
+        assert f"site/src/content/stream/{kind}-2026-10-06.md" in files
+
+
+def test_sync_workdir_allows_issue_stream_files(env):
+    """隔离核对白名单=本期文件集(digest+stream),不再只认 digest 单文件。"""
+    conn, config, ctx, work, state = env
+    sha, _ = _make_draft(conn, work)
+    _write_streams(work, "2026-10-06")
+    _run(["add", "."], work)                       # 模拟:已提交未推送
+    _run(["commit", "-q", "-m", "digest: 2026-10-06"], work)
+    res = publish_issue(conn, "2026-10-06", ctx, final_keys=[])
+    assert res.status == "published"               # 不因 stream 文件报他期提交
+
+
+def test_commit_appends_stream_only_followup(env):
+    """digest 已按旧链提交(无 stream)后补写 stream → 追加 stream 提交。"""
+    conn, config, ctx, work, state = env
+    sha, path = _make_draft(conn, work)
+    _run(["add", str(path.relative_to(work))], work)
+    _run(["commit", "-q", "-m", "digest: 2026-10-06"], work)
+    _write_streams(work, "2026-10-06")             # 之后再写(回填场景)
+    res = publish_issue(conn, "2026-10-06", ctx, final_keys=[])
+    assert res.status == "published"
+    msg = _run(["log", "-1", "--pretty=%s"], work)
+    assert msg.startswith("stream: 2026-10-06")
+    files = _run(
+        ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
+        work).splitlines()
+    assert all(f.startswith(STREAM_DIR) for f in files)

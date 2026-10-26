@@ -43,6 +43,7 @@ class PublishContext:
     remote_url: str
     branch: str = "main"
     digest_dir: str = "site/src/content/digest"
+    stream_dir: str = "site/src/content/stream"      # ADR-0014 板块页
     site_base: str = ""
     fetch_release_sha: Callable[[], str | None] = field(default=lambda: None)
     fetch_url_ok: Callable[[str], bool] = field(default=lambda url: False)
@@ -91,6 +92,35 @@ def _digest_rel(ctx: PublishContext, issue_date: str) -> str:
     return f"{ctx.digest_dir}/{issue_date}.md"
 
 
+# ---------- ADR-0014 板块集成:stream 文件(featured/all/hot)随日报发布 ----------
+
+_STREAM_KINDS = ("featured", "all", "hot")
+
+
+def _stream_rels(ctx: PublishContext, issue_date: str) -> list[str]:
+    return [f"{ctx.stream_dir}/{kind}-{issue_date}.md"
+            for kind in _STREAM_KINDS]
+
+
+def _pending_stream_rels(ctx: PublishContext, issue_date: str) -> list[str]:
+    """待提交的 stream 文件:磁盘存在且索引 blob ≠ HEAD 树(比对索引而非
+    磁盘字节——autocrlf 下磁盘 CRLF 与树内 LF 恒不等,digest 身份链同法)。"""
+    out = []
+    for rel in _stream_rels(ctx, issue_date):
+        if not (ctx.workdir / rel).exists():
+            continue
+        index_sha = _staged_sha(ctx, rel)
+        if index_sha is None or index_sha != _blob_sha(ctx, "HEAD", rel):
+            out.append(rel)
+    return out
+
+
+def _issue_rels(ctx: PublishContext, issue_date: str) -> set[str]:
+    """本期文件集(digest + stream)——隔离核对的白名单。"""
+    return {_digest_rel(ctx, issue_date)} | set(
+        _stream_rels(ctx, issue_date))
+
+
 # ---------- verify(质量门禁最小实现:push 前拦坏 markdown) ----------
 
 _FM_KEYS = ("date", "generated", "ai_model", "entry_count", "cost_cny",
@@ -117,14 +147,14 @@ def _sync_workdir(ctx: PublishContext, issue_date: str) -> None:
     fast-forward 同步(否则后续 push 非快进失败);分叉(远端前进且与
     本地未推送提交分叉)→E8 转人工。"""
     _git(ctx, "fetch", "origin")
-    rel = _digest_rel(ctx, issue_date)
+    issue_files = _issue_rels(ctx, issue_date)
     ahead = [s for s in _git(
         ctx, "rev-list", f"origin/{ctx.branch}..HEAD").split() if s]
     for sha in ahead:
         files = [f for f in _git(
             ctx, "diff-tree", "--no-commit-id", "--name-only", "-r",
             sha).splitlines() if f]
-        foreign = [f for f in files if f != rel]
+        foreign = [f for f in files if f not in issue_files]
         if foreign:
             raise ManualIntervention(
                 f"isolation:副本存在他期未推送提交,本次 push 会带出 "
@@ -162,23 +192,35 @@ def _commit_digest(ctx: PublishContext, issue_date: str, rel: str,
                    expected_sha: str) -> str:
     """幂等提交:HEAD 树内该路径身份已=库内身份→复用 HEAD(不造空提交);
     否则 verify→add→暂存身份校验→commit(pathspec 限定提交范围,暂存区
-    无关文件不被带出)。返回提交 SHA(commit 成功即回填,仍 draft)。"""
+    无关文件不被带出)。stream 文件(ADR-0014)与 digest 同一原子提交;
+    digest 已复用 HEAD 而 stream 有新增/变化时,补一笔 stream-only 提交。
+    返回提交 SHA(commit 成功即回填,仍 draft)。"""
     head = _git(ctx, "rev-parse", "HEAD")
+    pending_streams = _pending_stream_rels(ctx, issue_date)
     if _blob_sha(ctx, head, rel) == expected_sha:
-        return head
+        if not pending_streams:
+            return head
+        for s in pending_streams:
+            _git(ctx, "add", s)
+        _git(ctx, "commit", "-q", "-m", f"stream: {issue_date}",
+             "--", *pending_streams)
+        return _git(ctx, "rev-parse", "HEAD")
     if not (ctx.workdir / rel).exists():
         raise ManualIntervention(
             f"identity:副本文件缺失({rel})≠库内预期"
             f"{expected_sha[:12]}——不提交,转人工")
     verify_draft(ctx.workdir / rel)
     _git(ctx, "add", rel)
+    for s in pending_streams:
+        _git(ctx, "add", s)
     actual = _staged_sha(ctx, rel)
     if actual != expected_sha:
         raise ManualIntervention(
             f"identity:副本文件身份"
             f"{actual[:12] if actual else '(缺失)'} ≠ 库内预期"
             f"{expected_sha[:12]}——不提交,转人工")
-    _git(ctx, "commit", "-q", "-m", f"digest: {issue_date}", "--", rel)
+    _git(ctx, "commit", "-q", "-m", f"digest: {issue_date}", "--",
+         rel, *pending_streams)
     return _git(ctx, "rev-parse", "HEAD")
 
 
