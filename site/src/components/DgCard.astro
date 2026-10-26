@@ -1,0 +1,26 @@
+---
+// DgCard:结构化条目卡片(ADR-0013 aihot 式卡片流通用单元)。
+// 消费 digest 与 stream 两种产物(parseDigestCards 解析结果),字段契约
+// 见 site/src/lib/digest-card.mjs。
+interface Props {
+  card: { section: string; title: string; url: string; summary: string;
+          reason: string | null; source: string; score: number };
+  scoreLabel?: string;   // 默认「AI 评分」;热点榜传「热度」(分值=聚簇热度)
+}
+const { card: c, scoreLabel = 'AI 评分' } = Astro.props;
+---
+<article class="dg-card">
+  <div class="dg-meta">
+    <span class="dg-source mono">{c.source}</span>
+    <span class="dg-score" aria-label={`${scoreLabel} ${c.score} 分`}>
+      <span class="dg-score-k">{scoreLabel}</span><b class="mono">{c.score}</b>
+    </span>
+  </div>
+  <h3 class="dg-title">
+    <a href={c.url} target="_blank" rel="noopener">{c.title}<span class="dg-ext" aria-hidden="true">↗</span></a>
+  </h3>
+  <p class="dg-summary">{c.summary}</p>
+  {c.reason && (
+    <p class="dg-reason"><span class="dg-reason-tag">理由</span>{c.reason}</p>
+  )}
+</article>

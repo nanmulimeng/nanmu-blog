@@ -32,4 +32,18 @@ const digest = defineCollection({
     .strict(),
 });
 
-export const collections = { posts, digest };
+// 板块流(ADR-0014 aihot 前四板块):精选/全部动态/热点榜,引擎每日
+// 随日报产出 <kind>-<date>.md,body 与 digest 产物同构(digest-card 解析)
+const stream = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/stream' }),
+  schema: z
+    .object({
+      kind: z.enum(['featured', 'all', 'hot']),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      generated: z.literal(true),
+      count: z.number().int().nonnegative(),
+    })
+    .strict(),
+});
+
+export const collections = { posts, digest, stream };

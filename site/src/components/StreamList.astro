@@ -1,0 +1,53 @@
+---
+// StreamList:板块列表页(ADR-0014 aihot 前四板块之精选/全部动态/热点榜)。
+// 数据=site/src/content/stream/<kind>-<date>.md(引擎每日随日报产出);
+// 按日分组的时间轴卡片流复用 ADR-0013 的 dg-* 体系。
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import DgCard from './DgCard.astro';
+import { parseDigestCards } from '../lib/digest-card.mjs';
+
+interface Props {
+  kind: 'featured' | 'all' | 'hot';
+  title: string;
+  desc: string;
+  emptyHint: string;
+}
+const { kind, title, desc, emptyHint } = Astro.props;
+const entries = (await getCollection('stream'))
+  .filter((e) => e.data.kind === kind)
+  .sort((a, b) => (a.data.date === b.data.date
+    ? a.id.localeCompare(b.id)
+    : a.data.date < b.data.date ? 1 : -1));
+const groups = entries.map((e) => ({
+  date: e.data.date as string,
+  count: (e.data.count ?? 0) as number,
+  cards: parseDigestCards(e.body ?? ''),
+}));
+---
+<Base title={title} description={desc}>
+  <div class="frame">
+    <div class="issue-wrap narrow">
+      <div class="crumb">
+        <span class="seal-m">机</span>
+        <a href="/">首页</a><span>/</span><span>{title}</span>
+      </div>
+      <h1 class="title">{title}</h1>
+      <div class="issue-foot">{desc} 内容由 AI 引擎评分与聚簇产出,每日随日报更新一次;条目附原始来源链接。</div>
+
+      <div class="dg-flow" data-count={groups.reduce((n, g) => n + g.cards.length, 0)}>
+        {groups.map(({ date, count, cards }) => (
+          <section class="dg-sec" aria-label={`${date}`}>
+            <header class="dg-sec-head">
+              <span class="dg-node" aria-hidden="true"></span>
+              <span class="dg-sec-name mono">{date}</span>
+              <span class="dg-count mono">{count} 条</span>
+            </header>
+            {cards.map((c) => <DgCard card={c} scoreLabel={kind === 'hot' ? '热度' : undefined} />)}
+          </section>
+        ))}
+        {groups.length === 0 && <div class="issue-body"><em>{emptyHint}</em></div>}
+      </div>
+    </div>
+  </div>
+</Base>
