@@ -134,6 +134,13 @@ class TestIngest(unittest.TestCase):
             "SELECT manifest_json FROM issue_freeze WHERE issue_date=?", ("2026-10-26",)).fetchone()[0])
         self.assertEqual(len(m), 2)
         self.assertTrue(all(x["source_name"] == "AIHOT" for x in m))
+        import hashlib
+        for x in m:  # 与 collect manifest 契约对齐(ledger.reusable_scores 消费)
+            self.assertIn("entry_id", x)
+            self.assertIn("content_hash", x)
+            self.assertEqual(
+                x["content_hash"],
+                hashlib.sha256(x["content_text"].encode("utf-8")).hexdigest())
         # 旧条目滑出 48h 后不再进 manifest(资格语义)
         c.execute("UPDATE entry SET discovered_utc=?", (
             (NOW - timedelta(hours=49)).strftime("%Y-%m-%dT%H:%M:%SZ"),))

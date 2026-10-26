@@ -9,6 +9,7 @@ timer 调 ingest_entries(只落库),每日 run 调 ingest_once(落库+冻结)。
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -152,17 +153,27 @@ def ingest_entries(engine_conn: sqlite3.Connection, now_utc: datetime,
 
 def _eligible_manifest(engine_conn: sqlite3.Connection,
                        now_utc: datetime) -> list[dict]:
-    """冻结候选=discovered 48h 资格窗口内全部 entry(used 除外,预筛再分层)。"""
+    """冻结候选=discovered 48h 资格窗口内全部 entry(used 除外,预筛再分层)。
+
+    成员字段与 collect 的 manifest 契约对齐(ledger.reusable_scores 等消费
+    entry_id/content_hash)。
+    """
     since = _iso_z(now_utc - timedelta(hours=_ELIGIBILITY_WINDOW_H))
     rows = engine_conn.execute(
-        "SELECT identity_key, url, title, source_name, source_tier,"
+        "SELECT id, identity_key, url, title, source_name, source_tier,"
         " published_utc, discovered_utc, content_text FROM entry"
         " WHERE discovered_utc >= ? AND status != 'used'"
         " ORDER BY discovered_utc DESC, identity_key",
         (since,)).fetchall()
     keys = ["identity_key", "url", "title", "source_name", "source_tier",
             "published_utc", "discovered_utc", "content_text"]
-    return [dict(zip(keys, r)) for r in rows]
+    out = []
+    for r in rows:
+        member = {"entry_id": r[0], **dict(zip(keys, r[1:]))}
+        member["content_hash"] = hashlib.sha256(
+            (member["content_text"] or "").encode("utf-8")).hexdigest()
+        out.append(member)
+    return out
 
 
 def ingest_once(engine_conn: sqlite3.Connection, config, issue_date: str,
