@@ -274,6 +274,9 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
         out = understand_entry(conn, config, member_by_key[v.identity_key],
                                issue_date=issue_date, transport=transport,
                                now=now)
+        logger.info("stage=run event=understand_result key=%s status=%s"
+                    " fail=%s", v.identity_key[:50], out.status,
+                    out.fail_reason)
         if out.status == "completed":      # gate:pay_paused 拒=无副作用
             summaries[v.identity_key] = {
                 "title_zh": out.title_zh, "summary": out.summary,
@@ -285,6 +288,7 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
     selected_keys = set()
     for v in result.selected:
         selected_keys.add(v.identity_key)
+        logger.info("stage=run event=understand key=%s", v.identity_key[:60])
         final_members.append({**member_by_key[v.identity_key],
                               "display_score": v.display_score,
                               "force_included": v.force_included,
