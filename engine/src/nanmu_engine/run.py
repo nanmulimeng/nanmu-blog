@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -25,6 +26,7 @@ from typing import Callable
 from nanmu_engine.assemble import AssemblyPaused, assemble_issue, write_draft
 from nanmu_engine.collect import CollectError, collect_once
 from nanmu_engine.config import Config, ConfigError
+from nanmu_engine.ingest import ingest_once
 from nanmu_engine.ledger import (_money_used, _month_window,
                                  compute_n_new, issue_cost_snapshot,
                                  reusable_scores)
@@ -441,7 +443,11 @@ def run_once(conn: sqlite3.Connection, config: Config, *, upstream_path: str,
         events(f"phase:new:{today}")
         touched.add(today)
         try:
-            collect_once(conn, upstream_path, config, today, now)
+            if os.environ.get("NANMU_INGEST") == "1":
+                # ADR-0012:多 feed 直连(不读 td 上游快照,双轨可切)
+                ingest_once(conn, config, today, now)
+            else:
+                collect_once(conn, upstream_path, config, today, now)
             codes.append(_generate_issue(conn, config, today, publish_ctx,
                                          paid_allowed=paid_allowed,
                                          transport=transport, now=now,

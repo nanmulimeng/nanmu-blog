@@ -5,10 +5,15 @@ sources:                       # name 必须与上游 source.name 完全一致;�
   - {name: 'Google DeepMind', tier: T1, priority: 10}
   - {name: '量子位', tier: T1, priority: 10}          # selection.md 源 tier 表 T1(2026-10-26 补:实现漏配,首期 zero_qualified 根因)
   - {name: '阮一峰周刊', tier: T1, priority: 10}      # 同上
-  # T2 显式登记(2026-10-26:量子位 RSS 端点停更期间的池子补充;按 T2 门槛竞争)
-  - {name: 'TechCrunch AI', tier: T2, priority: 20}     # 513/550 正文覆盖,内容质量高
-  - {name: '少数派', tier: T2, priority: 20}            # 186/188 正文覆盖
-  - {name: '小众软件', tier: T2, priority: 20}          # 144/146 正文覆盖
+  # ingest 直连源(ADR-0012 多 feed 化,2026-10-26 服务器实测可达;tier 依据见
+  # docs/decisions/0012-upstream-aihot-direct.md 源清单实测表;td 链路的
+  # TechCrunch AI/少数派/小众软件 T2 登记随之移除——ingest 只有 RSS 摘要,
+  # 正文 <200 字过不了预筛,接入无意义)
+  - {name: 'AIHOT', tier: T1, priority: 10}            # 中文编辑聚合,50 条/日更
+  - {name: 'Techmeme', tier: T2, priority: 20}         # 英文编辑聚合,desc 324-515
+  - {name: 'MarkTechPost', tier: T2, priority: 20}     # AI 专属媒体,desc 281-510
+  - {name: 'Hacker News', tier: T2, priority: 20}      # 社区高票(≥100)过滤
+  - {name: 'MIT Tech Review AI', tier: T2, priority: 20}  # 深度 AI 报道,desc 352-405
 exclude:
   - {name: '机器之心', reason: 'feed 连续失败 768 次,修复后再评估'}
   - {name: '36氪', reason: 'selection.md 排除表(补配)'}
