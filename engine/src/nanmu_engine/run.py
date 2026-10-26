@@ -196,6 +196,8 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
 
     skipped_pay = False
     statuses: list[str] = []
+    logger.info("stage=run event=score_loop to_score=%d recoverable=%d"
+                " n_new=%d", len(pre.to_score), len(pre.recoverable), n_new)
     for m in [*pre.to_score, *pre.recoverable]:
         snap = reuse_snapshot.get(m["identity_key"], {})
         if not paid_allowed and snap.get("needs"):
@@ -204,6 +206,10 @@ def _generate_issue(conn: sqlite3.Connection, config: Config, issue_date: str,
         statuses.append(score_entry(
             conn, config, m, issue_date=issue_date,
             transport=transport, now=now).status)
+    if statuses:
+        from collections import Counter
+        logger.info("stage=run event=score_loop_done statuses=%s",
+                    dict(Counter(statuses)))
 
     # 入选候选=通过预筛四去向的成员(to_score+recoverable)且 analysis 行
     # 关联回执就是当前请求身份——已发布/被排除/被他期占用/被截断的成员
