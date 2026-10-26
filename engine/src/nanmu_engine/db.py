@@ -12,7 +12,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA_V1 = """
 -- 候选条目(topic-digest 条目的快照,判重后)
@@ -165,6 +165,25 @@ CREATE TABLE engine_meta (
 );
 """
 
+# v2(ADR-0014,aihot 爬虫迁移):ingest 采集调度状态。语义对应 AIHOT
+# collect.ts 的 sources 行(interval/next_fetch/fail_count/cursor):
+# 已发布迁移不可改写,v2 只加表不碰 v1。
+_SCHEMA_V2 = """
+-- ingest 源调度状态(next_fetch_utc 到期才抓;失败退避不推进)
+CREATE TABLE source_state (
+  source_name TEXT PRIMARY KEY,
+  interval_minutes INTEGER NOT NULL DEFAULT 60,
+  next_fetch_utc TEXT,
+  last_fetch_utc TEXT,
+  last_ok_utc TEXT,
+  fail_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  initialized_utc TEXT,
+  etag TEXT,
+  last_modified TEXT
+);
+"""
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -197,11 +216,21 @@ def connect_readonly(path: str, *, immutable: bool = False
     return sqlite3.connect(uri + qs, uri=True)
 
 
+def _schema_statements(schema_sql: str) -> list[str]:
+    """注释行内含 ASCII 分号,先剥离注释再按 ';' 切分(DDL 本体无内嵌分号)。"""
+    body = "\n".join(
+        line for line in schema_sql.splitlines()
+        if not line.lstrip().startswith("--"))
+    return [s for s in body.split(";") if s.strip()]
+
+
 def migrate(conn: sqlite3.Connection) -> None:
-    """版本化迁移。空库建 12 表,**单事务**(DDL 逐条 + engine_meta 默认
+    """版本化迁移。空库建 13 表,**单事务**(DDL 逐条 + engine_meta 默认
     pay_paused=0 + user_version 同一 BEGIN IMMEDIATE…COMMIT):中途崩溃
     整体回滚,库保持空且 version 0 → 可重入,不产生"非空但 version 0"
     死库(executescript 会先隐式 COMMIT,故逐条执行)。
+
+    v1→v2 增量迁移同样单事务:只建 source_state(ADR-0014),v1 数据不动。
 
     未知较新版本(> 当前已知)→ 抛错拒绝,不重置不删库。
     """
@@ -209,30 +238,29 @@ def migrate(conn: sqlite3.Connection) -> None:
     if version > SCHEMA_VERSION:
         raise RuntimeError(
             f"engine.db user_version={version} 高于本程序已知版本 "
-            f"{SCHEMA_VERSION}:疑似程序回退,拒绝启动写入(不重置)")
+            f"{SCHEMA_VERSION}:疑似程序回退,拒绝启动写入(不重置不删库)")
     if version == SCHEMA_VERSION:
         return  # 已最新,幂等
 
-    # version 0:空库初始化(非空库带 version 0 = 异常态,拒绝猜测结构)
-    objects = conn.execute(
-        "SELECT COUNT(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
-    ).fetchone()[0]
-    if objects:
-        raise RuntimeError(
-            "engine.db 非空但 user_version=0:结构未知,拒绝迁移(不猜测、不删库)")
-
-    # 注释行内含 ASCII 分号,先剥离注释再按 ';' 切分(DDL 本体无内嵌分号)
-    body = "\n".join(
-        line for line in _SCHEMA_V1.splitlines()
-        if not line.lstrip().startswith("--"))
-    statements = [s for s in body.split(";") if s.strip()]
     try:
         conn.execute("BEGIN IMMEDIATE")
-        for stmt in statements:
+        if version == 0:
+            # 空库初始化(非空库带 version 0 = 异常态,拒绝猜测结构)
+            objects = conn.execute(
+                "SELECT COUNT(*) FROM sqlite_master"
+                " WHERE name NOT LIKE 'sqlite_%'").fetchone()[0]
+            if objects:
+                raise RuntimeError(
+                    "engine.db 非空但 user_version=0:结构未知,"
+                    "拒绝迁移(不猜测、不删库)")
+            for stmt in _schema_statements(_SCHEMA_V1):
+                conn.execute(stmt)
+            conn.execute(
+                "INSERT INTO engine_meta (key, value, updated_utc) "
+                "VALUES ('pay_paused', '0', ?)", (_utc_now(),))
+        # version 1 → 2(以及空库的 v2 部分):只加 source_state
+        for stmt in _schema_statements(_SCHEMA_V2):
             conn.execute(stmt)
-        conn.execute(
-            "INSERT INTO engine_meta (key, value, updated_utc) "
-            "VALUES ('pay_paused', '0', ?)", (_utc_now(),))
         conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         conn.execute("COMMIT")
     except Exception:

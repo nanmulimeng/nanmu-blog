@@ -1,7 +1,8 @@
-"""db 单一入口与 12 表迁移测试(DDL 真相源=spec §5.3)。
+"""db 单一入口与 13 表迁移测试(DDL 真相源=spec §5.3;v2=ADR-0014)。
 
 种子:Task 3 brief + coding-standards SQLite 约定(未知较新版本拒绝,
-不靠删库/重置让门禁变绿)。
+不靠删库/重置让门禁变绿)。v2:source_state(ingest 调度状态,
+AIHOT collect.ts cursor/fail_count/next_fetch 语义)。
 """
 
 import sqlite3
@@ -13,7 +14,7 @@ from nanmu_engine.db import connect_db, connect_readonly, migrate
 EXPECTED_TABLES = {
     "entry", "receipt", "receipt_attempt", "budget", "analysis",
     "override", "digest_issue", "issue_freeze", "api_usage",
-    "summary", "notify_sent", "engine_meta",
+    "summary", "notify_sent", "engine_meta", "source_state",
 }
 
 
@@ -27,7 +28,7 @@ def test_fresh_db_writes_pay_paused_default_zero(tmp_path):
     conn.close()
 
 
-def test_table_count_is_12(tmp_path):
+def test_table_count_is_13(tmp_path):
     conn = connect_db(str(tmp_path / "engine.db"))
     migrate(conn)
     tables = {
@@ -57,16 +58,45 @@ def test_connect_db_sets_pragmas(tmp_path):
 def test_migrate_idempotent_and_versioned(tmp_path):
     conn = connect_db(str(tmp_path / "engine.db"))
     migrate(conn)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
     migrate(conn)  # 幂等
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
     conn.close()
+
+
+def test_migrate_v1_to_v2_adds_source_state(tmp_path):
+    """存量 v1 库(服务器 engine.db)升级:单事务加 source_state,不动 v1 数据。"""
+    db = str(tmp_path / "engine.db")
+    conn = connect_db(db)
+    migrate(conn)
+    conn.execute("DROP TABLE source_state")
+    conn.execute("PRAGMA user_version=1")   # 还原为 v1 存量库形态
+    conn.commit()
+    conn.close()
+
+    conn2 = connect_db(db)
+    migrate(conn2)                            # v1 → v2 增量迁移
+    assert conn2.execute("PRAGMA user_version").fetchone()[0] == 2
+    tables = {
+        row[0] for row in conn2.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%'")
+    }
+    assert tables == EXPECTED_TABLES
+    # v1 存量数据不受迁移影响
+    assert conn2.execute(
+        "SELECT value FROM engine_meta WHERE key='pay_paused'"
+    ).fetchone()[0] == "0"
+    cols = {r[1] for r in conn2.execute("PRAGMA table_info(source_state)")}
+    assert {"source_name", "interval_minutes", "next_fetch_utc",
+            "fail_count", "initialized_utc", "etag", "last_modified"} <= cols
+    conn2.close()
 
 
 def test_unknown_newer_version_rejected_without_reset(tmp_path):
     conn = connect_db(str(tmp_path / "engine.db"))
     migrate(conn)
-    conn.execute("PRAGMA user_version = 2")  # 模拟未来版本库
+    conn.execute("PRAGMA user_version = 3")  # 模拟未来版本库
     conn.commit()
     conn.close()
 
@@ -74,7 +104,7 @@ def test_unknown_newer_version_rejected_without_reset(tmp_path):
     with pytest.raises(Exception, match="user_version|未知|版本"):
         migrate(conn2)
     # 拒绝启动写入:版本未被重置,表结构未被清空
-    assert conn2.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert conn2.execute("PRAGMA user_version").fetchone()[0] == 3
     tables = {
         row[0] for row in conn2.execute(
             "SELECT name FROM sqlite_master WHERE type='table' "
@@ -130,7 +160,7 @@ def test_migrate_interrupted_leaves_empty_db_and_reentrant(tmp_path):
     from nanmu_engine.db import connect_db
     conn2 = connect_db(db)
     migrate(conn2)
-    assert conn2.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert conn2.execute("PRAGMA user_version").fetchone()[0] == 2
     assert conn2.execute(
         "SELECT value FROM engine_meta WHERE key='pay_paused'"
     ).fetchone()[0] == "0"

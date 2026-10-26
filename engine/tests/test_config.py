@@ -239,3 +239,52 @@ def test_sections_must_cover_three_keys_descending(root: Path):
     p.write_text(yaml.safe_dump(d, allow_unicode=True), encoding="utf-8")
     with pytest.raises(ConfigError, match="sections"):
         load_config(root)
+
+
+# ---------- ADR-0014:ingest 源爬虫字段(kind/config/interval/enabled) ----------
+
+def test_source_crawl_fields_parsed_with_defaults(root: Path):
+    p = root / "config" / "sources.yaml"
+    d = yaml.safe_load(p.read_text(encoding="utf-8"))
+    d["sources"].append({
+        "name": "Example List", "tier": "T2", "priority": 20,
+        "kind": "web_list",
+        "config": {"url": "https://example.com/news",
+                   "itemSelector": ".news-item", "linkSelector": "a",
+                   "titleSelector": "a"},
+        "interval_minutes": 120, "enabled": False})
+    p.write_text(yaml.safe_dump(d, allow_unicode=True), encoding="utf-8")
+    cfg = load_config(root)
+    src = next(s for s in cfg.sources.sources if s.name == "Example List")
+    assert src.kind == "web_list"
+    assert src.config["itemSelector"] == ".news-item"
+    assert src.interval_minutes == 120
+    assert src.enabled is False
+    # 既有行无 kind → 非采集源:kind/config/interval 为 None,enabled True
+    plain = next(s for s in cfg.sources.sources if s.name != "Example List")
+    assert plain.kind is None and plain.config is None
+    assert plain.interval_minutes is None and plain.enabled is True
+
+
+def test_source_crawl_fields_validated(root: Path):
+    p = root / "config" / "sources.yaml"
+
+    def _append_and_load(extra: dict):
+        d = yaml.safe_load(p.read_text(encoding="utf-8"))
+        d["sources"] = [s for s in d["sources"] if s.get("name") != "Probe"]
+        row = {"name": "Probe", "tier": "T2"}
+        row.update(extra)
+        d["sources"].append(row)
+        p.write_text(yaml.safe_dump(d, allow_unicode=True), encoding="utf-8")
+        return load_config(root)
+
+    with pytest.raises(ConfigError, match="kind"):
+        _append_and_load({"kind": "x_search"})        # 未落地类型
+    with pytest.raises(ConfigError, match="config"):
+        _append_and_load({"kind": "rss", "config": "https://x/feed"})  # 非 dict
+    with pytest.raises(ConfigError, match="interval_minutes"):
+        _append_and_load({"kind": "rss", "config": {"feedUrl": "https://x/f"},
+                          "interval_minutes": 0})
+    with pytest.raises(ConfigError, match="enabled"):
+        _append_and_load({"kind": "rss", "config": {"feedUrl": "https://x/f"},
+                          "enabled": "yes"})
