@@ -145,6 +145,18 @@ class TestIngest(unittest.TestCase):
         self.assertEqual(r3.item_total, 0)
         self.assertEqual(len(m3), 0, "资格滑出→空冻结(合法)")
 
+    def test_main_hourly入口(self):
+        """timer 入口:--root 解析→加载配置→连库→落库,返回 0。"""
+        with mock.patch.object(ingest, "load_config") as lc, \
+             mock.patch.object(ingest, "connect_db") as cdb, \
+             mock.patch.object(ingest, "ingest_entries", return_value=3) as ie:
+            rc = ingest.main(["--root", "/opt/nanmu-blog/engine"])
+        self.assertEqual(rc, 0)
+        lc.assert_called_once_with(Path("/opt/nanmu-blog/engine"))
+        cdb.assert_called_once_with(str(Path("/opt/nanmu-blog/engine") / "engine.db"))
+        ie.assert_called_once()
+        self.assertEqual(ie.call_args[1].get("config"), lc.return_value)
+
 
 if __name__ == "__main__":
     unittest.main()

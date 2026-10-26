@@ -17,10 +17,13 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 
 import httpx
 
 from .collect import CollectError, CollectResult, freeze_issue
+from .config import load_config
+from .db import connect_db
 from .normalize import identity_key
 
 logger = logging.getLogger(__name__)
@@ -171,3 +174,26 @@ def ingest_once(engine_conn: sqlite3.Connection, config, issue_date: str,
     status = "frozen" if frozen_utc == _iso_z(now_utc) else "already_frozen"
     return CollectResult(status=status, manifest=manifest,
                          item_total=len(manifest))
+
+
+def main(argv: list[str] | None = None) -> int:
+    """hourly timer 入口:只落库不冻结(每日 run 负责冻结与期生成)。"""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="nanmu-engine-ingest", description="ADR-0012 多 feed 轻量采集")
+    parser.add_argument("--root", type=Path, default=Path.cwd(),
+                        help="引擎根(含 config/ 与 engine.db)")
+    args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    config = load_config(args.root)
+    conn = connect_db(str(args.root / "engine.db"))
+    added = ingest_entries(conn, datetime.now(timezone.utc), config=config)
+    logger.info("stage=ingest event=hourly_done added=%d", added)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
